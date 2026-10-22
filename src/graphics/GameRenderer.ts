@@ -692,7 +692,7 @@ export class GameRenderer {
       ctx.save();
       const colGrad = ctx.createLinearGradient(0, terrain.ceilY, 0, terrain.floorY);
       colGrad.addColorStop(0, 'rgba(0, 240, 255, 0.02)');
-      colGrad.addColorStop(0.5, p.color === '#00f0ff' ? 'rgba(0, 240, 255, 0.16)' : p.color === '#00ff88' ? 'rgba(0, 255, 136, 0.16)' : 'rgba(255, 215, 0, 0.16)');
+      colGrad.addColorStop(0.5, p.color === '#00f0ff' ? 'rgba(0, 240, 255, 0.16)' : p.color === '#00ff88' ? 'rgba(0, 255, 136, 0.16)' : p.color === '#ffd700' ? 'rgba(255, 215, 0, 0.16)' : p.color === '#ff0055' ? 'rgba(255, 0, 85, 0.16)' : 'rgba(168, 85, 247, 0.16)');
       colGrad.addColorStop(1, 'rgba(0, 240, 255, 0.02)');
       
       ctx.fillStyle = colGrad;
@@ -771,6 +771,51 @@ export class GameRenderer {
         }
         ctx.stroke();
 
+      } else if (p.type === 'INVULNERABLE') {
+        // D) INVULNERABLE: Crimson rotating barrier with orbiting sigils
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 3;
+        ctx.rotate(p.orbitAngle);
+        ctx.beginPath();
+        ctx.arc(0, 0, rad * 0.8, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, rad * 0.45, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Sigils orbiting the barrier
+        for (let s = 0; s < 4; s++) {
+          const sAngle = p.pulsePhase + (s * Math.PI * 2) / 4;
+          const sigilRad = rad * 0.65 + Math.sin(Date.now() * 0.005 + s * 1.3) * 3;
+          ctx.fillStyle = '#fff';
+          ctx.beginPath();
+          ctx.arc(Math.cos(sAngle) * sigilRad, Math.sin(sAngle) * sigilRad, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+      } else if (p.type === 'ETHEREAL') {
+        // E) ETHEREAL: Semi-transparent violet ghost with trailing ribbon
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.4;
+        ctx.beginPath();
+        for (let t = 0; t < 8; t++) {
+          const tAngle = (t * Math.PI) / 4 + p.pulsePhase;
+          const tx = Math.cos(tAngle) * rad;
+          const ty = Math.sin(tAngle) * rad * 0.6;
+          if (t === 0) ctx.moveTo(tx, ty);
+          else ctx.lineTo(tx, ty);
+        }
+        ctx.closePath();
+        ctx.stroke();
+        ctx.globalAlpha = 0.2;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(0, 0, rad, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+
       } else {
         // C) LOW-G SURGE: Levitating anti-gravity gyroscope with gimbal rings
         ctx.strokeStyle = p.color;
@@ -803,7 +848,7 @@ export class GameRenderer {
       ctx.font = 'bold 9px Orbitron';
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
-      const label = p.type === 'SHIELD' ? 'ESCUDO' : p.type === 'DAMPER' ? 'DAMPER' : 'LOW-G';
+      const label = p.type === 'SHIELD' ? 'ESCUDO' : p.type === 'DAMPER' ? 'DAMPER' : p.type === 'LOW_G' ? 'LOW-G' : p.type === 'INVULNERABLE' ? 'INVM' : 'GHOST';
       ctx.shadowBlur = 8;
       ctx.fillText(label, 0, rad + 18);
 
@@ -844,26 +889,32 @@ export class GameRenderer {
         const blockHeight = 28;
 
         ctx.save();
+        // Pneumatic ram block extending from wall
+        ctx.fillStyle = '#ff0055';
+        ctx.shadowColor = '#ff0055';
+        ctx.shadowBlur = 12;
+        ctx.globalAlpha = 0.85 + obs.extension * 0.15;
+        ctx.fillRect(obs.x - w / 2, baseY, w, reach);
 
-        // Telegraph warning laser grid & flashing hazard zone before punching out
-        if (obs.warningPhase > 0.05) {
-          ctx.strokeStyle = '#facc15';
-          ctx.shadowColor = '#facc15';
-          ctx.shadowBlur = 18 * obs.warningPhase;
-          ctx.lineWidth = 2.5;
-          ctx.setLineDash([6, 6]);
-          const warnTop = isCeil ? baseY : baseY - obs.maxExtensionHeight;
-          ctx.strokeRect(obs.x - w / 2 - 6, warnTop, w + 12, obs.maxExtensionHeight);
-          ctx.setLineDash([]);
-
-          // Strobe warning beacons on wall mount
-          const beaconFlash = (Math.floor(Date.now() * 0.015) % 2 === 0);
-          ctx.fillStyle = beaconFlash ? '#facc15' : 'rgba(250, 204, 21, 0.2)';
+        // Chevron hazard pattern on the ram
+        ctx.strokeStyle = '#ff0055';
+        ctx.lineWidth = 3;
+        ctx.globalAlpha = 0.6;
+        for (let i = 0; i < Math.max(1, Math.floor(reach / 20)); i++) {
+          const chevronY = baseY + i * 20;
           ctx.beginPath();
-          ctx.arc(obs.x - w / 2 + 6, baseY, 4, 0, Math.PI * 2);
-          ctx.arc(obs.x + w / 2 - 6, baseY, 4, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.moveTo(obs.x - w / 2 - 10, chevronY);
+          ctx.lineTo(obs.x, chevronY - 12);
+          ctx.lineTo(obs.x + w / 2 + 10, chevronY);
+          ctx.stroke();
         }
+
+        // Rod & piston detail
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = 0.4;
+        ctx.fillRect(obs.x - 4, baseY + reach - 8, 8, 16);
+
+        ctx.restore();
 
         // Heavy Industrial Dual Hydraulic Piston Rods
         if (reach > 8) {

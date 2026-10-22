@@ -216,7 +216,7 @@ export const GameHUD: React.FC<GameHUDProps> = ({
           </div>
         </div>
 
-        {/* Right Cluster: Active Shield Badge */}
+        {/* Right Cluster: Active Shield Badge + Power-up timers */}
         <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 font-mono text-xs">
           <Shield className={`w-4 h-4 ${ship.shields > 0 ? 'text-sky-400 animate-pulse' : 'text-gray-600'}`} />
           <div>
@@ -229,6 +229,18 @@ export const GameHUD: React.FC<GameHUDProps> = ({
               )}
             </div>
           </div>
+          {ship.invulnerableTime > 0 && (
+            <div className="flex items-center gap-1 border-l border-white/10 pl-2 ml-1">
+              <div className="w-2 h-2 rounded-full bg-[#ff0055] animate-pulse" />
+              <span className="text-[10px] font-bold text-[#ff0055]">INV {ship.invulnerableTime.toFixed(0)}s</span>
+            </div>
+          )}
+          {ship.etherealActiveTimer > 0 && (
+            <div className="flex items-center gap-1 border-l border-white/10 pl-2 ml-1">
+              <div className="w-2 h-2 rounded-full bg-[#a855f7] animate-pulse" />
+              <span className="text-[10px] font-bold text-[#a855f7]">GHOST {ship.etherealActiveTimer.toFixed(0)}s</span>
+            </div>
+          )}
         </div>
       </footer>
     </div>
