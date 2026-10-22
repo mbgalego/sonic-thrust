@@ -1,0 +1,240 @@
+/**
+ * Sonic Thrust - In-Game HUD Component
+ * Low-occlusion, world-matched cyber display showing music progress, distance to finish portal,
+ * velocity, altitude clearance, shield status, active power-up timers, and pause controls.
+ */
+
+import React from 'react';
+import {
+  Shield,
+  Gauge,
+  Pause,
+  Zap,
+  Activity,
+  Flame,
+  Clock,
+  Maximize,
+  Minimize
+} from 'lucide-react';
+import { GameStats, DifficultyLevel } from '../types/game';
+import { ShipState } from '../physics/PhysicsWorld';
+
+interface GameHUDProps {
+  stats: GameStats;
+  ship: ShipState;
+  difficulty: DifficultyLevel;
+  trackTitle: string;
+  onPause: () => void;
+  altitudeRatio: number; // 0.0 (near ceiling) to 1.0 (near floor)
+  launchGraceTimer?: number;
+}
+
+export const GameHUD: React.FC<GameHUDProps> = ({
+  stats,
+  ship,
+  difficulty,
+  trackTitle,
+  onPause,
+  altitudeRatio,
+  launchGraceTimer = 0
+}) => {
+  const [isFullscreen, setIsFullscreen] = React.useState(Boolean(document.fullscreenElement));
+
+  React.useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+        setIsFullscreen(true);
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+          setIsFullscreen(false);
+        }
+      }
+    } catch (err) {
+      console.warn('Fullscreen toggle error:', err);
+    }
+  };
+
+  const currentMinutes = Math.floor(stats.timeElapsed / 60);
+  const currentSeconds = Math.floor(stats.timeElapsed % 60);
+  const totalMinutes = Math.floor(stats.totalDuration / 60);
+  const totalSeconds = Math.floor(stats.totalDuration % 60);
+
+  const speedKmh = Math.round(Math.sqrt(ship.vx * ship.vx + ship.vy * ship.vy) * 0.7);
+
+  return (
+    <div className="absolute inset-0 z-20 pointer-events-none flex flex-col justify-between p-3 md:p-6 select-none">
+      
+      {/* Top Bar: Music Progress, Distance to Finish, Pause & Fullscreen Buttons */}
+      <header className="flex flex-col gap-2 max-w-5xl w-full mx-auto">
+        <div className="flex items-center justify-between gap-3 text-xs font-mono">
+          
+          {/* Track and Difficulty cluster */}
+          <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 pointer-events-auto">
+            <Activity className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+            <span className="font-orbitron font-semibold text-white truncate max-w-[150px] md:max-w-[260px]">
+              {trackTitle}
+            </span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-500/30 uppercase font-bold">
+              {difficulty}
+            </span>
+          </div>
+
+          {/* Time & BPM progress */}
+          <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
+            <Clock className="w-3.5 h-3.5 text-gray-400" />
+            <span className="tabular-nums text-white">
+              {String(currentMinutes).padStart(2, '0')}:{String(currentSeconds).padStart(2, '0')} / {String(totalMinutes).padStart(2, '0')}:{String(totalSeconds).padStart(2, '0')}
+            </span>
+            <span className="text-gray-500">|</span>
+            <span className="text-cyan-400 font-bold tabular-nums">
+              {Math.round(stats.percentCompleted)}%
+            </span>
+          </div>
+
+          {/* Top Controls Cluster: Fullscreen & Pause Buttons */}
+          <div className="flex items-center gap-2 pointer-events-auto">
+            <button
+              onClick={toggleFullscreen}
+              className="bg-black/60 hover:bg-slate-900 border border-white/20 hover:border-cyan-400 text-white p-2 rounded-lg transition cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-sm"
+              title={isFullscreen ? 'Sair de Ecrã Inteiro (F11)' : 'Ecrã Inteiro (F11)'}
+            >
+              {isFullscreen ? (
+                <Minimize className="w-4 h-4 text-cyan-400" />
+              ) : (
+                <Maximize className="w-4 h-4 text-cyan-400" />
+              )}
+            </button>
+
+            <button
+              onClick={onPause}
+              className="bg-black/60 hover:bg-slate-900 border border-white/20 hover:border-cyan-400 text-white p-2 rounded-lg transition cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-sm"
+              title="Pausar jogo (ESC)"
+            >
+              <Pause className="w-4 h-4 text-cyan-400" />
+              <span className="hidden sm:inline font-orbitron text-xs">PAUSA</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Global Progress Bar towards Goal Portal */}
+        <div className="relative w-full h-2.5 bg-slate-900/80 rounded-full border border-white/15 overflow-hidden backdrop-blur-sm">
+          <div
+            className="h-full bg-gradient-to-r from-cyan-500 via-sky-400 to-fuchsia-500 transition-all duration-150 rounded-full shadow-[0_0_12px_rgba(6,182,212,0.8)]"
+            style={{ width: `${Math.max(1, Math.min(100, stats.percentCompleted))}%` }}
+          />
+          {/* Finish Portal Pin marker */}
+          <div className="absolute right-0 top-0 bottom-0 w-3 bg-fuchsia-400 shadow-[0_0_8px_rgba(236,72,153,1)]" />
+        </div>
+      </header>
+
+      {/* Middle Floating Status Buffs (Launch Anti-G, Damper & Low-G) */}
+      <div className="flex flex-col gap-2 items-start self-start mt-4">
+        {launchGraceTimer > 0 && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-950/90 border border-cyan-400 text-cyan-300 font-mono text-xs shadow-lg shadow-cyan-950/80 animate-pulse">
+            <Zap className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
+            <span>ESTABILIZADOR ANTI-G: {launchGraceTimer.toFixed(1)}s (FLUTUAÇÃO SEGURA)</span>
+          </div>
+        )}
+
+        {ship.damperActiveTimer > 0 && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 font-mono text-xs shadow-lg shadow-emerald-950/50">
+            <Zap className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
+            <span>SONIC DAMPER: {ship.damperActiveTimer.toFixed(1)}s</span>
+          </div>
+        )}
+
+        {ship.lowGActiveTimer > 0 && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-950/80 border border-yellow-500/40 text-yellow-300 font-mono text-xs shadow-lg shadow-yellow-950/50">
+            <Activity className="w-3.5 h-3.5 text-yellow-400 animate-pulse" />
+            <span>LOW-G SURGE: {ship.lowGActiveTimer.toFixed(1)}s</span>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom Perimeter Clusters: Speed, Altitude Clearance, Dual-Thrusters, Shield */}
+      <footer className="flex items-end justify-between gap-4 max-w-5xl w-full mx-auto">
+        
+        {/* Left Cluster: Speed & Altitude */}
+        <div className="flex items-center gap-3 bg-black/60 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 font-mono text-xs">
+          <div className="flex items-center gap-2 shrink-0">
+            <Gauge className="w-4 h-4 text-cyan-400 shrink-0" />
+            <div className="min-w-[82px] shrink-0">
+              <div className="text-[10px] text-gray-400 uppercase tracking-wider">Velocidade</div>
+              <div className="font-orbitron font-bold text-sm text-white tabular-nums whitespace-nowrap flex items-baseline gap-1">
+                <span>{speedKmh}</span>
+                <span className="text-[10px] font-normal text-gray-400">km/h</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="w-px h-7 bg-white/10" />
+
+          {/* Altitude clearance gauge */}
+          <div className="flex flex-col">
+            <div className="text-[10px] text-gray-400 uppercase">Folga Canal</div>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-[9px] text-cyan-400">T</span>
+              <div className="w-16 h-2 bg-slate-900 rounded-full border border-white/20 relative overflow-hidden">
+                <div
+                  className="absolute top-0 bottom-0 w-2.5 bg-cyan-400 rounded-full transition-all"
+                  style={{ left: `${Math.max(0, Math.min(100, altitudeRatio * 100))}%` }}
+                />
+              </div>
+              <span className="text-[9px] text-fuchsia-400">C</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Center: Dual-Thruster Pressure Indicators */}
+        <div className="flex items-center gap-4 bg-black/60 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 font-mono text-xs">
+          <div className="flex items-center gap-1.5">
+            <Flame className={`w-3.5 h-3.5 ${ship.leftThrusterPower > 0.1 ? 'text-cyan-400 animate-bounce' : 'text-gray-600'}`} />
+            <div className="text-[10px] text-gray-400">MOTOR L [A]</div>
+            <div className="w-10 h-2 bg-slate-900 rounded border border-white/15 overflow-hidden">
+              <div
+                className="h-full bg-cyan-400 transition-all duration-75"
+                style={{ width: `${ship.leftThrusterPower * 100}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <div className="w-10 h-2 bg-slate-900 rounded border border-white/15 overflow-hidden">
+              <div
+                className="h-full bg-fuchsia-400 transition-all duration-75"
+                style={{ width: `${ship.rightThrusterPower * 100}%` }}
+              />
+            </div>
+            <div className="text-[10px] text-gray-400">MOTOR R [D]</div>
+            <Flame className={`w-3.5 h-3.5 ${ship.rightThrusterPower > 0.1 ? 'text-fuchsia-400 animate-bounce' : 'text-gray-600'}`} />
+          </div>
+        </div>
+
+        {/* Right Cluster: Active Shield Badge */}
+        <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 font-mono text-xs">
+          <Shield className={`w-4 h-4 ${ship.shields > 0 ? 'text-sky-400 animate-pulse' : 'text-gray-600'}`} />
+          <div>
+            <div className="text-[10px] text-gray-400 uppercase">Escudo de Fase</div>
+            <div className="font-orbitron font-bold text-sm">
+              {ship.shields > 0 ? (
+                <span className="text-sky-300">{ship.shields} ATIVO</span>
+              ) : (
+                <span className="text-gray-500">INATIVO (0)</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+};
