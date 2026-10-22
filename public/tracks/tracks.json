@@ -1,0 +1,92 @@
+[
+  {
+    "id": "kosmonova-ayla",
+    "title": "Ayla",
+    "artist": "Kosmonova",
+    "filename": "Kosmonova_-_Ayla.mp3",
+    "estimatedBpm": 136,
+    "duration": 206,
+    "description": "Hino lendário do Trance com arpeggio cósmico icónico, sub-graves penetrantes e ritmo hipnótico a 136 BPM.",
+    "isProcedural": false
+  },
+  {
+    "id": "kosmonova-take-me-away",
+    "title": "Take Me Away (Club Mix)",
+    "artist": "Kosmonova",
+    "filename": "Kosmonova_-_Take_Me_Away__Club_Mix__1997.mp3",
+    "estimatedBpm": 135,
+    "duration": 389,
+    "description": "Clássico Euro-Trance épico de 1997 com sintetizadores rápidos, linhas de baixo pulsantes e adrenalina a 135 BPM.",
+    "isProcedural": false
+  },
+  {
+    "id": "cant-feel-my-face",
+    "title": "Can't Feel My Face",
+    "artist": "Walk off the Earth (feat. Scott Helman)",
+    "filename": "Can t Feel My Face - Walk off the Earth (feat. Scott Helman).mp3",
+    "estimatedBpm": 108,
+    "duration": 220,
+    "description": "Cover acústico enérgico com ritmo pop vibrante e excelente dinâmica.",
+    "isProcedural": false
+  },
+  {
+    "id": "i-knew-you-were-trouble",
+    "title": "I Knew You Were Trouble",
+    "artist": "Walk off the Earth Feat. KRNFX",
+    "filename": "I Knew You Were Trouble - WALK OFF THE EARTH Feat. KRNFX.mp3",
+    "estimatedBpm": 120,
+    "duration": 219,
+    "description": "Beatbox poderoso e harmonias vocais com picos rítmicos marcados.",
+    "isProcedural": false
+  },
+  {
+    "id": "clean-bandit-symphony",
+    "title": "Symphony",
+    "artist": "Clean Bandit (feat. Zara Larsson)",
+    "filename": "Clean Bandit - Symphony (feat. Zara Larsson).mp3",
+    "estimatedBpm": 123,
+    "duration": 246,
+    "description": "Pop orquestral e eletrónico dinâmico com progressões melódicas contínuas.",
+    "isProcedural": false
+  },
+  {
+    "id": "carl-poppa",
+    "title": "Carl Poppa (La Jiggy Jar Jar Doo)",
+    "artist": "Bad Lip Reading",
+    "filename": "CARL POPPA — Lyric Video [Q9aM9Ch97U8].mp3",
+    "estimatedBpm": 135,
+    "duration": 327,
+    "description": "Batida hip-hop rítmica com graves sólidos e andamento cativante.",
+    "isProcedural": false
+  },
+  {
+    "id": "cyber-overdrive",
+    "title": "Cyber Overdrive (Procedural Synth)",
+    "artist": "Sonic Thrust Labs",
+    "filename": "cyber-overdrive.mp3",
+    "estimatedBpm": 132,
+    "duration": 96,
+    "description": "Synthwave frenético com graves pulsantes e arpeggios cortantes.",
+    "isProcedural": true
+  },
+  {
+    "id": "neon-velocity",
+    "title": "Neon Velocity (High BPM)",
+    "artist": "RetroPulse",
+    "filename": "neon-velocity.mp3",
+    "estimatedBpm": 145,
+    "duration": 112,
+    "description": "Darksynth acelerado com batidas secas e alta densidade de graves.",
+    "isProcedural": true
+  },
+  {
+    "id": "dark-matter-drift",
+    "title": "Dark Matter Drift (Deep Bass)",
+    "artist": "SubOrbit",
+    "filename": "dark-matter-drift.mp3",
+    "estimatedBpm": 115,
+    "duration": 84,
+    "description": "Ondas subsónicas profundas com fortes oscilações no teto e chão.",
+    "isProcedural": true
+  }
+]

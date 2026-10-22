@@ -1,0 +1,6 @@
+{
+  "name": "Sonic Thrust",
+  "description": "Jogo 2D de física e navegação musical com controle Dual-Thruster, terreno reativo a áudio e regra Zero Contact.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
