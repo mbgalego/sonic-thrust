@@ -98,6 +98,7 @@ export interface ShipState {
   reachedGoal: boolean;
   damperActiveTimer: number; // 6s duration
   lowGActiveTimer: number;    // 5s duration
+  etherealActiveTimer: number; // 0 = off, >0 = ghost mode
 }
 
 export interface TerrainVertex {
@@ -186,6 +187,7 @@ export class PhysicsWorld {
       rightThrusterPower: 0,
       shields: this.difficulty.initialShields,
       invulnerableTime: 0,
+      etherealActiveTimer: 0,
       isDestroyed: false,
       reachedGoal: false,
       damperActiveTimer: 0,
@@ -329,7 +331,7 @@ export class PhysicsWorld {
     const playableRange = endSafeX - startSafeX;
 
     // 1. Power-ups distribution (Shields, Dampers, Low-G) with distinct celestial palettes
-    const powerUpTypes: PowerUpType[] = ['SHIELD', 'DAMPER', 'LOW_G'];
+    const powerUpTypes: PowerUpType[] = ['SHIELD', 'DAMPER', 'LOW_G', 'INVULNERABLE', 'ETHEREAL'];
     const totalPowerUps = Math.max(8, Math.floor(this.trackDuration / 11));
     
     for (let i = 0; i < totalPowerUps; i++) {
@@ -343,9 +345,11 @@ export class PhysicsWorld {
       );
       const type = powerUpTypes[i % powerUpTypes.length];
       const colors = {
-        SHIELD: '#00f0ff', // Searing Electric Cyan
-        DAMPER: '#00ff88', // Searing Mint/Cyber Emerald
-        LOW_G: '#ffd700'   // Radiant Solar Gold
+        SHIELD: '#00f0ff', // Electric Cyan
+        DAMPER: '#00ff88', // Mint
+        LOW_G: '#ffd700',   // Gold
+        INVULNERABLE: '#ff0055', // Crimson / Immortality
+        ETHEREAL: '#a855f7'      // Violet / Ghost
       };
 
       const terrain = this.getTerrainAt(x);
@@ -403,7 +407,7 @@ export class PhysicsWorld {
           active: false,
           isCeiling: isCeil,
           extension: 0.0,
-          maxExtensionHeight: Math.min(88, corridorHeight * 0.32),
+          maxExtensionHeight: Math.min(140, corridorHeight * 0.55),
           warningPhase: 0.0,
           beatTriggerTimer: (i * 1.4) % 4.0
         });
@@ -552,6 +556,9 @@ export class PhysicsWorld {
     }
     if (this.ship.lowGActiveTimer > 0) {
       this.ship.lowGActiveTimer -= safeDt;
+    }
+    if (this.ship.etherealActiveTimer > 0) {
+      this.ship.etherealActiveTimer -= safeDt;
     }
 
     // 1. Audio-Reactive Terrain Update (FFT)
@@ -823,6 +830,10 @@ export class PhysicsWorld {
           this.ship.damperActiveTimer = 6.0; // 6s duration
         } else if (p.type === 'LOW_G') {
           this.ship.lowGActiveTimer = 5.0;  // 5s duration
+        } else if (p.type === 'INVULNERABLE') {
+          this.ship.invulnerableTime = 3.0; // 3 seconds invulnerability
+        } else if (p.type === 'ETHEREAL') {
+          this.ship.etherealActiveTimer = 5.0; // 5 seconds ghost mode
         }
 
         if (this.onPowerUpCollected) {
@@ -845,20 +856,20 @@ export class PhysicsWorld {
     if (this.ship.y <= minSafeY) {
       this.ship.y = minSafeY;
       if (this.ship.vy < 0) this.ship.vy = Math.abs(this.ship.vy) * 0.35;
-      if (this.ship.invulnerableTime <= 0 && !this.ship.isDestroyed) {
+      if (this.ship.invulnerableTime <= 0 && this.ship.etherealActiveTimer <= 0 && !this.ship.isDestroyed) {
         this.handleCollision('CEILING', 0, 1);
         return;
       }
     } else if (this.ship.y >= maxSafeY) {
       this.ship.y = maxSafeY;
       if (this.ship.vy > 0) this.ship.vy = -Math.abs(this.ship.vy) * 0.35;
-      if (this.ship.invulnerableTime <= 0 && !this.ship.isDestroyed) {
+      if (this.ship.invulnerableTime <= 0 && this.ship.etherealActiveTimer <= 0 && !this.ship.isDestroyed) {
         this.handleCollision('FLOOR', 0, -1);
         return;
       }
     }
 
-    if (this.ship.invulnerableTime > 0) return;
+    if (this.ship.invulnerableTime > 0 || this.ship.etherealActiveTimer > 0) return;
 
     // 3. Multi-Archetype Obstacles collision check
     for (const obs of this.obstacles) {

@@ -30,7 +30,7 @@ export interface TrackMetadata {
   audioBuffer?: AudioBuffer;
 }
 
-export type PowerUpType = 'SHIELD' | 'DAMPER' | 'LOW_G';
+export type PowerUpType = 'SHIELD' | 'DAMPER' | 'LOW_G' | 'INVULNERABLE' | 'ETHEREAL';
 
 export interface PowerUpItem {
   id: string;

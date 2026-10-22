@@ -278,7 +278,7 @@ export default function App() {
     newWorld.onPowerUpCollected = (type) => {
       audio.playPowerUpSfx(type);
       if (rendererRef.current) {
-        const color = type === 'SHIELD' ? '#38bdf8' : type === 'DAMPER' ? '#4ade80' : '#facc15';
+        const color = type === 'SHIELD' ? '#38bdf8' : type === 'DAMPER' ? '#4ade80' : type === 'LOW_G' ? '#facc15' : type === 'INVULNERABLE' ? '#ff0055' : '#a855f7';
         rendererRef.current.emitPowerUpCollect(newWorld.ship.x, newWorld.ship.y, color);
       }
     };

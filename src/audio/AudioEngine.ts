@@ -641,14 +641,16 @@ export class AudioEngine {
 
   // ================= Procedural Sound Effects ================= //
 
-  public playPowerUpSfx(type: 'SHIELD' | 'DAMPER' | 'LOW_G'): void {
+  public playPowerUpSfx(type: 'SHIELD' | 'DAMPER' | 'LOW_G' | 'INVULNERABLE' | 'ETHEREAL'): void {
     if (!this.ctx || !this.sfxGain) return;
     const now = this.ctx.currentTime;
 
     const chords = {
       SHIELD: [523.25, 659.25, 783.99, 1046.50], // C5, E5, G5, C6 (Crystal blue)
       DAMPER: [440.0, 554.37, 659.25, 880.0],    // A4, C#5, E5, A5 (Harmonic green)
-      LOW_G: [349.23, 440.0, 523.25, 698.46]     // F4, A4, C5, F5 (Float yellow)
+      LOW_G: [349.23, 440.0, 523.25, 698.46],     // F4, A4, C5, F5 (Float yellow)
+      INVULNERABLE: [293.66, 329.63, 392.00, 523.25], // D#4, F#4, A4, D5 (Crimson/Immortal thud)
+      ETHEREAL: [466.16, 523.25, 587.33, 659.25]     // F#4, G4, A4, E5 (Ghostly airy)
     };
 
     const notes = chords[type];
@@ -658,14 +660,14 @@ export class AudioEngine {
       osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, now + idx * 0.04);
 
-      gain.gain.setValueAtTime(0.2, now + idx * 0.04);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.04 + 0.35);
+      gain.gain.setValueAtTime(0.18, now + idx * 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.04 + 0.4);
 
       osc.connect(gain);
       gain.connect(this.sfxGain!);
 
       osc.start(now + idx * 0.04);
-      osc.stop(now + idx * 0.04 + 0.38);
+      osc.stop(now + idx * 0.04 + 0.42);
     });
   }
 
