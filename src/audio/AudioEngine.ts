@@ -203,10 +203,6 @@ export class AudioEngine {
     }
   }
 
-  public updateScrapeAudio(intensity: number): void {
-    this.updateRadarClicks(intensity);
-  }
-
   /**
    * Instantly silences all continuous sound nodes (thruster rumble, radar clicks, etc.)
    * Used when exiting to menu, pausing, restarting, or on ship death.
@@ -286,10 +282,7 @@ export class AudioEngine {
     }
 
     if (this.bufferCache.has(track.id)) {
-      const cached = this.bufferCache.get(track.id)!;
-      track.audioBuffer = cached;
-      track.duration = Math.round(cached.duration);
-      return cached;
+      return this.bufferCache.get(track.id)!;
     }
 
     // Try fetching from local file path (encodeURI handles spaces, hyphens, and brackets)
@@ -306,9 +299,6 @@ export class AudioEngine {
             this.ctx!.decodeAudioData(arrayBuffer.slice(0), resolve, reject);
           });
         }
-        track.audioBuffer = decoded;
-        track.duration = Math.round(decoded.duration);
-        track.estimatedBpm = this.detectBpmFromBuffer(decoded);
         this.bufferCache.set(track.id, decoded);
         return decoded;
       }
@@ -322,8 +312,6 @@ export class AudioEngine {
       track.duration || 90,
       track.id
     );
-    track.audioBuffer = proceduralBuffer;
-    track.duration = proceduralBuffer.duration;
     this.bufferCache.set(track.id, proceduralBuffer);
     return proceduralBuffer;
   }
@@ -400,8 +388,6 @@ export class AudioEngine {
     const rightChannel = audioBuffer.getChannelData(1);
 
     const secondsPerBeat = 60 / bpm;
-    const samplesPerBeat = sampleRate * secondsPerBeat;
-    const samplesPer16th = samplesPerBeat / 4;
 
     // Scale notes in Hz
     // Key: D minor / F major synthwave vibe

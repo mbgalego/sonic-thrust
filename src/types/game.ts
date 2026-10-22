@@ -10,7 +10,7 @@ export interface DifficultyConfig {
   name: DifficultyLevel;
   label: string;
   tunnelWidth: number;          // Base tunnel vertical space
-  deformMax: number;            // 0.30, 0.60, 0.88
+  deformMax: number;            // 0.28, 0.48, 0.70
   gravityMultiplier: number;    // 0.70, 1.00, 1.30
   initialShields: number;       // 1, 0, 0
   allowFlightAssist: boolean;   // true, true, false

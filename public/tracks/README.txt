@@ -1,7 +1,10 @@
 === COMO ADICIONAR MÚSICAS AO SONIC THRUST ===
 
-1. Coloca os teus ficheiros de áudio (.mp3 ou .wav) dentro desta pasta:
+1. Coloca os teus ficheiros de áudio dentro desta pasta:
    /public/tracks/ (ou ./public/tracks/)
+
+   Formatos suportados: MP3, WAV, OGG, FLAC, M4A — qualquer formato que o
+   navegador consiga descodificar (Web Audio API / decodeAudioData).
 
 2. Abre o ficheiro /public/tracks/tracks.json e adiciona a tua música à lista:
    Exemplo:
@@ -15,6 +18,6 @@
      }
    ]
 
-3. Guarda o ficheiro tracks.json. O jogo deteta automaticamente o ficheiro, calcula a duração e o BPM aproximado através da Web Audio API!
-
-DICA: Também podes clicar no botão "+ CARREGAR MP3 / WAV LOCAL" diretamente no menu do jogo para testar qualquer música instantaneamente sem precisar reiniciar ou mover ficheiros!
+3. Guarda o ficheiro tracks.json. O jogo carrega a lista a partir deste
+   ficheiro; a duração e o BPM aproximado são calculados automaticamente pela
+   Web Audio API durante a reprodução.

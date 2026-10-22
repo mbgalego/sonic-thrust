@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { Play, RotateCcw, Home, Sliders, Volume2 } from 'lucide-react';
+import { Play, RotateCcw, Home } from 'lucide-react';
 import { GameOptions } from '../types/game';
 
 interface PauseModalProps {
