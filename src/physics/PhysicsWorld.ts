@@ -1,10 +1,9 @@
 /**
  * Sonic Thrust - Physics & World Simulation Engine
- * Integrates Matter.js concepts with precision 2D dual-thruster aerodynamics,
- * dynamic audio-reactive neon terrain deformation, and Zero Contact collision logic.
+ * Custom precision 2D dual-thruster aerodynamics, dynamic audio-reactive neon
+ * terrain deformation, and Zero Contact collision logic.
  */
 
-import Matter from 'matter-js';
 import {
   DifficultyConfig,
   DifficultyLevel,
@@ -60,6 +59,25 @@ function computeTrackSeed(trackId: string, bpm: number, duration: number): numbe
     hash |= 0;
   }
   return Math.abs(hash) + 1;
+}
+
+/**
+ * Deterministic 32-bit hash of (seed, slot). Used to derive a stable
+ * per-track "personality" (terrain severity, bend frequency, breathing depth,
+ * obstacle placement) so different songs produce clearly different tracks,
+ * while per-run Math.random() calls keep every playthrough unique.
+ */
+function hashSlot(seed: number, slot: number): number {
+  let h = (seed ^ Math.imul(slot + 1, 0x9E3779B1)) | 0;
+  h = Math.imul(h ^ (h >>> 16), 0x85EBCA6B);
+  h = Math.imul(h ^ (h >>> 13), 0xC2B2AE35);
+  h ^= h >>> 16;
+  return h >>> 0;
+}
+
+/** Deterministic unit value in [0, 1) derived from (seed, slot). */
+function unit(seed: number, slot: number): number {
+  return (hashSlot(seed, slot) % 10000) / 10000;
 }
 
 export interface ShipState {
@@ -120,10 +138,6 @@ export class PhysicsWorld {
   public obstacles: ObstaclePlatform[] = [];
   public laserGates: LaserGate[] = [];
 
-  // Matter.js engine instance for rigid physics backing
-  private engine: Matter.Engine;
-  private shipBody: Matter.Body;
-
   // Stats tracking
   public stats: GameStats;
 
@@ -155,21 +169,8 @@ export class PhysicsWorld {
     this.finishPortalX = this.totalTrackLength;
     this.worldHeight = 1100; // Vertical headroom for dynamic roller-coaster curves
 
-    // Matter.js setup
-    this.engine = Matter.Engine.create({
-      gravity: { x: 0, y: 0.95 * this.difficulty.gravityMultiplier, scale: 0.001 }
-    });
-
     const startX = 220;
     const startY = this.worldHeight / 2;
-
-    this.shipBody = Matter.Bodies.polygon(startX, startY, 3, 20, {
-      density: 0.002,
-      frictionAir: 0.022,
-      restitution: 0.1,
-      angle: 0
-    });
-    Matter.World.add(this.engine.world, this.shipBody);
 
     this.ship = {
       x: startX,
@@ -222,6 +223,7 @@ export class PhysicsWorld {
     const totalPoints = Math.ceil(this.totalTrackLength / this.segmentSpacing) + 25;
     const centerY = this.worldHeight / 2;
     const baseHalfWidth = this.difficulty.tunnelWidth / 2;
+    const minFairHalf = Math.max(115, baseHalfWidth * 0.82);
 
     // Seed-derived pseudo-random phases & harmonics
     const seed = this.trackSeed;
@@ -230,24 +232,44 @@ export class PhysicsWorld {
     const phaseWobble = (((seed * 37) % 983) / 983) * Math.PI * 2;
     const phaseBreathe = (((seed * 53) % 977) / 977) * Math.PI * 2;
 
+    // Per-track "personality": stable per song, but every song gets a clearly
+    // different mix of floaty hills, tight chicanes, sharp wobbles and an extra
+    // mid-band harmonic so the corridor genuinely changes character per track.
+    // Ranges are tuned to spread typical bend peaks across ~120-260px while the
+    // clamp below only catches the spikiest harmonic alignments.
+    const hillAmpMult = 0.70 + unit(seed, 101) * 0.80;      // 0.70 - 1.50 (floaty hills)
+    const chicaneAmpMult = 0.60 + unit(seed, 102) * 1.30;   // 0.60 - 1.90 (twisty chicanes)
+    const wobbleAmp = 16 + unit(seed, 103) * 30;            // 16 - 46 (sharp grain)
+    const harmonicAmp = 14 + unit(seed, 104) * 36;          // 14 - 50 (mid-band force)
+    const harmonicPhase = unit(seed, 105) * Math.PI * 2;
+    const freqSharpness = 0.80 + unit(seed, 106) * 0.65;    // 0.80 - 1.45 (tighter bends)
+    const breathDepth = 0.45 + unit(seed, 107) * 1.15;      // breathing amplitude factor
+
     // Tempo multiplier: faster BPM creates punchier chicanes; lower BPM creates sweeping glides
     const tempoMult = Math.max(0.8, Math.min(1.35, this.trackBpm / 128));
-    const hillFreq = 0.00065 * tempoMult;
-    const chicaneFreq = 0.0018 * tempoMult;
-    const wobbleFreq = 0.0040 * tempoMult;
+    const hillFreq = 0.00065 * tempoMult * freqSharpness;
+    const chicaneFreq = 0.0018 * tempoMult * freqSharpness;
+    const wobbleFreq = 0.0040 * tempoMult * freqSharpness;
+    const harmonicFreq = 0.0011 * tempoMult * freqSharpness;
 
     // Amplitude modulation based on seed
-    const hillAmp = 130 + ((seed % 60) - 30);
-    const chicaneAmp = 75 + (((seed >> 4) % 30) - 15);
+    const hillAmp = (130 + ((seed % 60) - 30)) * hillAmpMult;
+    const chicaneAmp = (60 + ((seed >> 4) % 26)) * chicaneAmpMult;
+
+    // Maximum lateral offset that still keeps the FULL corridor (macroCenter ±
+    // localHalfWidth) inside the world bounds, so hard bends never squash the
+    // tunnel against the top/bottom of the world.
+    const maxSafeOffset = Math.max(180, Math.round(this.worldHeight / 2 - 40 - minFairHalf));
 
     for (let i = 0; i < totalPoints; i++) {
       const x = i * this.segmentSpacing;
-      
+
       // Multi-Harmonic Roller-Coaster Curves unique to this track
       const sweepingHill = Math.sin(x * hillFreq + phaseHill) * hillAmp;
       const dynamicSChicanes = Math.sin(x * chicaneFreq + phaseChicane) * chicaneAmp;
-      const sonicWobble = Math.cos(x * wobbleFreq + phaseWobble) * 32;
-      const fullOffset = sweepingHill + dynamicSChicanes + sonicWobble;
+      const sonicWobble = Math.cos(x * wobbleFreq + phaseWobble) * wobbleAmp;
+      const midHarmonic = Math.sin(x * harmonicFreq + harmonicPhase) * harmonicAmp;
+      const fullOffset = sweepingHill + dynamicSChicanes + sonicWobble + midHarmonic;
 
       // Safe Launchpad Blending:
       // x < 750: Perfectly centered (blend = 0), perfectly flat runway
@@ -259,15 +281,15 @@ export class PhysicsWorld {
         const t = (x - 750) / 600;
         blendFactor = t * t * (3 - 2 * t);
       }
-      const macroCenter = centerY + fullOffset * blendFactor;
+      // Clamp after blending so the corridor never exits the world at hard bends
+      const macroCenter = centerY + Math.max(-maxSafeOffset, Math.min(maxSafeOffset, fullOffset * blendFactor));
 
       // Dynamic channel breathing: cavernous chambers alternating with canyon straits
       const breathingWave = Math.sin(x * 0.0009 * tempoMult + phaseBreathe);
-      
+
       // GUARANTEED FAIR PASSAGE:
       // Local half-width never dips below 82% of baseHalfWidth, guaranteeing ample room for 26px craft
-      let localHalfWidth = baseHalfWidth * (0.92 + breathingWave * 0.16);
-      const minFairHalf = Math.max(115, baseHalfWidth * 0.82);
+      let localHalfWidth = baseHalfWidth * (0.92 + breathingWave * 0.16 * breathDepth);
       localHalfWidth = Math.max(minFairHalf, localHalfWidth);
 
       // Launchpad start area is spacious and flat for guaranteed safe liftoff
@@ -312,7 +334,13 @@ export class PhysicsWorld {
     
     for (let i = 0; i < totalPowerUps; i++) {
       const progress = (i + 0.5) / totalPowerUps;
-      const x = startSafeX + progress * playableRange + (Math.random() * 150 - 75);
+      // Seed-stable jitter positions each track's pickups differently per song,
+      // plus a small per-run random nudge so replays still differ.
+      const seedJitter = (unit(this.trackSeed, 4000 + i * 11) - 0.5) * 320;
+      const x = Math.min(
+        endSafeX,
+        Math.max(startSafeX, startSafeX + progress * playableRange + seedJitter + (Math.random() * 120 - 60))
+      );
       const type = powerUpTypes[i % powerUpTypes.length];
       const colors = {
         SHIELD: '#00f0ff', // Searing Electric Cyan
@@ -339,10 +367,18 @@ export class PhysicsWorld {
     }
 
     // 2. Varied Musical Obstacles (Ejector Blocks, Sonic Spikes, Resonance Mines, Rotating Blades)
-    // Distributed evenly with guaranteed clearance
+    // Distributed with seed-driven jitter (distinct layout per song) while keeping spacing fair
     const totalObstacles = Math.max(12, Math.floor(this.trackDuration / 6.5));
+    const obstacleStep = playableRange / totalObstacles;
     for (let i = 0; i < totalObstacles; i++) {
-      const x = startSafeX + 300 + (i / totalObstacles) * playableRange;
+      // Seed-stable per-track layout + small per-run shift so replays differ.
+      const jitter =
+        (unit(this.trackSeed, 2000 + i * 7) - 0.5) * obstacleStep * 0.55 +
+        (Math.random() - 0.5) * obstacleStep * 0.25;
+      const x = Math.min(
+        endSafeX - 60,
+        Math.max(startSafeX + 60, startSafeX + 300 + i * obstacleStep + jitter)
+      );
       const terrain = this.getTerrainAt(x);
       const corridorHeight = terrain.floorY - terrain.ceilY;
       const patternChoice = (i + (this.trackSeed % 4)) % 4;
@@ -447,8 +483,15 @@ export class PhysicsWorld {
 
     // 3. Laser curtains (reactive to Treble FFT with rhythmic sweep)
     const totalLasers = Math.max(8, Math.floor(this.trackDuration / 8));
+    const laserStep = playableRange / totalLasers;
     for (let i = 0; i < totalLasers; i++) {
-      const x = startSafeX + 500 + (i / totalLasers) * playableRange;
+      const jitter =
+        (unit(this.trackSeed, 6000 + i * 13) - 0.5) * laserStep * 0.5 +
+        (Math.random() - 0.5) * laserStep * 0.2;
+      const x = Math.min(
+        endSafeX - 40,
+        Math.max(startSafeX + 60, startSafeX + 500 + i * laserStep + jitter)
+      );
       const terrain = this.getTerrainAt(x);
 
       this.laserGates.push({
@@ -529,6 +572,9 @@ export class PhysicsWorld {
     // 6. Check Goal / Finish Portal
     if (this.ship.x >= this.finishPortalX && !this.ship.reachedGoal) {
       this.ship.reachedGoal = true;
+      // Cut thruster output at the finish line (see handleCollision note).
+      this.ship.leftThrusterPower = 0;
+      this.ship.rightThrusterPower = 0;
       if (this.onGoalReached) {
         this.onGoalReached();
       }
@@ -672,10 +718,7 @@ export class PhysicsWorld {
       }
     }
 
-    // Sync with Matter body
-    Matter.Body.setPosition(this.shipBody, { x: this.ship.x, y: this.ship.y });
-    Matter.Body.setAngle(this.shipBody, this.ship.angle);
-  }
+    }
 
   private updateObstacles(audioFreq: AudioFrequencyData, dt: number): void {
     for (const obs of this.obstacles) {
@@ -775,7 +818,7 @@ export class PhysicsWorld {
         this.stats.powerUpsCollected++;
         
         if (p.type === 'SHIELD') {
-          this.ship.shields = Math.min(2, this.ship.shields + 1);
+          this.ship.shields++;
         } else if (p.type === 'DAMPER') {
           this.ship.damperActiveTimer = 6.0; // 6s duration
         } else if (p.type === 'LOW_G') {
@@ -944,7 +987,6 @@ export class PhysicsWorld {
       this.ship.vx = normalX * 180 + this.baseForwardVelocity * 0.5;
       this.ship.vy = normalY * 320;
       this.ship.angularVelocity = (Math.random() - 0.5) * 4.0;
-      Matter.Body.setPosition(this.shipBody, { x: this.ship.x, y: this.ship.y });
 
       if (this.onShieldAbsorbed) {
         this.onShieldAbsorbed();
@@ -954,6 +996,10 @@ export class PhysicsWorld {
 
     // Unprotected contact = Instant Destruction!
     this.ship.isDestroyed = true;
+    // Cut thruster output so the rAF loop never re-heats the engine audio
+    // during the brief GAMEOVER delay (gameState is still PLAYING then).
+    this.ship.leftThrusterPower = 0;
+    this.ship.rightThrusterPower = 0;
     this.stats.destructionReason = reason;
 
     if (this.onShipDestroyed) {

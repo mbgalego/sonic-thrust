@@ -8,12 +8,10 @@ import {
   Pause,
   Loader2,
   Shield,
-  Volume2,
   Sliders,
   Compass,
   AlertTriangle,
   HelpCircle,
-  Radio,
   Zap,
   Music,
   CheckCircle2,
@@ -217,7 +215,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
           </div>
 
           <p className="text-[11px] text-gray-400 font-mono">
-            * Podes colocar ficheiros na pasta <code className="text-cyan-300">/public/tracks/</code> e editar <code className="text-cyan-300">tracks.json</code>, ou carregar qualquer música com o botão acima.
+            * Para adicionar música: coloca o ficheiro em <code className="text-cyan-300">/public/tracks/</code> e regista-o em <code className="text-cyan-300">tracks.json</code>.
           </p>
         </section>
 
@@ -260,7 +258,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                       {config.label}
                     </span>
                     <span className="text-[10px] font-mono mt-0.5 opacity-80">
-                      {level === 'PRINCIPIANTE' ? '30% Def' : level === 'PRO' ? '60% Def' : '88% Def'}
+                      {Math.round(config.deformMax * 100)}% Def
                     </span>
                   </button>
                 );

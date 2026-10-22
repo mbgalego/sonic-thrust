@@ -163,6 +163,10 @@ export default function App() {
   const touchesHeld = useRef<{ left: boolean; right: boolean }>({ left: false, right: false });
   const touchMapRef = useRef<Map<number, 'left' | 'right'>>(new Map());
 
+  // Latest-callback ref so the stable keyboard listener never captures
+  // stale mission parameters (selectedTrack / difficulty / options).
+  const startMissionRef = useRef<() => void>(() => {});
+
   // 1. Fetch available tracks from /tracks/tracks.json on mount
   useEffect(() => {
     let isMounted = true;
@@ -251,7 +255,7 @@ export default function App() {
       audio.updateRadarClicks(intensity);
     };
 
-    newWorld.onShipDestroyed = (reason) => {
+    newWorld.onShipDestroyed = () => {
       // Silence continuous thrusters immediately and fade out track as punishment
       audio.silenceAllContinuous();
       audio.fadeOutAndStopTrack(0.85);
@@ -296,6 +300,11 @@ export default function App() {
     lastTimeRef.current = performance.now();
   };
 
+  // Keep the latest handleStartMission reachable by the stable keyboard listener
+  useEffect(() => {
+    startMissionRef.current = handleStartMission;
+  });
+
   // 6. Pause & Resume
   const handlePause = useCallback(() => {
     if (gameState === 'PLAYING') {
@@ -315,8 +324,8 @@ export default function App() {
 
   const handleRestart = useCallback(() => {
     audio.silenceAllContinuous();
-    handleStartMission();
-  }, [selectedTrack, difficulty, options]);
+    startMissionRef.current();
+  }, []);
 
   const handleExitToMenu = useCallback(() => {
     audio.silenceAllContinuous();
@@ -344,7 +353,7 @@ export default function App() {
       }
 
       if ((e.key === ' ' || e.key === 'Enter') && gameState === 'MENU') {
-        handleStartMission();
+        startMissionRef.current();
       }
 
       if ((e.key === 'r' || e.key === 'R') && (gameState === 'GAMEOVER' || gameState === 'VICTORY')) {
@@ -379,6 +388,17 @@ export default function App() {
       window.removeEventListener('blur', handleBlur);
     };
   }, [gameState, handlePause, handleResume, handleRestart]);
+
+  // Reset held input whenever the game state transitions. Prevents a thruster
+  // from "sticking" on when a key was pressed while the menu / pause / game-over
+  // screens were up and its keyup was missed during the transition.
+  useEffect(() => {
+    keysHeld.current.left = false;
+    keysHeld.current.right = false;
+    touchesHeld.current.left = false;
+    touchesHeld.current.right = false;
+    touchMapRef.current.clear();
+  }, [gameState]);
 
   // 8. Clean Dual-Zone Touch Event Listeners (No visible buttons)
   const updateTouchZones = (e: React.TouchEvent) => {
@@ -444,11 +464,13 @@ export default function App() {
         // Extract real-time FFT
         const audioFreq = audio.getFrequencyData(0.24);
 
-        // Update continuous procedural sound for dual thrusters
-        audio.updateThrusterAudio(world.ship.leftThrusterPower, world.ship.rightThrusterPower);
-
         // Step physics only when PLAYING
         if (gameState === 'PLAYING') {
+          // Update continuous procedural sound for dual thrusters. Gated to
+          // PLAYING so pause / game-over / victory stay silent even if the ship
+          // retains a non-zero thruster power value.
+          audio.updateThrusterAudio(world.ship.leftThrusterPower, world.ship.rightThrusterPower);
+
           const trackCurrentTime = audio.getCurrentTime();
           world.update(dt, leftPressed, rightPressed, audioFreq, trackCurrentTime);
 

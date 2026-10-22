@@ -148,7 +148,7 @@ export class GameRenderer {
     ctx.fillRect(0, 0, w, h);
 
     // Full-screen background 'Neon Pulse' layer propagating outwards from center of viewport
-    this.renderNeonPulse(audioFreq, dt);
+    this.renderNeonPulse(audioFreq, isPaused ? 0 : dt);
 
     // Save for world translation
     ctx.save();
@@ -172,12 +172,12 @@ export class GameRenderer {
     // 6. Vector Neon Terrain (Ceiling and Floor)
     this.renderTerrain(world, audioFreq);
 
-    // 7. Particles & Shockwaves
-    this.renderParticlesAndShockwaves(dt);
+    // 7. Particles & Shockwaves (frozen while paused)
+    this.renderParticlesAndShockwaves(isPaused ? 0 : dt);
 
     // 8. Player Ship & Jet Exhausts
     if (!world.ship.isDestroyed) {
-      this.renderShip(world, audioFreq, dt);
+      this.renderShip(world, isPaused);
     }
 
     ctx.restore();
@@ -396,7 +396,6 @@ export class GameRenderer {
     const padEndX = world.launchpadEnd;
     const centerY = world.worldHeight / 2;
     const floorY = centerY + 180;
-    const ceilY = centerY - 180;
 
     // Landing strip base
     ctx.save();
@@ -1184,12 +1183,14 @@ export class GameRenderer {
     ctx.restore();
   }
 
-  private renderShip(world: PhysicsWorld, audioFreq: AudioFrequencyData, dt: number): void {
+  private renderShip(world: PhysicsWorld, isPaused: boolean): void {
     const ctx = this.ctx;
     const ship = world.ship;
 
-    // Emit jet particles when thrusters are active
-    this.emitThrusterParticles(ship, dt);
+    // Emit jet particles when thrusters are active (frozen while paused)
+    if (!isPaused) {
+      this.emitThrusterParticles(ship);
+    }
 
     ctx.save();
     ctx.translate(ship.x, ship.y);
@@ -1240,22 +1241,25 @@ export class GameRenderer {
       ctx.restore();
     }
 
-    // Phase Shield Energy Bubble
+    // Phase Shield Energy Bubble — concentric circles for multiple shields
     if (ship.shields > 0) {
-      const shieldPulse = 1.0 + Math.sin(Date.now() * 0.01) * 0.06;
-      ctx.save();
-      ctx.strokeStyle = '#38bdf8';
-      ctx.shadowColor = '#38bdf8';
-      ctx.shadowBlur = 18;
-      ctx.lineWidth = 2.5;
+      for (let i = 0; i < ship.shields; i++) {
+        const shieldPulse = 1.0 + Math.sin(Date.now() * 0.01 + i * 0.7) * 0.06;
+        const baseRadius = 24 + i * 3; // 24, 27, 30, 33... (3px a mais que o anterior)
+        ctx.save();
+        ctx.strokeStyle = '#38bdf8';
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = 14 + i * 4;
+        ctx.lineWidth = 2.0;
 
-      ctx.beginPath();
-      ctx.arc(0, 0, 24 * shieldPulse, 0, Math.PI * 2);
-      ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(0, 0, baseRadius * shieldPulse, 0, Math.PI * 2);
+        ctx.stroke();
 
-      ctx.fillStyle = 'rgba(56, 189, 248, 0.12)';
-      ctx.fill();
-      ctx.restore();
+        ctx.fillStyle = `rgba(56, 189, 248, ${0.08 - i * 0.015})`;
+        ctx.fill();
+        ctx.restore();
+      }
     }
 
     // Ship Aerodynamic Neon Geometry (Wedge Dart)
@@ -1297,7 +1301,7 @@ export class GameRenderer {
     ctx.fillRect(rightPodX - 3, podY, 6, 5);
 
     // Dynamic Left Thruster Jet Flame
-    if (ship.leftThrusterPower > 0.05) {
+    if (!isPaused && ship.leftThrusterPower > 0.05) {
       const p = ship.leftThrusterPower;
       const flameLen = (18 + Math.random() * 14) * p;
       ctx.save();
@@ -1323,7 +1327,7 @@ export class GameRenderer {
     }
 
     // Dynamic Right Thruster Jet Flame
-    if (ship.rightThrusterPower > 0.05) {
+    if (!isPaused && ship.rightThrusterPower > 0.05) {
       const p = ship.rightThrusterPower;
       const flameLen = (18 + Math.random() * 14) * p;
       ctx.save();
@@ -1351,7 +1355,7 @@ export class GameRenderer {
     ctx.restore();
   }
 
-  private emitThrusterParticles(ship: PhysicsWorld['ship'], dt: number): void {
+  private emitThrusterParticles(ship: PhysicsWorld['ship']): void {
     const cos = Math.cos(ship.angle);
     const sin = Math.sin(ship.angle);
     const podDist = ship.width * 0.32;

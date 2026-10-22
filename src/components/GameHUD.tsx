@@ -12,7 +12,6 @@ import {
   Zap,
   Activity,
   Flame,
-  Clock,
   Maximize,
   Minimize
 } from 'lucide-react';
@@ -64,18 +63,27 @@ export const GameHUD: React.FC<GameHUDProps> = ({
     }
   };
 
-  const currentMinutes = Math.floor(stats.timeElapsed / 60);
-  const currentSeconds = Math.floor(stats.timeElapsed % 60);
-  const totalMinutes = Math.floor(stats.totalDuration / 60);
-  const totalSeconds = Math.floor(stats.totalDuration % 60);
+  const remainingSec = Math.max(0, Math.round(stats.totalDuration - stats.timeElapsed));
+  const remainingMin = Math.floor(remainingSec / 60);
+  const remainingSecPadded = String(remainingSec % 60).padStart(2, '0');
 
   const speedKmh = Math.round(Math.sqrt(ship.vx * ship.vx + ship.vy * ship.vy) * 0.7);
 
   return (
     <div className="absolute inset-0 z-20 pointer-events-none flex flex-col justify-between p-3 md:p-6 select-none">
       
+      {/* Big centered remaining-time display — outside gameplay area, above ceiling */}
+      <div className="absolute top-[22%] left-0 right-0 flex justify-center z-10 pointer-events-none select-none">
+        <div className="flex flex-col items-center gap-0.5">
+          <span className="text-[10px] font-mono text-cyan-400/70 tracking-[0.3em] uppercase">Tempo Restante</span>
+          <span className="text-5xl md:text-7xl font-black font-orbitron text-cyan-300 tracking-tighter drop-shadow-[0_0_20px_rgba(6,182,212,0.9)] whitespace-nowrap leading-none">
+            {String(remainingMin).padStart(2, '0')}:{remainingSecPadded}
+          </span>
+        </div>
+      </div>
+
       {/* Top Bar: Music Progress, Distance to Finish, Pause & Fullscreen Buttons */}
-      <header className="flex flex-col gap-2 max-w-5xl w-full mx-auto">
+      <header className="flex flex-col gap-2 max-w-5xl w-full mx-auto mt-10">
         <div className="flex items-center justify-between gap-3 text-xs font-mono">
           
           {/* Track and Difficulty cluster */}
@@ -86,18 +94,6 @@ export const GameHUD: React.FC<GameHUDProps> = ({
             </span>
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-500/30 uppercase font-bold">
               {difficulty}
-            </span>
-          </div>
-
-          {/* Time & BPM progress */}
-          <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
-            <Clock className="w-3.5 h-3.5 text-gray-400" />
-            <span className="tabular-nums text-white">
-              {String(currentMinutes).padStart(2, '0')}:{String(currentSeconds).padStart(2, '0')} / {String(totalMinutes).padStart(2, '0')}:{String(totalSeconds).padStart(2, '0')}
-            </span>
-            <span className="text-gray-500">|</span>
-            <span className="text-cyan-400 font-bold tabular-nums">
-              {Math.round(stats.percentCompleted)}%
             </span>
           </div>
 
