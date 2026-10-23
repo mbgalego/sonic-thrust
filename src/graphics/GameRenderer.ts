@@ -1487,6 +1487,22 @@ export class GameRenderer {
       ctx.beginPath();
       ctx.arc(0, 0, ghostRadius, 0, Math.PI * 2);
       ctx.stroke();
+
+      // 4 orbiting ghost wisps (particles) for extra ethereal sparkle
+      const wispCount = 4;
+      for (let wi = 0; wi < wispCount; wi++) {
+        const angle = (Date.now() * 0.0012 + (wi * Math.PI * 2) / wispCount) % (Math.PI * 2);
+        const r = ghostRadius * (0.65 + 0.25 * Math.sin(angle * 2 + wi));
+        const wx = Math.cos(angle) * r;
+        const wy = Math.sin(angle) * r;
+        const wp = 0.35 + 0.25 * Math.sin(Date.now() * 0.006 + wi * 2);
+        ctx.globalAlpha = 0.6 * wp;
+        ctx.shadowBlur = 10 * wp;
+        ctx.fillStyle = '#00f0ff';
+        ctx.beginPath();
+        ctx.arc(wx, wy, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.restore();
     }
 
@@ -1773,8 +1789,8 @@ export class GameRenderer {
 
     const step = Math.max(1, Math.floor(audioFreq.frequencyArray.length / barCount));
     for (let i = 0; i < barCount; i++) {
-      // Tilting boost across spectrum bins so higher frequencies have equal visual presence
-      const boost = 1.0 + (i / barCount) * 1.5;
+      // Energy decay across spectrum so lower bands have more presence; reduces "always full"
+      const boost = 0.6 + (1.0 - (i / barCount)) * 0.5;
       const rawVal = (audioFreq.frequencyArray[i * step] || 0) / 255;
       const val = Math.min(1.0, rawVal * boost);
       const activeSegs = Math.max(1, Math.round(val * maxSegments));
