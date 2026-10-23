@@ -1743,7 +1743,7 @@ export class GameRenderer {
     const ctx = this.ctx;
     const isMobilePortrait = this.width < 520;
 
-    const barCount = isMobilePortrait ? 8 : (this.width < 720 ? 10 : 16);
+    const barCount = isMobilePortrait ? 5 : (this.width < 720 ? 6 : 8);
     const barWidth = isMobilePortrait ? 3 : 4;
     const barGap = isMobilePortrait ? 2 : 3;
     const totalBarsWidth = barCount * barWidth + (barCount - 1) * barGap;
@@ -1787,12 +1787,11 @@ export class GameRenderer {
     ctx.fillStyle = 'rgba(56, 189, 248, 0.85)';
     ctx.fillText(isMobilePortrait ? 'HI-FI EQ' : 'HI-FI EQUALIZER', startX - 2, startY - maxHeight - (isMobilePortrait ? 5 : 8));
 
-    const step = Math.max(1, Math.floor(audioFreq.frequencyArray.length / barCount));
+    const bandSources: (keyof AudioFrequencyData)[] = ['subBass', 'bass', 'lowMids', 'highMids', 'mids', 'treble', 'bass', 'subBass'];
     for (let i = 0; i < barCount; i++) {
-      // Energy decay across spectrum so lower bands have more presence; reduces "always full"
-      const boost = 0.6 + (1.0 - (i / barCount)) * 0.5;
-      const rawVal = (audioFreq.frequencyArray[i * step] || 0) / 255;
-      const val = Math.min(1.0, rawVal * boost);
+      const key = bandSources[i % bandSources.length];
+      const rawVal = (audioFreq[key] as number) ?? 0;
+      const val = Math.min(1.0, Math.pow(Math.min(1.0, rawVal * 1.8), 0.85));
       const activeSegs = Math.max(1, Math.round(val * maxSegments));
       const x = startX + i * (barWidth + barGap);
 
