@@ -561,7 +561,7 @@ export class GameRenderer {
         spatialFreq: 0.0032,    // Long rolling ocean swell
         speedMult: 0.85,
         baseDist: 14,           // px into bedrock
-        maxAmp: 26,
+        maxAmp: 13,
         phaseOffset: 0
       },
       {
@@ -572,7 +572,7 @@ export class GameRenderer {
         spatialFreq: 0.0062,    // Punchy rhythmic wave
         speedMult: 1.05,
         baseDist: 28,
-        maxAmp: 24,
+        maxAmp: 12,
         phaseOffset: 0.80
       },
       {
@@ -583,7 +583,7 @@ export class GameRenderer {
         spatialFreq: 0.0105,    // Harmonic undulating roll
         speedMult: 1.25,
         baseDist: 42,
-        maxAmp: 22,
+        maxAmp: 11,
         phaseOffset: 1.60
       },
       {
@@ -594,7 +594,7 @@ export class GameRenderer {
         spatialFreq: 0.0175,    // Snappy melodic crests
         speedMult: 1.50,
         baseDist: 56,
-        maxAmp: 20,
+        maxAmp: 10,
         phaseOffset: 2.40
       },
       {
@@ -605,7 +605,7 @@ export class GameRenderer {
         spatialFreq: 0.0280,    // High-frequency jitter shimmer
         speedMult: 1.85,
         baseDist: 70,
-        maxAmp: 18,
+        maxAmp: 9,
         phaseOffset: 3.20
       }
     ];
@@ -1472,38 +1472,10 @@ export class GameRenderer {
       if (flash) ctx.globalAlpha = 0.40;
     }
 
-    // Ethereal Ghost Mode: reduced craft opacity with crisp silhouette + ghost halo
+    // Ethereal Ghost Mode: reduced craft opacity with crisp silhouette
     const isEthereal = ship.etherealActiveTimer > 0;
     if (isEthereal) {
-      ctx.globalAlpha = (ctx.globalAlpha ?? 1.0) * 0.35;
-      // Ghost halo: semi-transparent cyan ring with shimmer around the ship
-      const ghostPulse = 0.65 + 0.35 * Math.sin(Date.now() * 0.009);
-      const ghostRadius = Math.max(ship.width, ship.height) * 0.65 * ghostPulse;
-      ctx.save();
-      ctx.globalAlpha = 0.4 * ghostPulse;
-      ctx.shadowColor = '#00f0ff';
-      ctx.shadowBlur = 16 * ghostPulse;
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.arc(0, 0, ghostRadius, 0, Math.PI * 2);
-      ctx.stroke();
-
-      // 4 orbiting ghost wisps (particles) for extra ethereal sparkle
-      const wispCount = 4;
-      for (let wi = 0; wi < wispCount; wi++) {
-        const angle = (Date.now() * 0.0012 + (wi * Math.PI * 2) / wispCount) % (Math.PI * 2);
-        const r = ghostRadius * (0.65 + 0.25 * Math.sin(angle * 2 + wi));
-        const wx = Math.cos(angle) * r;
-        const wy = Math.sin(angle) * r;
-        const wp = 0.35 + 0.25 * Math.sin(Date.now() * 0.006 + wi * 2);
-        ctx.globalAlpha = 0.6 * wp;
-        ctx.shadowBlur = 10 * wp;
-        ctx.fillStyle = '#00f0ff';
-        ctx.beginPath();
-        ctx.arc(wx, wy, 2.2, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
+      ctx.globalAlpha = (ctx.globalAlpha ?? 1.0) * 0.55;
     }
 
     // 1. Anti-Gravity Launch Stabilizer Field (during first 2.8s)
@@ -1638,7 +1610,7 @@ export class GameRenderer {
     const rightPodX = w * 0.32;
     const podY = h * 0.38;
 
-    ctx.fillStyle = isEthereal ? 'rgba(0, 240, 255, 0.35)' : '#64748b';
+    ctx.fillStyle = isEthereal ? '#0284c7' : '#64748b';
     ctx.fillRect(leftPodX - 3, podY, 6, 5);
     ctx.fillRect(rightPodX - 3, podY, 6, 5);
 
@@ -1743,7 +1715,7 @@ export class GameRenderer {
     const ctx = this.ctx;
     const isMobilePortrait = this.width < 520;
 
-    const barCount = isMobilePortrait ? 5 : (this.width < 720 ? 6 : 8);
+    const barCount = isMobilePortrait ? 8 : (this.width < 720 ? 10 : 16);
     const barWidth = isMobilePortrait ? 3 : 4;
     const barGap = isMobilePortrait ? 2 : 3;
     const totalBarsWidth = barCount * barWidth + (barCount - 1) * barGap;
@@ -1787,11 +1759,12 @@ export class GameRenderer {
     ctx.fillStyle = 'rgba(56, 189, 248, 0.85)';
     ctx.fillText(isMobilePortrait ? 'HI-FI EQ' : 'HI-FI EQUALIZER', startX - 2, startY - maxHeight - (isMobilePortrait ? 5 : 8));
 
-    const bandSources: (keyof AudioFrequencyData)[] = ['subBass', 'bass', 'lowMids', 'highMids', 'mids', 'treble', 'bass', 'subBass'];
+    const step = Math.max(1, Math.floor(audioFreq.frequencyArray.length / barCount));
     for (let i = 0; i < barCount; i++) {
-      const key = bandSources[i % bandSources.length];
-      const rawVal = (audioFreq[key] as number) ?? 0;
-      const val = Math.min(1.0, Math.pow(Math.min(1.0, rawVal * 1.8), 0.85));
+      // Tilting boost across spectrum bins so higher frequencies have equal visual presence
+      const boost = 1.0 + (i / barCount) * 1.5;
+      const rawVal = (audioFreq.frequencyArray[i * step] || 0) / 255;
+      const val = Math.min(1.0, rawVal * boost);
       const activeSegs = Math.max(1, Math.round(val * maxSegments));
       const x = startX + i * (barWidth + barGap);
 
