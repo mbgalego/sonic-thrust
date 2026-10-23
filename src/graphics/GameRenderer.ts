@@ -889,22 +889,23 @@ export class GameRenderer {
         const blockHeight = 28;
 
         ctx.save();
-        // Pneumatic ram block extending from wall
+        // Pneumatic ram block extending from wall (direction-aware: ceiling extends down, floor extends up)
+        const ramDir = isCeil ? 1 : -1;
         ctx.fillStyle = '#ff0055';
         ctx.shadowColor = '#ff0055';
         ctx.shadowBlur = 12;
         ctx.globalAlpha = 0.85 + obs.extension * 0.15;
-        ctx.fillRect(obs.x - w / 2, baseY, w, reach);
+        ctx.fillRect(obs.x - w / 2, isCeil ? baseY : baseY - reach, w, reach);
 
         // Chevron hazard pattern on the ram
         ctx.strokeStyle = '#ff0055';
         ctx.lineWidth = 3;
         ctx.globalAlpha = 0.6;
         for (let i = 0; i < Math.max(1, Math.floor(reach / 20)); i++) {
-          const chevronY = baseY + i * 20;
+          const chevronY = baseY + i * 20 * ramDir;
           ctx.beginPath();
           ctx.moveTo(obs.x - w / 2 - 10, chevronY);
-          ctx.lineTo(obs.x, chevronY - 12);
+          ctx.lineTo(obs.x, chevronY - 12 * ramDir);
           ctx.lineTo(obs.x + w / 2 + 10, chevronY);
           ctx.stroke();
         }
@@ -912,9 +913,9 @@ export class GameRenderer {
         // Rod & piston detail
         ctx.fillStyle = '#ffffff';
         ctx.globalAlpha = 0.4;
-        ctx.fillRect(obs.x - 4, baseY + reach - 8, 8, 16);
+        ctx.fillRect(obs.x - 4, baseY + ramDir * reach - 8, 8, 16);
 
-        ctx.restore();
+        ctx.globalAlpha = 1.0;
 
         // Heavy Industrial Dual Hydraulic Piston Rods
         if (reach > 8) {
