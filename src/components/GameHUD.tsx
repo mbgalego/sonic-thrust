@@ -72,18 +72,11 @@ export const GameHUD: React.FC<GameHUDProps> = ({
   return (
     <div className="absolute inset-0 z-20 pointer-events-none flex flex-col justify-between p-3 md:p-6 select-none">
       
-      {/* Big centered remaining-time display — outside gameplay area, above ceiling */}
-      <div className="absolute top-[22%] left-0 right-0 flex justify-center z-10 pointer-events-none select-none">
-        <div className="flex flex-col items-center gap-0.5">
-          <span className="text-[10px] font-mono text-cyan-400/70 tracking-[0.3em] uppercase">Tempo Restante</span>
-          <span className="text-5xl md:text-7xl font-black font-orbitron text-cyan-300 tracking-tighter drop-shadow-[0_0_20px_rgba(6,182,212,0.9)] whitespace-nowrap leading-none">
-            {String(remainingMin).padStart(2, '0')}:{remainingSecPadded}
-          </span>
-        </div>
-      </div>
+      {/* Top Stack: HUD bar → countdown → power-up notifications */}
+      <div className="flex flex-col items-center w-full gap-2">
 
       {/* Top Bar: Music Progress, Distance to Finish, Pause & Fullscreen Buttons */}
-      <header className="flex flex-col gap-2 max-w-5xl w-full mx-auto mt-10">
+      <header className="flex flex-col gap-2 max-w-5xl w-full mx-auto">
         <div className="flex items-center justify-between gap-3 text-xs font-mono">
           
           {/* Track and Difficulty cluster */}
@@ -133,8 +126,16 @@ export const GameHUD: React.FC<GameHUDProps> = ({
         </div>
       </header>
 
-      {/* Power-up Notifications — centered, directly below the countdown timer */}
-      <div className="absolute top-[calc(22%+5.75rem)] left-0 right-0 flex flex-col items-center gap-2 z-10 pointer-events-none">
+      {/* Big centered remaining-time display — close under the HUD bar */}
+      <div className="flex flex-col items-center gap-0.5 pointer-events-none select-none">
+        <span className="text-[10px] font-mono text-cyan-400/70 tracking-[0.3em] uppercase">Tempo Restante</span>
+        <span className="text-5xl md:text-7xl font-black font-orbitron text-cyan-300 tracking-tighter drop-shadow-[0_0_20px_rgba(6,182,212,0.9)] whitespace-nowrap leading-none">
+          {String(remainingMin).padStart(2, '0')}:{remainingSecPadded}
+        </span>
+      </div>
+
+      {/* Power-up Notifications — right below the countdown timer */}
+      <div className="mt-1 flex flex-col items-center gap-2 z-10 pointer-events-none">
         {launchGraceTimer > 0 && (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-950/90 border border-cyan-400 text-cyan-300 font-mono text-xs shadow-lg shadow-cyan-950/80 animate-pulse">
             <Zap className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
@@ -169,6 +170,7 @@ export const GameHUD: React.FC<GameHUDProps> = ({
             <span className="drop-shadow-[0_0_6px_rgba(168,85,247,0.8)]">MODO FANTASMA: {ship.etherealActiveTimer.toFixed(1)}s</span>
           </div>
         )}
+      </div>
       </div>
 
       {/* Bottom Perimeter Clusters: Speed, Altitude Clearance, Dual-Thrusters, Shield */}
