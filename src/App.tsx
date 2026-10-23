@@ -145,11 +145,10 @@ export default function App() {
     lowGActiveTimer: 0,
     leftThrusterPower: 0,
     rightThrusterPower: 0,
+    sonicPulseNotifyTimer: 0,
     vx: 0,
     vy: 0
   });
-
-  const [altitudeRatio, setAltitudeRatio] = useState<number>(0.5);
 
   // Canvas & Engine References
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -292,7 +291,7 @@ export default function App() {
     newWorld.onPowerUpCollected = (type) => {
       audio.playPowerUpSfx(type);
       if (rendererRef.current) {
-        const color = type === 'SHIELD' ? '#38bdf8' : type === 'DAMPER' ? '#4ade80' : type === 'LOW_G' ? '#facc15' : type === 'INVULNERABLE' ? '#ff0055' : '#a855f7';
+        const color = type === 'SHIELD' ? '#38bdf8' : type === 'DAMPER' ? '#4ade80' : type === 'LOW_G' ? '#facc15' : type === 'INVULNERABLE' ? '#ff0055' : type === 'PULSE' ? '#00f0ff' : '#a855f7';
         rendererRef.current.emitPowerUpCollect(newWorld.ship.x, newWorld.ship.y, color);
       }
     };
@@ -517,14 +516,10 @@ export default function App() {
               lowGActiveTimer: world.ship.lowGActiveTimer,
               leftThrusterPower: world.ship.leftThrusterPower,
               rightThrusterPower: world.ship.rightThrusterPower,
+              sonicPulseNotifyTimer: world.ship.sonicPulseNotifyTimer,
               vx: world.ship.vx,
               vy: world.ship.vy
             });
-
-            const terrain = world.getTerrainAt(world.ship.x);
-            const totalH = terrain.floorY - terrain.ceilY;
-            const relY = (world.ship.y - terrain.ceilY) / (totalH || 1);
-            setAltitudeRatio(Math.max(0, Math.min(1, relY)));
           }
         }
 
@@ -571,7 +566,6 @@ export default function App() {
           difficulty={difficulty}
           trackTitle={selectedTrack?.title || 'Sonic Orbit'}
           onPause={handlePause}
-          altitudeRatio={altitudeRatio}
           launchGraceTimer={worldRef.current.launchGraceTimer}
         />
       )}

@@ -11,7 +11,6 @@ import {
   Pause,
   Zap,
   Activity,
-  Flame,
   Maximize,
   Minimize
 } from 'lucide-react';
@@ -24,7 +23,6 @@ interface GameHUDProps {
   difficulty: DifficultyLevel;
   trackTitle: string;
   onPause: () => void;
-  altitudeRatio: number; // 0.0 (near ceiling) to 1.0 (near floor)
   launchGraceTimer?: number;
 }
 
@@ -34,7 +32,6 @@ export const GameHUD: React.FC<GameHUDProps> = ({
   difficulty,
   trackTitle,
   onPause,
-  altitudeRatio,
   launchGraceTimer = 0
 }) => {
   const [isFullscreen, setIsFullscreen] = React.useState(Boolean(document.fullscreenElement));
@@ -182,13 +179,19 @@ export const GameHUD: React.FC<GameHUDProps> = ({
             <span className="drop-shadow-[0_0_6px_rgba(168,85,247,0.8)]">MODO FANTASMA: {ship.etherealActiveTimer.toFixed(1)}s</span>
           </div>
         )}
+
+        {ship.sonicPulseNotifyTimer > 0 && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-950/80 border border-cyan-400/50 text-cyan-300 font-mono text-xs shadow-lg shadow-cyan-950/50 animate-pulse">
+            <Zap className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
+            <span className="drop-shadow-[0_0_6px_rgba(0,240,255,0.8)]">PULSO SÓNICO!</span>
+          </div>
+        )}
       </div>
       </div>
 
-      {/* Bottom Perimeter Clusters: Speed, Altitude Clearance, Dual-Thrusters, Shield */}
-      <footer className="flex items-end justify-between gap-4 max-w-5xl w-full mx-auto">
-        
-        {/* Left Cluster: Speed & Altitude */}
+      {/* Bottom Perimeter Cluster: Speed + Dual-Thruster pressure bars */}
+      <footer className="flex items-end justify-start gap-4 max-w-5xl w-full mx-auto">
+
         <div className="flex items-center gap-3 bg-black/60 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 font-mono text-xs">
           <div className="flex items-center gap-2 shrink-0">
             <Gauge className="w-4 h-4 text-cyan-400 shrink-0" />
@@ -203,28 +206,10 @@ export const GameHUD: React.FC<GameHUDProps> = ({
 
           <div className="w-px h-7 bg-white/10" />
 
-          {/* Altitude clearance gauge */}
-          <div className="flex flex-col">
-            <div className="text-[10px] text-gray-400 uppercase">Folga Canal</div>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="text-[9px] text-cyan-400">T</span>
-              <div className="w-16 h-2 bg-slate-900 rounded-full border border-white/20 relative overflow-hidden">
-                <div
-                  className="absolute top-0 bottom-0 w-2.5 bg-cyan-400 rounded-full transition-all"
-                  style={{ left: `${Math.max(0, Math.min(100, altitudeRatio * 100))}%` }}
-                />
-              </div>
-              <span className="text-[9px] text-fuchsia-400">C</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Center: Dual-Thruster Pressure Indicators */}
-        <div className="flex items-center gap-4 bg-black/60 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 font-mono text-xs">
-          <div className="flex items-center gap-1.5">
-            <Flame className={`w-3.5 h-3.5 ${ship.leftThrusterPower > 0.1 ? 'text-cyan-400 animate-bounce' : 'text-gray-600'}`} />
-            <div className="text-[10px] text-gray-400">MOTOR L [A]</div>
-            <div className="w-10 h-2 bg-slate-900 rounded border border-white/15 overflow-hidden">
+          {/* Dual-Thruster pressure indicators (beside the speed) */}
+          <div className="flex items-center gap-2">
+            <span className={`text-[9px] font-bold ${ship.leftThrusterPower > 0.1 ? 'text-cyan-400' : 'text-gray-600'}`}>L</span>
+            <div className="w-12 h-2 bg-slate-900 rounded border border-white/15 overflow-hidden">
               <div
                 className="h-full bg-cyan-400 transition-all duration-75"
                 style={{ width: `${ship.leftThrusterPower * 100}%` }}
@@ -232,30 +217,14 @@ export const GameHUD: React.FC<GameHUDProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <div className="w-10 h-2 bg-slate-900 rounded border border-white/15 overflow-hidden">
+          <div className="flex items-center gap-2">
+            <div className="w-12 h-2 bg-slate-900 rounded border border-white/15 overflow-hidden">
               <div
                 className="h-full bg-fuchsia-400 transition-all duration-75"
                 style={{ width: `${ship.rightThrusterPower * 100}%` }}
               />
             </div>
-            <div className="text-[10px] text-gray-400">MOTOR R [D]</div>
-            <Flame className={`w-3.5 h-3.5 ${ship.rightThrusterPower > 0.1 ? 'text-fuchsia-400 animate-bounce' : 'text-gray-600'}`} />
-          </div>
-        </div>
-
-        {/* Right Cluster: Active Shield Badge + Power-up timers */}
-        <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 font-mono text-xs">
-          <Shield className={`w-4 h-4 ${ship.shields > 0 ? 'text-sky-400 animate-pulse' : 'text-gray-600'}`} />
-          <div>
-            <div className="text-[10px] text-gray-400 uppercase">Escudo de Fase</div>
-            <div className="font-orbitron font-bold text-sm">
-              {ship.shields > 0 ? (
-                <span className="text-sky-300">{ship.shields} ATIVO</span>
-              ) : (
-                <span className="text-gray-500">INATIVO (0)</span>
-              )}
-            </div>
+            <span className={`text-[9px] font-bold ${ship.rightThrusterPower > 0.1 ? 'text-fuchsia-400' : 'text-gray-600'}`}>R</span>
           </div>
         </div>
       </footer>
