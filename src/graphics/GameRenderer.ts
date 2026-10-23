@@ -1472,10 +1472,22 @@ export class GameRenderer {
       if (flash) ctx.globalAlpha = 0.40;
     }
 
-    // Ethereal Ghost Mode: reduced craft opacity with crisp silhouette
+    // Ethereal Ghost Mode: reduced craft opacity with crisp silhouette + ghost halo
     const isEthereal = ship.etherealActiveTimer > 0;
     if (isEthereal) {
-      ctx.globalAlpha = (ctx.globalAlpha ?? 1.0) * 0.55;
+      ctx.globalAlpha = (ctx.globalAlpha ?? 1.0) * 0.35;
+      // Ghost halo: semi-transparent cyan ring with shimmer around the ship
+      const ghostPulse = 0.65 + 0.35 * Math.sin(Date.now() * 0.009);
+      const ghostRadius = Math.max(ship.width, ship.height) * 0.65 * ghostPulse;
+      ctx.save();
+      ctx.globalAlpha = 0.4 * ghostPulse;
+      ctx.shadowColor = '#00f0ff';
+      ctx.shadowBlur = 16 * ghostPulse;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, ghostRadius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
     }
 
     // 1. Anti-Gravity Launch Stabilizer Field (during first 2.8s)
@@ -1610,7 +1622,7 @@ export class GameRenderer {
     const rightPodX = w * 0.32;
     const podY = h * 0.38;
 
-    ctx.fillStyle = isEthereal ? '#0284c7' : '#64748b';
+    ctx.fillStyle = isEthereal ? 'rgba(0, 240, 255, 0.35)' : '#64748b';
     ctx.fillRect(leftPodX - 3, podY, 6, 5);
     ctx.fillRect(rightPodX - 3, podY, 6, 5);
 

@@ -692,13 +692,13 @@ export class AudioEngine {
       return Math.min(1.0, Math.pow(normalized, 1.15) * 1.25);
     };
 
-    const expSubBass = eqCurve(normSubBass, 1.30);
-    const expBassPunch = eqCurve(normBassPunch, 1.25);
-    const expBass = eqCurve(normBass, 1.25);
-    const expLowMids = eqCurve(normLowMids, 1.60);
-    const expHighMids = eqCurve(normHighMids, 2.20);
-    const expMids = eqCurve(normMids, 1.80);
-    const expTreble = eqCurve(normTreble, 2.80);
+    const expSubBass = eqCurve(normSubBass, 1.10);
+    const expBassPunch = eqCurve(normBassPunch, 1.05);
+    const expBass = eqCurve(normBass, 1.10);
+    const expLowMids = eqCurve(normLowMids, 1.20);
+    const expHighMids = eqCurve(normHighMids, 1.30);
+    const expMids = eqCurve(normMids, 1.15);
+    const expTreble = eqCurve(normTreble, 1.40);
 
     // Multi-band Attack / Decay Envelope Follower:
     // Fast attack (6-12ms) guarantees instant reaction on drum/synth transients
