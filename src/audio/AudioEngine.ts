@@ -905,6 +905,36 @@ export class AudioEngine {
     });
   }
 
+  public playTimeUpSfx(): void {
+    if (!this.ctx || !this.sfxGain) return;
+    const now = this.ctx.currentTime;
+
+    // Descending "power-down" tone: the mission failed by timeout
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(420, now);
+    osc.frequency.exponentialRampToValueAtTime(72, now + 1.1);
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.15);
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+    osc.start(now);
+    osc.stop(now + 1.2);
+
+    // Muted low thud to seal the moment
+    const thud = this.ctx.createOscillator();
+    const thudGain = this.ctx.createGain();
+    thud.type = 'sine';
+    thud.frequency.setValueAtTime(110, now + 0.85);
+    thudGain.gain.setValueAtTime(0.22, now + 0.85);
+    thudGain.gain.exponentialRampToValueAtTime(0.001, now + 1.3);
+    thud.connect(thudGain);
+    thudGain.connect(this.sfxGain);
+    thud.start(now + 0.85);
+    thud.stop(now + 1.35);
+  }
+
   public playButtonSfx(): void {
     if (!this.ctx || !this.sfxGain) return;
     const now = this.ctx.currentTime;

@@ -62,6 +62,7 @@ export const PauseModal: React.FC<PauseModalProps> = ({
               className={`px-3 py-1 rounded text-xs font-mono font-bold cursor-pointer transition ${
                 options.driftCompensation ? 'bg-cyan-500 text-black' : 'bg-white/10 text-gray-400'
               }`}
+              title="Desativa o avanço automático para a direita"
             >
               {options.driftCompensation ? 'LIGADO' : 'DESLIGADO'}
             </button>

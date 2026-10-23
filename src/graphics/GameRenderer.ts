@@ -1409,57 +1409,65 @@ export class GameRenderer {
     }
 
     // Laser Energy Beams: concentrated semi-oval plasma traveling floor→ceiling and back.
-    // Soft, "half-defined" edges pulse to the music; safe pass windows exist above/below the beam.
+    // Deliberately ill-defined: layered soft blobs instead of crisp outlines, with stacked
+    // sine harmonics breathing the radii so the boundary never reads as a defined shape.
     for (const laser of lasers) {
       if (laser.x < this.cameraX - 100 || laser.x > this.cameraX + this.width + 100) continue;
       if (laser.alpha <= 0.05) continue;
 
       const curX = laser.x + laser.sweepOffset;
       const coreY = laser.beamCenter;
-      const coreW = 15; // horizontal half-width of the hot core
-      // Wobbly, ill-defined oval: radius wobbles slowly along the beam's vertical axis
-      const wobble = Math.sin(Date.now() * 0.004 + laser.pulsePhase * 2.2);
-      const halfH = laser.beamHalf * (1 + wobble * 0.06);
+      const halfH = laser.beamHalf;
+      const tNow = Date.now();
+
+      // Two slow breathing harmonics give every blob its own unstable rhythm
+      const w1 = Math.sin(tNow * 0.0035 + laser.pulsePhase * 1.7);
+      const w2 = Math.sin(tNow * 0.0021 + laser.pulsePhase * 0.8 + 2.1);
+      const w3 = Math.sin(tNow * 0.0047 + laser.pulsePhase * 2.6);
 
       ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
 
-      // 1. Outer ambient halo (loose glow, very soft — the "half-defined" illusive edge)
-      const haloGr = ctx.createRadialGradient(curX, coreY, coreW * 0.3, curX, coreY, halfH * 2.1);
-      haloGr.addColorStop(0, `rgba(250, 204, 21, ${(laser.alpha * 0.22).toFixed(3)})`);
-      haloGr.addColorStop(0.55, `rgba(250, 204, 21, ${(laser.alpha * 0.10).toFixed(3)})`);
-      haloGr.addColorStop(1, 'rgba(250, 204, 21, 0)');
-      ctx.fillStyle = haloGr;
-      ctx.beginPath();
-      ctx.ellipse(curX, coreY, coreW * 3.2, halfH * 2.1, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 2. Semi-oval capsule body (the concentrated energy beam)
-      ctx.shadowColor = '#facc15';
-      ctx.shadowBlur = laser.active ? 26 : 8;
-      ctx.fillStyle = `rgba(250, 204, 21, ${(laser.alpha * 0.34).toFixed(3)})`;
-      ctx.beginPath();
-      ctx.ellipse(curX, coreY, coreW * 1.6, halfH, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 3. White-hot plasma core with shimmering boundary flicker
-      if (laser.active) {
-        const flicker = 0.72 + Math.sin(Date.now() * 0.02 + laser.pulsePhase * 5.0) * 0.10;
-        ctx.strokeStyle = `rgba(255, 255, 255, ${(laser.alpha * flicker * 0.85).toFixed(3)})`;
-        ctx.lineWidth = 2.2;
+      const blob = (x: number, y: number, rx: number, ry: number, a: number): void => {
+        const g = ctx.createRadialGradient(x, y, 0, x, y, Math.max(rx, ry));
+        g.addColorStop(0, `rgba(250, 204, 21, ${a.toFixed(3)})`);
+        g.addColorStop(0.45, `rgba(250, 204, 21, ${(a * 0.55).toFixed(3)})`);
+        g.addColorStop(1, 'rgba(250, 204, 21, 0)');
+        ctx.fillStyle = g;
         ctx.beginPath();
-        ctx.ellipse(curX, coreY, coreW * 1.6 + Math.sin(Date.now() * 0.006) * 1.5, halfH, 0, 0, Math.PI * 2);
-        ctx.stroke();
-
-        ctx.fillStyle = `rgba(255, 255, 255, ${(laser.alpha * flicker).toFixed(3)})`;
-        ctx.beginPath();
-        ctx.ellipse(curX, coreY, coreW * 0.65, halfH * 0.9, 0, 0, Math.PI * 2);
+        ctx.ellipse(x, y, Math.max(1, rx), Math.max(1, ry), 0, 0, Math.PI * 2);
         ctx.fill();
+      };
+
+      // 1. Ambient aura: barely-there outer haze with drifting center
+      blob(curX + w2 * 5, coreY + w1 * 6, 22 + w2 * 4, halfH * 1.9 * (1 + w3 * 0.05), laser.alpha * 0.08);
+
+      // 2. Body: three overlapping fuzzy ovals at slightly offset centers/heights
+      blob(curX + w1 * 2.5, coreY, 12 + w1 * 2.5, halfH * 1.02 + w2 * 6, laser.alpha * 0.15);
+      blob(curX + w2 * 2, coreY - halfH * 0.2, 9 + w2 * 2, halfH * 0.68 + w1 * 5, laser.alpha * 0.12);
+      blob(curX - w1 * 2, coreY + halfH * 0.22, 9 + w1 * 2, halfH * 0.56 + w2 * 4, laser.alpha * 0.11);
+
+      // 3. Hot spine: narrow bright core that slides along the axis
+      blob(
+        curX + w3 * 1.5,
+        coreY + Math.sin(tNow * 0.005) * halfH * 0.08,
+        4.5 + w1 * 1.2,
+        halfH * 0.46 + w2 * 3,
+        laser.alpha * (laser.active ? 0.32 : 0.14)
+      );
+
+      // 4. Loose plasma granulation: specks drifting along the beam (softer, hotter)
+      for (let k = 0; k < 5; k++) {
+        const p = laser.pulsePhase * 1.3 + k * 2.4 + tNow * 0.0009 * (k % 2 === 0 ? 1 : -1);
+        const py = coreY + Math.sin(p) * halfH * 0.85;
+        const px = curX + Math.cos(p * 1.7) * (5 + k * 2.2);
+        blob(px, py, 3.5 + (k % 2) * 2.5, 6 + Math.abs(Math.sin(p * 0.6)) * 4.5, laser.alpha * 0.09);
       }
 
-      // 4. Channel guides along the track (thin rails showing the beam's travel path)
-      ctx.strokeStyle = `rgba(250, 204, 21, ${(laser.alpha * 0.20).toFixed(3)})`;
+      // 5. Faint travel rails (telegraph of the beam's vertical path)
+      ctx.strokeStyle = `rgba(250, 204, 21, ${(laser.alpha * 0.09).toFixed(3)})`;
       ctx.lineWidth = 1;
-      ctx.setLineDash([4, 10]);
+      ctx.setLineDash([3, 13]);
       ctx.beginPath();
       ctx.moveTo(curX, laser.yTop - 4);
       ctx.lineTo(curX, laser.yBottom + 4);
