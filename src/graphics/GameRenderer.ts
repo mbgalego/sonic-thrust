@@ -556,6 +556,7 @@ export class GameRenderer {
       {
         name: 'SUB_BASS',
         energy: audioFreq.subBass,
+        bin: 5,   // kick fundamental
         ceilColor: '#00f0ff',   // Electric Cyan
         floorColor: '#ef4444',  // Laser Red
         spatialFreq: 0.0032,    // Long rolling ocean swell
@@ -567,6 +568,7 @@ export class GameRenderer {
       {
         name: 'BASS',
         energy: audioFreq.bass,
+        bin: 10,  // kick body
         ceilColor: '#38bdf8',   // Laser Sky Blue
         floorColor: '#f97316',  // Neon Orange
         spatialFreq: 0.0062,    // Punchy rhythmic wave
@@ -578,6 +580,7 @@ export class GameRenderer {
       {
         name: 'LOW_MIDS',
         energy: audioFreq.lowMids,
+        bin: 20,  // harmonic roll
         ceilColor: '#818cf8',   // Neon Indigo
         floorColor: '#eab308',  // Electric Gold / Amber
         spatialFreq: 0.0105,    // Harmonic undulating roll
@@ -588,7 +591,8 @@ export class GameRenderer {
       },
       {
         name: 'HIGH_MIDS',
-        energy: audioFreq.highMids,
+        energy: 0,
+        bin: 40,
         ceilColor: '#c084fc',   // Radiant Purple
         floorColor: '#10b981',  // Vibrant Emerald
         spatialFreq: 0.0175,    // Snappy melodic crests
@@ -599,7 +603,8 @@ export class GameRenderer {
       },
       {
         name: 'TREBLE',
-        energy: audioFreq.treble,
+        energy: 0,
+        bin: 80,
         ceilColor: '#f43f5e',   // Searing Hot Pink / Crimson
         floorColor: '#06b6d4',  // Bright Turquoise
         spatialFreq: 0.0280,    // High-frequency jitter shimmer
@@ -614,7 +619,9 @@ export class GameRenderer {
 
     for (let b = 0; b < eqBands.length; b++) {
       const band = eqBands[b];
-      const bandE = Math.max(0, Math.min(1.0, band.energy));
+      // Raw frequency bin for maximum movement — no envelope smoothing lag
+      const rawBin = audioFreq.frequencyArray[band.bin] ?? 0;
+      const bandE = Math.max(0, Math.min(1.0, rawBin / 255));
 
       // Dynamic amplitude: idle breathing (2.5px) up to (2.5 + maxAmp) on heavy rhythm hits!
       const beatBoost = (b <= 1 ? beatPulseVal * 8.0 : (b === 3 ? beatPulseVal * 5.0 : 0));
