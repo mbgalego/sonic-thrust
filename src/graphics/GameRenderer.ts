@@ -34,6 +34,10 @@ export class GameRenderer {
   private static readonly DROP_FLASH_TRIGGER = 0.62; // cross this to fire
   private static readonly DROP_FLASH_COOLDOWN_S = 1.5; // min seconds between flashes
 
+  // Dynamic Mobile Screen & Viewport Detection + Adaptive Play Area Zoom
+  private cameraZoom: number = 1.0;
+  private isMobileViewport: boolean = false;
+
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     const context = canvas.getContext('2d', { alpha: false });
@@ -53,7 +57,11 @@ export class GameRenderer {
 
     this.canvas.width = Math.floor(this.width * dpr);
     this.canvas.height = Math.floor(this.height * dpr);
-    this.ctx.scale(dpr, dpr);
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const isTouch = 'ontouchstart' in window || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0);
+    const isSmall = Math.min(this.width, this.height) < 680;
+    this.isMobileViewport = Boolean(isTouch || isSmall || (typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)));
   }
 
   private initStars(): void {
@@ -126,14 +134,77 @@ export class GameRenderer {
       this.screenShake *= 0.88;
     }
 
-    // Camera follow (keep ship ~28% from left edge to give forward vision)
-    const targetCamX = world.ship.x - w * 0.28;
-    const targetCamY = world.ship.y - h * 0.5;
-    this.cameraX += (targetCamX - this.cameraX) * 0.14;
-    this.cameraY += (targetCamY - this.cameraY) * 0.10;
+    // Dynamic Mobile Screen Detection & Play Area Framing
+    const isTouch = 'ontouchstart' in window || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0);
+    const isSmallScreen = Math.min(w, h) < 680;
+    const isMobile = this.isMobileViewport || isTouch || isSmallScreen || (typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
+    const isPortrait = w < h;
 
-    // Clamp cameraY so tunnel doesn't get lost
-    this.cameraY = Math.max(-100, Math.min(world.worldHeight - h + 100, this.cameraY));
+    // Active corridor geometry at ship's current location
+    const currentTerrain = world.getTerrainAt(world.ship.x);
+    const corridorCenterY = (currentTerrain.ceilY + currentTerrain.floorY) * 0.5;
+    const corridorH = Math.max(220, currentTerrain.floorY - currentTerrain.ceilY);
+
+    // Target dynamic zoom & framing
+    let targetZoom = 1.0;
+    let shipScreenFracX = 0.28;
+    let corridorScreenFracY = 0.50;
+
+    if (isMobile || isSmallScreen) {
+      if (isPortrait) {
+        // Mobile Portrait: screen is narrow & tall (e.g. 390x844).
+        // The tunnel flight path is horizontal, so we dynamically zoom out to frame ~640px
+        // of world runway ahead, and anchor the ship at 18% of screen width so over 80%
+        // is clear reaction lookahead for upcoming bends, obstacles, and gates.
+        const zoomW = w / 640;
+        const zoomH = h / 960;
+        targetZoom = Math.max(0.55, Math.min(0.82, Math.min(zoomW, zoomH)));
+        shipScreenFracX = 0.18;
+        corridorScreenFracY = 0.50;
+      } else {
+        // Mobile Landscape: screen is wide & short (e.g. 844x390).
+        // Vertical headroom is the most constrained axis. We zoom out so the full play arena
+        // (~460-500px: 300px corridor + 150px bedrock equalizer ribbons) fits comfortably
+        // between the top HUD controls and bottom thruster telemetry.
+        const desiredPlayHeight = Math.max(460, corridorH + 150);
+        const zoomH = h / desiredPlayHeight;
+        const zoomW = w / 840;
+        targetZoom = Math.max(0.58, Math.min(0.92, Math.min(zoomH, zoomW)));
+        shipScreenFracX = 0.22;
+        corridorScreenFracY = 0.53; // slight downward bias for top HUD clearance
+      }
+    } else {
+      // Desktop / High-res widescreen display: crisp 1:1 scale
+      targetZoom = 1.0;
+      shipScreenFracX = 0.28;
+      corridorScreenFracY = 0.50;
+    }
+
+    // Smooth exponential zoom interpolation (prevents jarring snaps on resize or orientation change)
+    const zoomDt = isPaused ? 0 : dt;
+    this.cameraZoom += (targetZoom - this.cameraZoom) * Math.min(1.0, zoomDt * 8.0 + 0.08);
+    const zoom = Math.max(0.4, this.cameraZoom);
+
+    const visibleWorldW = w / zoom;
+    const visibleWorldH = h / zoom;
+
+    // Horizontal camera follow: anchors ship at shipScreenFracX of screen width
+    const targetCamX = world.ship.x - shipScreenFracX * visibleWorldW;
+
+    // Vertical camera follow: leads the corridor center (70%) and ship (30%)
+    // so the camera smoothly anticipates roller-coaster climbs and dips while tracking the craft
+    const focusY = corridorCenterY * 0.70 + world.ship.y * 0.30;
+    const targetCamY = focusY - corridorScreenFracY * visibleWorldH;
+
+    this.cameraX += (targetCamX - this.cameraX) * 0.14;
+    this.cameraY += (targetCamY - this.cameraY) * 0.12;
+
+    // Clamp cameraY so world boundaries don't wrap or get lost
+    const minCamY = -60;
+    const maxCamY = world.worldHeight - visibleWorldH + 60;
+    if (maxCamY > minCamY) {
+      this.cameraY = Math.max(minCamY, Math.min(maxCamY, this.cameraY));
+    }
 
     // Clear background
     ctx.fillStyle = '#06070c';
@@ -165,9 +236,10 @@ export class GameRenderer {
     }
     this.dropFlash *= Math.exp(-(isPaused ? 0 : dt) / 0.45);
 
-    // Save for world translation
+    // Save for world translation with dynamic camera zoom
     ctx.save();
-    ctx.translate(-this.cameraX + shakeX, -this.cameraY + shakeY);
+    ctx.scale(zoom, zoom);
+    ctx.translate(-this.cameraX + shakeX / zoom, -this.cameraY + shakeY / zoom);
 
     // 1. Cyber Grid & Parallax Starfield
     this.renderBackgroundGrid(world, audioFreq);
@@ -192,7 +264,7 @@ export class GameRenderer {
 
     // 8. Player Ship & Jet Exhausts
     if (!world.ship.isDestroyed) {
-      this.renderShip(world, isPaused);
+      this.renderShip(world, isPaused, audioFreq);
     }
 
     ctx.restore();
@@ -241,26 +313,26 @@ export class GameRenderer {
 
   private renderBackgroundGrid(world: PhysicsWorld, audioFreq: AudioFrequencyData): void {
     const ctx = this.ctx;
-    const w = this.width;
-    const h = this.height;
+    const visibleW = this.width / this.cameraZoom;
+    const visibleH = this.height / this.cameraZoom;
 
     // Parallax stars
     ctx.fillStyle = '#64748b';
     for (const star of this.backgroundStars) {
-      const screenX = (star.x - this.cameraX * star.speed) % (w * 2);
-      const drawX = screenX < 0 ? screenX + w * 2 : screenX;
-      const drawY = (star.y - this.cameraY * star.speed * 0.3) % (h * 1.5);
-      const finalY = drawY < 0 ? drawY + h * 1.5 : drawY;
+      const screenX = (star.x - this.cameraX * star.speed) % (visibleW * 2);
+      const drawX = screenX < 0 ? screenX + visibleW * 2 : screenX;
+      const drawY = (star.y - this.cameraY * star.speed * 0.3) % (visibleH * 1.5);
+      const finalY = drawY < 0 ? drawY + visibleH * 1.5 : drawY;
 
       ctx.globalAlpha = star.alpha * (0.8 + audioFreq.treble * 0.5);
-      ctx.fillRect(this.cameraX + drawX - w * 0.5, this.cameraY + finalY - h * 0.25, star.size, star.size);
+      ctx.fillRect(this.cameraX + drawX - visibleW * 0.5, this.cameraY + finalY - visibleH * 0.25, star.size, star.size);
     }
     ctx.globalAlpha = 1.0;
 
     // Perspective neon grid lines
     const gridSpacing = 90;
     const startGridX = Math.floor(this.cameraX / gridSpacing) * gridSpacing;
-    const endGridX = startGridX + w + gridSpacing * 2;
+    const endGridX = startGridX + visibleW + gridSpacing * 2;
 
     ctx.strokeStyle = `rgba(14, 165, 233, ${0.06 + audioFreq.bass * 0.1})`;
     ctx.lineWidth = 1;
@@ -383,9 +455,10 @@ export class GameRenderer {
     const points = world.terrainPoints;
     if (points.length < 2) return;
 
-    // Render only visible segments with padding
-    const startX = this.cameraX - 150;
-    const endX = this.cameraX + this.width + 150;
+    // Render visible segments with lookahead padding (scaled by dynamic camera zoom)
+    const visibleW = this.width / this.cameraZoom;
+    const startX = this.cameraX - 180;
+    const endX = this.cameraX + visibleW + 180;
 
     let firstVisibleIdx = 0;
     let lastVisibleIdx = points.length - 1;
@@ -640,11 +713,12 @@ export class GameRenderer {
    */
   private renderPowerUps(powerUps: PowerUpItem[], audioFreq: AudioFrequencyData, world: PhysicsWorld): void {
     const ctx = this.ctx;
+    const visibleW = this.width / this.cameraZoom;
     ctx.save();
 
     for (const p of powerUps) {
       if (p.collected) continue;
-      if (p.x < this.cameraX - 140 || p.x > this.cameraX + this.width + 140) continue;
+      if (p.x < this.cameraX - 160 || p.x > this.cameraX + visibleW + 160) continue;
 
       const terrain = world.getTerrainAt(p.x);
 
@@ -652,7 +726,7 @@ export class GameRenderer {
       ctx.save();
       const colGrad = ctx.createLinearGradient(0, terrain.ceilY, 0, terrain.floorY);
       colGrad.addColorStop(0, 'rgba(0, 240, 255, 0.02)');
-      colGrad.addColorStop(0.5, p.color === '#00f0ff' ? 'rgba(0, 240, 255, 0.16)' : p.color === '#00ff88' ? 'rgba(0, 255, 136, 0.16)' : p.color === '#ffd700' ? 'rgba(255, 215, 0, 0.16)' : p.color === '#ff0055' ? 'rgba(255, 0, 85, 0.16)' : 'rgba(168, 85, 247, 0.16)');
+      colGrad.addColorStop(0.5, `${p.color}26`);
       colGrad.addColorStop(1, 'rgba(0, 240, 255, 0.02)');
       
       ctx.fillStyle = colGrad;
@@ -879,6 +953,67 @@ export class GameRenderer {
         ctx.arc(0, 0, 4.5 + (audioFreq.bass * 2.4) + Math.sin(Date.now() * 0.012) * 1, 0, Math.PI * 2);
         ctx.fill();
 
+      } else if (p.type === 'CHRONO_DILATION') {
+        // G) CHRONO DILATION: Temporal matrix clock with ticking dial ticks & hourglass aura
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 2.0;
+        ctx.beginPath();
+        ctx.arc(0, 0, rad * 0.85, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // 12 clock ticks
+        for (let t = 0; t < 12; t++) {
+          const a = (t * Math.PI * 2) / 12;
+          ctx.lineWidth = t % 3 === 0 ? 2 : 1;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a) * rad * 0.7, Math.sin(a) * rad * 0.7);
+          ctx.lineTo(Math.cos(a) * rad * 0.85, Math.sin(a) * rad * 0.85);
+          ctx.stroke();
+        }
+
+        // Rotating clock hands
+        const tAngle = Date.now() * 0.004;
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(tAngle) * rad * 0.55, Math.sin(tAngle) * rad * 0.55);
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(0, 0, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+      } else if (p.type === 'SINGULARITY') {
+        // H) SINGULARITY: Event horizon gravitational vortex with cosmic spiral & dark void
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 24;
+
+        // Spiral accretion swirl
+        ctx.beginPath();
+        const spin = -Date.now() * 0.008;
+        for (let a = 0; a <= 36; a++) {
+          const theta = (a / 36) * Math.PI * 4 + spin;
+          const r = (a / 36) * rad * 0.9;
+          const px = Math.cos(theta) * r;
+          const py = Math.sin(theta) * r;
+          if (a === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+
+        // Dark central void
+        ctx.fillStyle = '#090514';
+        ctx.beginPath();
+        ctx.arc(0, 0, rad * 0.42, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
       } else {
         // C) LOW-G SURGE: Levitating anti-gravity gyroscope with gimbal rings
         ctx.strokeStyle = p.color;
@@ -911,7 +1046,15 @@ export class GameRenderer {
       ctx.font = 'bold 9px Orbitron';
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
-      const label = p.type === 'SHIELD' ? 'ESCUDO' : p.type === 'DAMPER' ? 'DAMPER' : p.type === 'LOW_G' ? 'LOW-G' : p.type === 'INVULNERABLE' ? 'IMUNE' : p.type === 'PULSE' ? 'PULSO' : 'FANTASMA';
+      const label =
+        p.type === 'SHIELD' ? 'ESCUDO' :
+        p.type === 'DAMPER' ? 'DAMPER' :
+        p.type === 'LOW_G' ? 'LOW-G' :
+        p.type === 'PULSE' ? 'PULSO' :
+        p.type === 'ETHEREAL' ? 'FANTASMA' :
+        p.type === 'INVULNERABLE' ? 'IMUNE' :
+        p.type === 'CHRONO_DILATION' ? 'CRONO' :
+        'SINGULARIDADE';
       ctx.shadowBlur = 8;
       ctx.fillText(label, 0, rad + 18);
 
@@ -935,187 +1078,86 @@ export class GameRenderer {
     world: PhysicsWorld
   ): void {
     const ctx = this.ctx;
+    const visibleW = this.width / this.cameraZoom;
     ctx.save();
 
     for (const obs of obstacles) {
       if (obs.disabled) continue; // neutralized by a sonic pulse
-      if (obs.x < this.cameraX - 140 || obs.x > this.cameraX + this.width + 140) continue;
+      if (obs.x < this.cameraX - 160 || obs.x > this.cameraX + visibleW + 160) continue;
 
       const terrain = world.getTerrainAt(obs.x);
 
-      if (obs.type === 'EJECTOR_BLOCK') {
-        // A) EJECTOR BLOCK: Wall pneumatic ram with dual hydraulic rods & hazard chevrons
+      if (obs.type === 'VU_TOWER') {
+        // A) PILAR DE EQUALIZADOR VU: Segmented retro-LED graphic equalizer column bursting to bass drops
         const reach = obs.maxExtensionHeight * obs.extension;
         const w = obs.width;
         const isCeil = obs.isCeiling;
         const baseY = isCeil ? terrain.ceilY : terrain.floorY;
-        const faceY = isCeil ? baseY + reach : baseY - reach;
-        const blockHeight = 28;
-
-        ctx.save();
-        // Pneumatic ram block extending from wall (direction-aware: ceiling extends down, floor extends up)
-        const ramDir = isCeil ? 1 : -1;
-        ctx.fillStyle = '#ff0055';
-        ctx.shadowColor = '#ff0055';
-        ctx.shadowBlur = 12;
-        ctx.globalAlpha = 0.85 + obs.extension * 0.15;
-        ctx.fillRect(obs.x - w / 2, isCeil ? baseY : baseY - reach, w, reach);
-
-        // Chevron hazard pattern on the ram
-        ctx.strokeStyle = '#ff0055';
-        ctx.lineWidth = 3;
-        ctx.globalAlpha = 0.6;
-        for (let i = 0; i < Math.max(1, Math.floor(reach / 20)); i++) {
-          const chevronY = baseY + i * 20 * ramDir;
-          ctx.beginPath();
-          ctx.moveTo(obs.x - w / 2 - 10, chevronY);
-          ctx.lineTo(obs.x, chevronY - 12 * ramDir);
-          ctx.lineTo(obs.x + w / 2 + 10, chevronY);
-          ctx.stroke();
-        }
-
-        // Rod & piston detail
-        ctx.fillStyle = '#ffffff';
-        ctx.globalAlpha = 0.4;
-        ctx.fillRect(obs.x - 4, baseY + ramDir * reach - 8, 8, 16);
-
-        ctx.globalAlpha = 1.0;
-
-        // Heavy Industrial Dual Hydraulic Piston Rods
-        if (reach > 8) {
-          // Left Piston
-          ctx.strokeStyle = '#cbd5e1';
-          ctx.lineWidth = 5;
-          ctx.beginPath();
-          ctx.moveTo(obs.x - 22, baseY);
-          ctx.lineTo(obs.x - 22, faceY);
-          ctx.moveTo(obs.x + 22, baseY);
-          ctx.lineTo(obs.x + 22, faceY);
-          ctx.stroke();
-
-          // Internal Hydraulic Neon Fluid Core
-          ctx.strokeStyle = obs.color;
-          ctx.shadowColor = obs.color;
-          ctx.shadowBlur = 8;
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.moveTo(obs.x - 22, baseY);
-          ctx.lineTo(obs.x - 22, faceY);
-          ctx.moveTo(obs.x + 22, baseY);
-          ctx.lineTo(obs.x + 22, faceY);
-          ctx.stroke();
-        }
-
-        // Ram Block Chassis Face
-        ctx.fillStyle = '#0f172a';
-        ctx.strokeStyle = obs.color;
-        ctx.shadowColor = obs.color;
-        ctx.shadowBlur = obs.active ? 24 : 8;
-        ctx.lineWidth = 3.0;
-
-        const blockY = isCeil ? faceY - blockHeight : faceY;
-        ctx.beginPath();
-        ctx.roundRect ? ctx.roundRect(obs.x - w / 2, blockY, w, blockHeight, 4) : ctx.rect(obs.x - w / 2, blockY, w, blockHeight);
-        ctx.fill();
-        ctx.stroke();
-
-        // Inner glowing core plate
-        ctx.fillStyle = obs.active ? 'rgba(255, 0, 85, 0.28)' : 'rgba(255, 0, 85, 0.08)';
-        ctx.fillRect(obs.x - w / 2 + 4, blockY + 4, w - 8, blockHeight - 8);
-
-        // Animated diagonal hazard chevrons
-        ctx.strokeStyle = '#facc15';
-        ctx.lineWidth = 2.5;
-        const chevronOffset = (Date.now() * 0.02) % 18;
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(obs.x - w / 2 + 2, blockY + 2, w - 4, blockHeight - 4);
-        ctx.clip();
-        for (let cx = obs.x - w / 2 - 10 + chevronOffset; cx < obs.x + w / 2 + 20; cx += 18) {
-          ctx.beginPath();
-          ctx.moveTo(cx, blockY + 3);
-          ctx.lineTo(cx + 10, blockY + blockHeight - 3);
-          ctx.stroke();
-        }
-        ctx.restore();
-
-        // High-voltage cutting edge on the impact face
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(obs.x - w / 2, faceY);
-        ctx.lineTo(obs.x + w / 2, faceY);
-        ctx.stroke();
-
-        ctx.restore();
-
-      } else if (obs.type === 'SONIC_SPIKE') {
-        // B) SONIC SPIKE: Triple crystalline neon spear bursting to the bass
-        const reach = obs.maxExtensionHeight * obs.extension;
-        const isCeil = obs.isCeiling;
-        const baseY = isCeil ? terrain.ceilY : terrain.floorY;
         const tipY = isCeil ? baseY + reach : baseY - reach;
-        const halfW = obs.width / 2;
 
         ctx.save();
-        ctx.fillStyle = 'rgba(192, 38, 211, 0.35)';
-        ctx.strokeStyle = obs.color;
-        ctx.shadowColor = obs.color;
-        ctx.shadowBlur = obs.active ? 26 : 10;
-        ctx.lineWidth = 3.0;
+        // 1. Sleek acrylic chassis casing
+        const casingTop = isCeil ? baseY : baseY - reach - 4;
+        const casingHeight = reach + 6;
+        ctx.fillStyle = '#0a0a14';
+        ctx.strokeStyle = '#38bdf8';
+        ctx.shadowColor = '#00f0ff';
+        ctx.shadowBlur = obs.active ? 16 : 6;
+        ctx.lineWidth = 1.8;
+        if (ctx.roundRect) {
+          ctx.beginPath();
+          ctx.roundRect(obs.x - w / 2, casingTop, w, casingHeight, 4);
+          ctx.fill();
+          ctx.stroke();
+        } else {
+          ctx.fillRect(obs.x - w / 2, casingTop, w, casingHeight);
+          ctx.strokeRect(obs.x - w / 2, casingTop, w, casingHeight);
+        }
 
-        // Flanking secondary crystal shards
-        const subReach = reach * 0.65;
-        const subTipY = isCeil ? baseY + subReach : baseY - subReach;
+        // 2. Segmented LED Bars
+        const segHeight = 6;
+        const segGap = 3;
+        const totalSegments = Math.max(3, Math.floor((reach - 4) / (segHeight + segGap)));
 
-        // Left sub-crystal
-        ctx.beginPath();
-        ctx.moveTo(obs.x - halfW - 6, baseY);
-        ctx.lineTo(obs.x - halfW * 0.3, baseY);
-        ctx.lineTo(obs.x - halfW * 0.65, subTipY);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
+        for (let s = 0; s < totalSegments; s++) {
+          const segProgress = s / totalSegments; // 0 (near base) to 1 (near tip)
+          const segY = isCeil 
+            ? baseY + 4 + s * (segHeight + segGap)
+            : baseY - 4 - (s + 1) * (segHeight + segGap);
 
-        // Right sub-crystal
-        ctx.beginPath();
-        ctx.moveTo(obs.x + halfW * 0.3, baseY);
-        ctx.lineTo(obs.x + halfW + 6, baseY);
-        ctx.lineTo(obs.x + halfW * 0.65, subTipY);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
+          // Vintage Hi-Fi 3-Color Gradient: Green -> Amber -> Peak Red
+          let segColor = '#22c55e';
+          if (segProgress > 0.82) {
+            segColor = '#ef4444'; // Red CLIP
+          } else if (segProgress > 0.55) {
+            segColor = '#eab308'; // Amber MID
+          }
 
-        // Main Primary Crystal Spear
-        ctx.beginPath();
-        ctx.moveTo(obs.x - halfW * 0.8, baseY);
-        ctx.lineTo(obs.x + halfW * 0.8, baseY);
-        ctx.lineTo(obs.x, tipY);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
+          ctx.fillStyle = segColor;
+          ctx.shadowColor = segColor;
+          ctx.shadowBlur = obs.active ? 10 : 3;
+          ctx.fillRect(obs.x - w / 2 + 4, segY, w - 8, segHeight);
 
-        // Electric central lightning spine
-        ctx.strokeStyle = '#ffffff';
-        ctx.shadowColor = '#ffffff';
-        ctx.shadowBlur = 12;
-        ctx.lineWidth = 2.0;
-        ctx.beginPath();
-        ctx.moveTo(obs.x, baseY);
-        // Jagged lightning path
-        const midY1 = baseY + (tipY - baseY) * 0.35;
-        const midY2 = baseY + (tipY - baseY) * 0.70;
-        const jag = Math.sin(Date.now() * 0.02 + obs.x) * 4;
-        ctx.lineTo(obs.x + jag, midY1);
-        ctx.lineTo(obs.x - jag, midY2);
-        ctx.lineTo(obs.x, tipY);
-        ctx.stroke();
+          // White inner LED core highlight
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+          ctx.fillRect(obs.x - w / 2 + 7, segY + 1.5, (w - 14) * 0.45, 1.5);
+        }
 
-        // High-energy spark point at needle tip
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(obs.x, tipY, 4, 0, Math.PI * 2);
-        ctx.fill();
+        // 3. Peak Overload Clip LED at the dangerous tip
+        if (reach > 14) {
+          ctx.fillStyle = '#ff0055';
+          ctx.shadowColor = '#ff0055';
+          ctx.shadowBlur = obs.active ? 20 : 8;
+          const peakY = isCeil ? tipY - 4 : tipY;
+          ctx.fillRect(obs.x - w / 2 + 2, peakY, w - 4, 4);
+
+          // Decibel scale tick lines (-24dB, -12dB, 0dB, CLIP)
+          ctx.font = 'bold 7px Orbitron';
+          ctx.fillStyle = '#00f0ff';
+          ctx.shadowBlur = 4;
+          ctx.textAlign = 'right';
+          ctx.fillText(obs.active ? 'CLIP' : 'VU', obs.x - w / 2 - 4, tipY + (isCeil ? -2 : 8));
+        }
 
         ctx.restore();
 
@@ -1263,7 +1305,7 @@ export class GameRenderer {
     // Deliberately ill-defined: layered soft blobs instead of crisp outlines, with stacked
     // sine harmonics breathing the radii so the boundary never reads as a defined shape.
     for (const laser of lasers) {
-      if (laser.x < this.cameraX - 100 || laser.x > this.cameraX + this.width + 100) continue;
+      if (laser.x < this.cameraX - 160 || laser.x > this.cameraX + visibleW + 160) continue;
       if (laser.alpha <= 0.05) continue;
 
       const curX = laser.x + laser.sweepOffset;
@@ -1365,10 +1407,53 @@ export class GameRenderer {
       ctx.restore();
     }
 
+    // Cosmic Singularity EMP Shockwave (EXTREME Tier): expanding deep purple event horizon
+    if (world.singularityWave) {
+      const wave = world.singularityWave;
+      const progress = Math.min(1, wave.r / wave.maxR);
+      const fade = 1 - Math.pow(progress, 1.4);
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = '#c084fc';
+      ctx.shadowColor = '#c084fc';
+      ctx.shadowBlur = 24;
+      ctx.globalAlpha = 0.85 * fade;
+      ctx.lineWidth = 6.0 * (1 - progress * 0.4);
+      ctx.beginPath();
+      ctx.arc(wave.x, wave.y, wave.r, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Inner gravitational suction rings
+      ctx.globalAlpha = 0.5 * fade;
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(wave.x, wave.y, wave.r * 0.85, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#e879f9';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(wave.x, wave.y, wave.r * 0.65, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Dark matter core
+      const g = ctx.createRadialGradient(wave.x, wave.y, 0, wave.x, wave.y, 60);
+      g.addColorStop(0, `rgba(192, 132, 252, ${(0.45 * fade).toFixed(3)})`);
+      g.addColorStop(1, 'rgba(192, 132, 252, 0)');
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(wave.x, wave.y, 60, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
     ctx.restore();
   }
 
-  private renderShip(world: PhysicsWorld, isPaused: boolean): void {
+  private renderShip(world: PhysicsWorld, isPaused: boolean, _audioFreq?: AudioFrequencyData): void {
     const ctx = this.ctx;
     const ship = world.ship;
 
@@ -1381,15 +1466,20 @@ export class GameRenderer {
     ctx.translate(ship.x, ship.y);
     ctx.rotate(ship.angle);
 
-    // Flashing invulnerability shimmer
+    // Flashing invulnerability shimmer (clean and intuitive)
     if (ship.invulnerableTime > 0) {
       const flash = Math.floor(ship.invulnerableTime * 20) % 2 === 0;
-      if (flash) ctx.globalAlpha = 0.45;
+      if (flash) ctx.globalAlpha = 0.40;
     }
 
-    // Anti-Gravity Launch Stabilizer Field (during first 2.8s)
+    // Ethereal Ghost Mode: reduced craft opacity with crisp silhouette
+    const isEthereal = ship.etherealActiveTimer > 0;
+    if (isEthereal) {
+      ctx.globalAlpha = (ctx.globalAlpha ?? 1.0) * 0.55;
+    }
+
+    // 1. Anti-Gravity Launch Stabilizer Field (during first 2.8s)
     if (world.launchGraceTimer > 0) {
-      const graceT = world.launchGraceTimer;
       const pulse = 1.0 + Math.sin(Date.now() * 0.009) * 0.07;
       const fieldRadius = 28 * pulse;
 
@@ -1414,23 +1504,13 @@ export class GameRenderer {
       ctx.arc(0, 0, fieldRadius + 5, Math.PI - 0.4, Math.PI + 0.4);
       ctx.stroke();
       ctx.restore();
-
-      // Holographic text banner above ship
-      ctx.save();
-      ctx.font = 'bold 9px monospace';
-      ctx.fillStyle = '#00f0ff';
-      ctx.shadowColor = '#00f0ff';
-      ctx.shadowBlur = 8;
-      ctx.textAlign = 'center';
-      ctx.fillText(`ANTI-G [${graceT.toFixed(1)}s]`, 0, -ship.height * 0.95);
-      ctx.restore();
     }
 
-    // Phase Shield Energy Bubble — concentric circles for multiple shields
+    // 2. Phase Shield Energy Bubble — concentric circles for multiple shields
     if (ship.shields > 0) {
       for (let i = 0; i < ship.shields; i++) {
         const shieldPulse = 1.0 + Math.sin(Date.now() * 0.01 + i * 0.7) * 0.06;
-        const baseRadius = 24 + i * 3; // 24, 27, 30, 33... (3px a mais que o anterior)
+        const baseRadius = 24 + i * 3;
         ctx.save();
         ctx.strokeStyle = '#38bdf8';
         ctx.shadowColor = '#38bdf8';
@@ -1447,15 +1527,64 @@ export class GameRenderer {
       }
     }
 
+    // 3. Sonic Damper Active Acoustic Absorption Cushion (PRO / EXTREME)
+    if (ship.damperActiveTimer > 0) {
+      ctx.save();
+      ctx.strokeStyle = '#22c55e';
+      ctx.shadowColor = '#22c55e';
+      ctx.shadowBlur = 12;
+      ctx.lineWidth = 1.5;
+      const damperOsc = Math.sin(Date.now() * 0.015) * 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, 27 + damperOsc, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 4. Chrono Dilation: slow-motion temporal halo
+    if (ship.chronoDilationTimer > 0) {
+      ctx.save();
+      ctx.strokeStyle = '#14b8a6';
+      ctx.shadowColor = '#14b8a6';
+      ctx.shadowBlur = 14;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 6]);
+      ctx.lineDashOffset = (Date.now() * 0.004);
+      ctx.beginPath();
+      ctx.arc(0, 0, 36, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
     // Ship Aerodynamic Neon Geometry (Wedge Dart)
     const w = ship.width;
     const h = ship.height;
 
-    ctx.shadowColor = '#06b6d4';
-    ctx.shadowBlur = 12;
-    ctx.lineWidth = 2.5;
-    ctx.strokeStyle = '#38bdf8';
-    ctx.fillStyle = '#0f172a';
+    // Palette & Styling:
+    // When in Ethereal Ghost Mode: pulsing cyan neon border + reduced opacity ensuring distinct silhouette!
+    let hullStroke = '#38bdf8';
+    let hullFill = '#0f172a';
+    let hullGlow = '#06b6d4';
+    let cockpitColor = '#06b6d4';
+    let hullLineWidth = 2.5;
+
+    if (isEthereal) {
+      const cyanPulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.009);
+      hullStroke = '#00f0ff';
+      hullFill = 'rgba(6, 182, 212, 0.22)';
+      hullGlow = '#00f0ff';
+      cockpitColor = '#00f0ff';
+      hullLineWidth = 2.8;
+      ctx.shadowBlur = 14 + cyanPulse * 14;
+    } else {
+      ctx.shadowBlur = 12;
+    }
+
+    ctx.shadowColor = hullGlow;
+    ctx.lineWidth = hullLineWidth;
+    ctx.strokeStyle = hullStroke;
+    ctx.fillStyle = hullFill;
 
     // Main Hull Polygon
     ctx.beginPath();
@@ -1469,9 +1598,9 @@ export class GameRenderer {
     ctx.stroke();
 
     // Center Cockpit Canopy
-    ctx.fillStyle = '#06b6d4';
-    ctx.shadowColor = '#06b6d4';
-    ctx.shadowBlur = 8;
+    ctx.fillStyle = cockpitColor;
+    ctx.shadowColor = cockpitColor;
+    ctx.shadowBlur = 10;
     ctx.beginPath();
     ctx.ellipse(0, -h * 0.15, 4.5, 9, 0, 0, Math.PI * 2);
     ctx.fill();
@@ -1481,7 +1610,7 @@ export class GameRenderer {
     const rightPodX = w * 0.32;
     const podY = h * 0.38;
 
-    ctx.fillStyle = '#64748b';
+    ctx.fillStyle = isEthereal ? '#0284c7' : '#64748b';
     ctx.fillRect(leftPodX - 3, podY, 6, 5);
     ctx.fillRect(rightPodX - 3, podY, 6, 5);
 
@@ -1584,33 +1713,51 @@ export class GameRenderer {
 
   private renderAudioSpectrumMini(audioFreq: AudioFrequencyData): void {
     const ctx = this.ctx;
-    const barCount = 16;
-    const barWidth = 4;
-    const barGap = 3;
+    const isMobilePortrait = this.width < 520;
+
+    const barCount = isMobilePortrait ? 8 : (this.width < 720 ? 10 : 16);
+    const barWidth = isMobilePortrait ? 3 : 4;
+    const barGap = isMobilePortrait ? 2 : 3;
     const totalBarsWidth = barCount * barWidth + (barCount - 1) * barGap;
-    // Bottom-right corner of the centered HUD container (max-w-5xl), baseline-aligned
-    // with the velocity indicator row on the left side of the same container.
-    const containerW = Math.min(this.width, 1024); // mirrors max-w-5xl
-    const containerOffsetX = (this.width - containerW) / 2;
-    const startX = containerOffsetX + containerW - totalBarsWidth - 20;
-    const maxHeight = 32;
-    const startY = this.height - 20;
-    const segH = 3;
-    const segGap = 1.5;
+
+    // Position calculations:
+    // On mobile portrait, place in the bottom-right corner safely away from the bottom-left velocity gauge.
+    let startX: number;
+    let startY: number;
+    let maxHeight: number;
+
+    if (isMobilePortrait) {
+      startX = this.width - totalBarsWidth - 14;
+      maxHeight = 24;
+      startY = this.height - 12;
+    } else {
+      const containerW = Math.min(this.width, 1024);
+      const containerOffsetX = (this.width - containerW) / 2;
+      startX = containerOffsetX + containerW - totalBarsWidth - 20;
+      maxHeight = 32;
+      startY = this.height - 20;
+    }
+
+    const segH = isMobilePortrait ? 2.5 : 3;
+    const segGap = isMobilePortrait ? 1.2 : 1.5;
     const maxSegments = Math.floor(maxHeight / (segH + segGap));
 
     ctx.save();
     // Glass HUD chassis
-    ctx.fillStyle = 'rgba(10, 15, 30, 0.75)';
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+    ctx.fillStyle = 'rgba(10, 15, 30, 0.85)';
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
     ctx.lineWidth = 1;
-    ctx.fillRect(startX - 8, startY - maxHeight - 18, totalBarsWidth + 16, maxHeight + 26);
-    ctx.strokeRect(startX - 8, startY - maxHeight - 18, totalBarsWidth + 16, maxHeight + 26);
+    const padX = isMobilePortrait ? 6 : 8;
+    const padTop = isMobilePortrait ? 14 : 18;
+    const padBottom = isMobilePortrait ? 6 : 8;
+
+    ctx.fillRect(startX - padX, startY - maxHeight - padTop, totalBarsWidth + padX * 2, maxHeight + padTop + padBottom);
+    ctx.strokeRect(startX - padX, startY - maxHeight - padTop, totalBarsWidth + padX * 2, maxHeight + padTop + padBottom);
 
     // Header label
-    ctx.font = 'bold 8px Orbitron, monospace';
-    ctx.fillStyle = 'rgba(56, 189, 248, 0.8)';
-    ctx.fillText('HI-FI EQUALIZER', startX - 2, startY - maxHeight - 8);
+    ctx.font = isMobilePortrait ? 'bold 7px Orbitron, monospace' : 'bold 8px Orbitron, monospace';
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.85)';
+    ctx.fillText(isMobilePortrait ? 'HI-FI EQ' : 'HI-FI EQUALIZER', startX - 2, startY - maxHeight - (isMobilePortrait ? 5 : 8));
 
     const step = Math.max(1, Math.floor(audioFreq.frequencyArray.length / barCount));
     for (let i = 0; i < barCount; i++) {
@@ -1630,7 +1777,7 @@ export class GameRenderer {
           const ratio = s / maxSegments;
           ctx.fillStyle = ratio > 0.78 ? '#ef4444' : ratio > 0.50 ? '#f59e0b' : '#10b981';
           ctx.shadowColor = ctx.fillStyle;
-          ctx.shadowBlur = ratio > 0.78 ? 6 : 2;
+          ctx.shadowBlur = ratio > 0.78 ? 5 : 2;
         } else {
           // Dim inactive LED segment
           ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';

@@ -12,7 +12,8 @@ import {
   DifficultyLevel,
   TrackMetadata,
   GameOptions,
-  GameStats
+  GameStats,
+  PowerUpType
 } from './types/game';
 import { TitleMenu } from './components/TitleMenu';
 import { GameHUD } from './components/GameHUD';
@@ -291,8 +292,17 @@ export default function App() {
     newWorld.onPowerUpCollected = (type) => {
       audio.playPowerUpSfx(type);
       if (rendererRef.current) {
-        const color = type === 'SHIELD' ? '#38bdf8' : type === 'DAMPER' ? '#4ade80' : type === 'LOW_G' ? '#facc15' : type === 'INVULNERABLE' ? '#ff0055' : type === 'PULSE' ? '#00f0ff' : '#a855f7';
-        rendererRef.current.emitPowerUpCollect(newWorld.ship.x, newWorld.ship.y, color);
+        const colorMap: Record<PowerUpType, string> = {
+          SHIELD: '#00f0ff',
+          DAMPER: '#00ff88',
+          LOW_G: '#ffd700',
+          PULSE: '#06b6d4',
+          ETHEREAL: '#a855f7',
+          INVULNERABLE: '#ff0055',
+          CHRONO_DILATION: '#14b8a6',
+          SINGULARITY: '#c084fc'
+        };
+        rendererRef.current.emitPowerUpCollect(newWorld.ship.x, newWorld.ship.y, colorMap[type]);
       }
     };
 
@@ -449,9 +459,18 @@ export default function App() {
       renderer.resize();
     };
 
+    const handleOrientationChange = () => {
+      renderer.resize();
+      // Mobile Safari / Chrome sometimes update innerWidth/innerHeight after a slight delay
+      setTimeout(() => renderer.resize(), 100);
+      setTimeout(() => renderer.resize(), 300);
+    };
+
     window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleOrientationChange);
     return () => {
       window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleOrientationChange);
     };
   }, []);
 

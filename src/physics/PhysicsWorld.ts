@@ -27,7 +27,7 @@ export const DIFFICULTY_PRESETS: Record<DifficultyLevel, DifficultyConfig> = {
     defaultFlightAssist: true,
     laserDensity: 0.55,          // ~half the beams, far less frequent
     laserGateThreshold: 0.42,    // beam needs strong treble to fire
-    description: 'Canal muito largo, deformação suave (28%), gravidade reduzida (70%) e 1 escudo inicial.'
+    description: 'Canal muito largo, gravidade 70% e 1 escudo inicial. Equipado com Escudo de Fase, Low-G, Pulso Sónico, Modo Fantasma e Singularidade.'
   },
   PRO: {
     name: 'PRO',
@@ -40,7 +40,7 @@ export const DIFFICULTY_PRESETS: Record<DifficultyLevel, DifficultyConfig> = {
     defaultFlightAssist: false,
     laserDensity: 1.0,
     laserGateThreshold: 0.28,
-    description: 'Canal dinâmico equilibrado, deformação ajustada (48%), gravidade padrão e sem escudos.'
+    description: 'Canal dinâmico equilibrado e sem escudos. Desbloqueia o Amortecedor Sónico e a Distorção Temporal.'
   },
   EXTREME: {
     name: 'EXTREME',
@@ -53,7 +53,7 @@ export const DIFFICULTY_PRESETS: Record<DifficultyLevel, DifficultyConfig> = {
     defaultFlightAssist: false,
     laserDensity: 1.2,
     laserGateThreshold: 0.24,
-    description: 'Canal estreito, deformação forte (70%), gravidade 130% e Flight Assist desligado.'
+    description: 'Canal estreito, gravidade 130% e sem Flight Assist. Acesso exclusivo à Imortalidade Sónica.'
   }
 };
 
@@ -106,6 +106,8 @@ export interface ShipState {
   lowGActiveTimer: number;    // 5s duration
   etherealActiveTimer: number; // 0 = off, >0 = ghost mode
   sonicPulseNotifyTimer: number; // brief HUD notification after a Sonic Pulse pickup
+  chronoDilationTimer: number; // 5s duration (slows world/obstacles by 45%)
+  singularityNotifyTimer: number; // brief notification after Singularity EMP pickup
 }
 
 export interface TerrainVertex {
@@ -149,6 +151,8 @@ export class PhysicsWorld {
   // Expanding Sonic Pulse shockwave (from a PULSE power-up pickup): disarms laser
   // beams and destroys resonance mines inside its radius as it propagates.
   public sonicPulseWave: { x: number; y: number; r: number; speed: number; maxR: number } | null = null;
+  // Expanding Cosmic Singularity (from a SINGULARITY power-up pickup in EXTREME mode)
+  public singularityWave: { x: number; y: number; r: number; speed: number; maxR: number } | null = null;
   public laserGates: LaserGate[] = [];
 
   // Persistent continuous terrain phase accumulator (monotonic, eliminates audio jitter)
@@ -209,7 +213,9 @@ export class PhysicsWorld {
       reachedGoal: false,
       damperActiveTimer: 0,
       lowGActiveTimer: 0,
-      sonicPulseNotifyTimer: 0
+      sonicPulseNotifyTimer: 0,
+      chronoDilationTimer: 0,
+      singularityNotifyTimer: 0
     };
 
     this.stats = {
@@ -348,27 +354,37 @@ export class PhysicsWorld {
     const endSafeX = this.finishPortalX - 500;
     const playableRange = endSafeX - startSafeX;
 
-    // 1. Power-ups distribution (Shields, Dampers, Low-G) with distinct celestial palettes
-    const powerUpTypes: PowerUpType[] = ['SHIELD', 'DAMPER', 'LOW_G', 'INVULNERABLE', 'ETHEREAL', 'PULSE'];
+    // 1. Refined Power-up Distribution
+    // PRINCIPIANTE: Escudo, Low-G, Pulso, Fantasma e Singularidade
+    // PRO: Adiciona Amortecedor Sónico e Distorção Temporal
+    // EXTREME: Adiciona Imortalidade Sónica exclusiva
+    let powerUpTypes: PowerUpType[];
+    if (this.difficulty.name === 'PRINCIPIANTE') {
+      powerUpTypes = ['SHIELD', 'LOW_G', 'PULSE', 'ETHEREAL', 'SINGULARITY'];
+    } else if (this.difficulty.name === 'PRO') {
+      powerUpTypes = ['SHIELD', 'DAMPER', 'LOW_G', 'PULSE', 'ETHEREAL', 'CHRONO_DILATION', 'SINGULARITY'];
+    } else {
+      powerUpTypes = ['SHIELD', 'DAMPER', 'LOW_G', 'PULSE', 'ETHEREAL', 'INVULNERABLE', 'CHRONO_DILATION', 'SINGULARITY'];
+    }
     const totalPowerUps = Math.max(8, Math.floor(this.trackDuration / 11));
     
     for (let i = 0; i < totalPowerUps; i++) {
       const progress = (i + 0.5) / totalPowerUps;
-      // Seed-stable jitter positions each track's pickups differently per song,
-      // plus a small per-run random nudge so replays still differ.
       const seedJitter = (unit(this.trackSeed, 4000 + i * 11) - 0.5) * 320;
       const x = Math.min(
         endSafeX,
         Math.max(startSafeX, startSafeX + progress * playableRange + seedJitter + (Math.random() * 120 - 60))
       );
       const type = powerUpTypes[i % powerUpTypes.length];
-      const colors = {
-        SHIELD: '#00f0ff', // Electric Cyan
-        DAMPER: '#00ff88', // Mint
-        LOW_G: '#ffd700',   // Gold
-        INVULNERABLE: '#ff0055', // Crimson / Immortality
-        ETHEREAL: '#a855f7',     // Violet / Ghost
-        PULSE: '#00f0ff'         // Cyan / Sonic Shockwave
+      const colors: Record<PowerUpType, string> = {
+        SHIELD: '#00f0ff',           // Electric Cyan
+        DAMPER: '#00ff88',           // Mint Green
+        LOW_G: '#ffd700',            // Gold
+        PULSE: '#06b6d4',            // Deep Cyan Pulse
+        ETHEREAL: '#a855f7',         // Violet Ghost
+        INVULNERABLE: '#ff0055',     // Crimson / Hot Pink
+        CHRONO_DILATION: '#14b8a6',  // Teal Chrono-Matrix
+        SINGULARITY: '#c084fc'       // Deep Cosmic Purple
       };
 
       const terrain = this.getTerrainAt(x);
@@ -404,58 +420,34 @@ export class PhysicsWorld {
       );
       const terrain = this.getTerrainAt(x);
       const corridorHeight = terrain.floorY - terrain.ceilY;
-      const patternChoice = (i + (this.trackSeed % 4)) % 4;
+      const patternChoice = (i + (this.trackSeed % 3)) % 3;
 
       if (patternChoice === 0) {
-        // A) EJECTOR BLOCK (Bloco de impacto pneumático que emerge da parede no compasso musical)
+        // A) PILAR EQUALIZADOR VU (Equalizer VU Tower: coluna de barras LED retro que dispara ao ritmo dos graves)
         const isCeil = (i + (this.trackSeed % 2)) % 2 === 0;
         this.obstacles.push({
-          id: `ejector-${i}`,
-          type: 'EJECTOR_BLOCK',
+          id: `vu-${i}`,
+          type: 'VU_TOWER',
           x,
           y: isCeil ? terrain.ceilY : terrain.floorY,
           baseY: isCeil ? terrain.ceilY : terrain.floorY,
-          width: 76,
+          width: 58,
           height: 36,
           angle: 0,
           baseAngle: 0,
           rotSpeed: 0,
-          band: 'mids',
-          color: '#ff0055', // Neon Rose / Crimson
-          energyThreshold: 0.28,
+          band: 'bass',
+          color: '#10b981', // Verde base / Âmbar / Vermelho topo
+          energyThreshold: 0.22,
           active: false,
           isCeiling: isCeil,
-          extension: 0.0,
-          maxExtensionHeight: Math.min(140, corridorHeight * 0.55),
+          extension: 0.08,
+          maxExtensionHeight: Math.min(130, corridorHeight * 0.46),
           warningPhase: 0.0,
-          beatTriggerTimer: (i * 1.4) % 4.0
+          beatTriggerTimer: (i * 1.5) % 3.0
         });
       } else if (patternChoice === 1) {
-        // B) SONIC SPIKE (Picos néon cristalinos que saltam do teto ou chão ao som dos graves)
-        const isCeil = (i + (this.trackSeed % 2)) % 2 !== 0;
-        this.obstacles.push({
-          id: `spike-${i}`,
-          type: 'SONIC_SPIKE',
-          x,
-          y: isCeil ? terrain.ceilY : terrain.floorY,
-          baseY: isCeil ? terrain.ceilY : terrain.floorY,
-          width: 52,
-          height: 75,
-          angle: 0,
-          baseAngle: 0,
-          rotSpeed: 0,
-          band: 'bass',
-          color: '#c026d3', // Searing Fuchsia / Electric Purple
-          energyThreshold: 0.30,
-          active: false,
-          isCeiling: isCeil,
-          extension: 0.15,
-          maxExtensionHeight: Math.min(94, corridorHeight * 0.34),
-          warningPhase: 0.0,
-          beatTriggerTimer: (i * 1.8) % 3.0
-        });
-      } else if (patternChoice === 2) {
-        // C) RESONANCE MINE (Mina flutuante com anéis orbitais e pulso sonoro)
+        // B) RESONANCE MINE (Mina flutuante com anéis orbitais e pulso sonoro)
         const midY = (terrain.ceilY + terrain.floorY) / 2 + (Math.sin(i * 2.2) * 35);
         this.obstacles.push({
           id: `mine-${i}`,
@@ -588,18 +580,30 @@ export class PhysicsWorld {
     if (this.ship.sonicPulseNotifyTimer > 0) {
       this.ship.sonicPulseNotifyTimer -= safeDt;
     }
+    if (this.ship.chronoDilationTimer > 0) {
+      this.ship.chronoDilationTimer -= safeDt;
+    }
+    if (this.ship.singularityNotifyTimer > 0) {
+      this.ship.singularityNotifyTimer -= safeDt;
+    }
+
+    // 0.4 Cosmic Singularity wave propagation (EXTREME tier)
+    this.updateSingularity(safeDt);
 
     // 0.5 Sonic Pulse shockwave propagation (disarms beams & mines)
     this.updateSonicPulse(safeDt);
 
+    // Time Dilation scale: slows terrain & obstacles down to 55% during Chrono Dilation
+    const timeScale = this.ship.chronoDilationTimer > 0 ? 0.55 : 1.0;
+
     // 1. Audio-Reactive Terrain Update (FFT with smooth phase accumulation)
-    this.updateAudioTerrain(audioFreq, safeDt);
+    this.updateAudioTerrain(audioFreq, safeDt * timeScale);
 
     // 2. Flight Dynamics & Dual-Thruster Physics
-    this.applyThrusterForces(leftPressed, rightPressed, safeDt);
+    this.applyThrusterForces(leftPressed, rightPressed, safeDt, audioFreq);
 
     // 3. Update Obstacles & Laser Gates
-    this.updateObstacles(audioFreq, safeDt);
+    this.updateObstacles(audioFreq, safeDt * timeScale);
 
     // 4. Update Power-up items & Collisions
     this.updatePowerUps(safeDt, audioFreq);
@@ -665,7 +669,7 @@ export class PhysicsWorld {
     }
   }
 
-  private applyThrusterForces(leftPressed: boolean, rightPressed: boolean, dt: number): void {
+  private applyThrusterForces(leftPressed: boolean, rightPressed: boolean, dt: number, _audioFreq?: AudioFrequencyData): void {
     // Ramp thruster power smoothly for sound & visuals
     const targetL = leftPressed ? 1.0 : 0.0;
     const targetR = rightPressed ? 1.0 : 0.0;
@@ -737,11 +741,6 @@ export class PhysicsWorld {
     this.ship.angle = Math.max(-maxAngle, Math.min(maxAngle, this.ship.angle + this.ship.angularVelocity * dt));
 
     // Lateral Drift & Compensation:
-    // Compensation ON (default): true strategic hover — NO forced forward cruise.
-    // The ship holds its horizontal position; it only advances when piloted
-    // (nose-up thrust) and Atmospheric damping brings residual speed to ~0.
-    // Compensation OFF: forced auto-cruise to the right PLUS a slight rightward
-    // drift pull (+46 px/s²) that must be fought with nose-down tilt.
     if (this.driftCompensationEnabled) {
       // Hold station — nothing pushes the ship sideways on its own.
     } else {
@@ -749,8 +748,8 @@ export class PhysicsWorld {
       if (this.ship.vx < this.baseForwardVelocity) {
         this.ship.vx += forwardAcceleration * dt;
       }
-      this.ship.vx += 46 * dt; // slight rightward drift (overcome by tilting the nose down)
-      this.ship.vx = Math.min(this.ship.vx, this.baseForwardVelocity * 1.35); // hard cap for fairness
+      this.ship.vx += 46 * dt; // slight rightward drift
+      this.ship.vx = Math.min(this.ship.vx, this.baseForwardVelocity * 1.35);
     }
 
     // Update positions
@@ -783,38 +782,23 @@ export class PhysicsWorld {
 
       const terrain = this.getTerrainAt(obs.x);
 
-      if (obs.type === 'EJECTOR_BLOCK') {
-        // Blocks thrust out on musical beats / mids energy
+      if (obs.type === 'VU_TOWER') {
+        // Equalizer VU pillars: dynamic, smooth audio response with fast attack and natural decay
         obs.beatTriggerTimer += dt;
         obs.y = obs.isCeiling ? terrain.ceilY : terrain.floorY;
 
-        // Periodic trigger + musical energy override
-        const isTriggered = (obs.beatTriggerTimer % 3.0 < 1.3) || (audioFreq.mids > obs.energyThreshold) || audioFreq.isBeat;
-        
-        if (isTriggered) {
-          // Rapid pneumatic thrust outwards
-          obs.extension += (1.0 - obs.extension) * 0.32;
-          obs.warningPhase = Math.min(1.0, obs.warningPhase + dt * 6.0);
-          obs.active = obs.extension > 0.15;
-        } else {
-          // Smooth hydraulic retraction back into wall
-          obs.extension += (0.0 - obs.extension) * 0.10;
-          obs.warningPhase = Math.max(0.0, obs.warningPhase - dt * 3.5);
-          obs.active = obs.extension > 0.15;
-        }
-      } else if (obs.type === 'SONIC_SPIKE') {
-        // Sonic spikes burst out on bass pulses and drops
-        obs.beatTriggerTimer += dt;
-        obs.y = obs.isCeiling ? terrain.ceilY : terrain.floorY;
+        const rawBass = Math.max(0, audioFreq.bass - 0.20) / 0.80;
+        const beatPunch = audioFreq.isBeat ? 0.38 + (audioFreq.beatPulse || 0) * 0.42 : 0;
+        const targetExt = Math.min(1.0, Math.max(0.06, rawBass * 0.80 + beatPunch));
 
-        const isBassDrop = audioFreq.bass > obs.energyThreshold || audioFreq.isBeat;
-        if (isBassDrop) {
-          obs.extension += (1.0 - obs.extension) * 0.45;
-          obs.active = true;
+        if (targetExt > obs.extension) {
+          // Fast attack when bass kick lands
+          obs.extension += (targetExt - obs.extension) * Math.min(1.0, 16.0 * dt);
         } else {
-          obs.extension += (0.18 - obs.extension) * 0.12;
-          obs.active = obs.extension > 0.22;
+          // Smooth analog VU meter ballistics release
+          obs.extension += (targetExt - obs.extension) * Math.min(1.0, 5.0 * dt);
         }
+        obs.active = obs.extension > 0.30;
       } else if (obs.type === 'RESONANCE_MINE') {
         // Floating resonance mines expand & contract and drift in rhythmic orbits
         obs.beatTriggerTimer += dt;
@@ -866,6 +850,36 @@ export class PhysicsWorld {
       const baseHalf = Math.max(26, Math.min(60, corridorH * 0.14));
       const halfFactor = 0.82 + 0.26 * audioFreq.bass + 0.10 * audioFreq.energy;
       laser.beamHalf = baseHalf * halfFactor;
+    }
+  }
+
+  /**
+   * Expanding Cosmic Singularity (from a SINGULARITY power-up pickup in EXTREME mode):
+   * Screen-wide cosmic pulse that sweeps outward, neutralizing laser curtains and
+   * all obstacle platforms in view.
+   */
+  private updateSingularity(dt: number): void {
+    if (!this.singularityWave) return;
+    const wave = this.singularityWave;
+    wave.r += wave.speed * dt;
+
+    for (const laser of this.laserGates) {
+      const dx = Math.abs(laser.x - wave.x);
+      if (dx <= wave.r) {
+        laser.rearmTimer = 8.0;
+      }
+    }
+
+    for (const ob of this.obstacles) {
+      if (ob.disabled) continue;
+      const d = Math.hypot(ob.x - wave.x, ob.y - wave.y);
+      if (d <= wave.r) {
+        ob.disabled = true;
+      }
+    }
+
+    if (wave.r >= wave.maxR) {
+      this.singularityWave = null;
     }
   }
 
@@ -932,13 +946,17 @@ export class PhysicsWorld {
         } else if (p.type === 'LOW_G') {
           this.ship.lowGActiveTimer = 5.0;  // 5s duration
         } else if (p.type === 'INVULNERABLE') {
-          this.ship.invulnerableTime = 3.0; // 3 seconds invulnerability
+          this.ship.invulnerableTime = 3.5; // 3.5 seconds invulnerability
         } else if (p.type === 'ETHEREAL') {
           this.ship.etherealActiveTimer = 5.0; // 5 seconds ghost mode
         } else if (p.type === 'PULSE') {
-          // Sonic Pulse: one-shot expanding shockwave from the pickup point
           this.sonicPulseWave = { x: this.ship.x, y: this.ship.y, r: 26, speed: 620, maxR: 520 };
           this.ship.sonicPulseNotifyTimer = 3.0;
+        } else if (p.type === 'CHRONO_DILATION') {
+          this.ship.chronoDilationTimer = 5.0; // 5s slow-motion matrix
+        } else if (p.type === 'SINGULARITY') {
+          this.singularityWave = { x: this.ship.x, y: this.ship.y, r: 20, speed: 1100, maxR: 1200 };
+          this.ship.singularityNotifyTimer = 3.0;
         }
 
         if (this.onPowerUpCollected) {
@@ -981,44 +999,21 @@ export class PhysicsWorld {
       if (obs.disabled) continue;
       if (Math.abs(obs.x - this.ship.x) > 120) continue;
 
-      if (obs.type === 'EJECTOR_BLOCK') {
-        if (!obs.active) continue;
-        const currentReach = obs.maxExtensionHeight * obs.extension;
-        if (currentReach < 10) continue;
-
-        const left = obs.x - obs.width / 2;
-        const right = obs.x + obs.width / 2;
-
-        if (this.ship.x + shipRadius >= left && this.ship.x - shipRadius <= right) {
-          if (obs.isCeiling) {
-            const blockBottom = terrain.ceilY + currentReach;
-            if (this.ship.y - shipRadius <= blockBottom) {
-              this.handleCollision('OBSTACLE', 0, 1);
-              return;
-            }
-          } else {
-            const blockTop = terrain.floorY - currentReach;
-            if (this.ship.y + shipRadius >= blockTop) {
-              this.handleCollision('OBSTACLE', 0, -1);
-              return;
-            }
-          }
-        }
-      } else if (obs.type === 'SONIC_SPIKE') {
-        const spikeReach = obs.maxExtensionHeight * obs.extension;
-        if (spikeReach < 14) continue;
+      if (obs.type === 'VU_TOWER') {
+        const reach = obs.maxExtensionHeight * obs.extension;
+        if (reach < 10) continue;
 
         const dx = Math.abs(this.ship.x - obs.x);
-        if (dx < shipRadius + obs.width * 0.4) {
+        if (dx < shipRadius + obs.width * 0.45) {
           if (obs.isCeiling) {
-            const spikeTipY = terrain.ceilY + spikeReach;
-            if (this.ship.y - shipRadius <= spikeTipY) {
+            const towerTipY = terrain.ceilY + reach;
+            if (this.ship.y - shipRadius <= towerTipY) {
               this.handleCollision('OBSTACLE', 0, 1);
               return;
             }
           } else {
-            const spikeTipY = terrain.floorY - spikeReach;
-            if (this.ship.y + shipRadius >= spikeTipY) {
+            const towerTipY = terrain.floorY - reach;
+            if (this.ship.y + shipRadius >= towerTipY) {
               this.handleCollision('OBSTACLE', 0, -1);
               return;
             }

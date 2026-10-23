@@ -4,7 +4,7 @@
  * local track decoding, and continuous sound effects.
  */
 
-import { AudioFrequencyData, TrackMetadata } from '../types/game';
+import { AudioFrequencyData, TrackMetadata, PowerUpType } from '../types/game';
 
 export class AudioEngine {
   private ctx: AudioContext | null = null;
@@ -796,7 +796,7 @@ export class AudioEngine {
     osc.stop(now + 0.08);
   }
 
-  public playPowerUpSfx(type: 'SHIELD' | 'DAMPER' | 'LOW_G' | 'INVULNERABLE' | 'ETHEREAL' | 'PULSE'): void {
+  public playPowerUpSfx(type: PowerUpType): void {
     if (!this.ctx || !this.sfxGain) return;
     const now = this.ctx.currentTime;
 
@@ -828,12 +828,41 @@ export class AudioEngine {
       return;
     }
 
-    const chords = {
+    if (type === 'SINGULARITY') {
+      // Cosmic Singularity: deep vacuum suck sweep down to 45Hz followed by an explosive sub-bass boom
+      const sweep = this.ctx.createOscillator();
+      const sweepGain = this.ctx.createGain();
+      sweep.type = 'sawtooth';
+      sweep.frequency.setValueAtTime(650, now);
+      sweep.frequency.exponentialRampToValueAtTime(45, now + 0.32);
+      sweepGain.gain.setValueAtTime(0.35, now);
+      sweepGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      sweep.connect(sweepGain);
+      sweepGain.connect(this.sfxGain);
+      sweep.start(now);
+      sweep.stop(now + 0.38);
+
+      const boom = this.ctx.createOscillator();
+      const boomGain = this.ctx.createGain();
+      boom.type = 'sine';
+      boom.frequency.setValueAtTime(140, now + 0.12);
+      boom.frequency.exponentialRampToValueAtTime(28, now + 0.7);
+      boomGain.gain.setValueAtTime(0.6, now + 0.12);
+      boomGain.gain.exponentialRampToValueAtTime(0.001, now + 0.75);
+      boom.connect(boomGain);
+      boomGain.connect(this.sfxGain);
+      boom.start(now + 0.12);
+      boom.stop(now + 0.78);
+      return;
+    }
+
+    const chords: Record<Exclude<PowerUpType, 'PULSE' | 'SINGULARITY'>, number[]> = {
       SHIELD: [523.25, 659.25, 783.99, 1046.50], // C5, E5, G5, C6 (Crystal blue)
       DAMPER: [440.0, 554.37, 659.25, 880.0],    // A4, C#5, E5, A5 (Harmonic green)
       LOW_G: [349.23, 440.0, 523.25, 698.46],     // F4, A4, C5, F5 (Float yellow)
-      INVULNERABLE: [293.66, 329.63, 392.00, 523.25], // D#4, F#4, A4, D5 (Crimson/Immortal thud)
-      ETHEREAL: [466.16, 523.25, 587.33, 659.25]     // F#4, G4, A4, E5 (Ghostly airy)
+      INVULNERABLE: [293.66, 329.63, 392.00, 523.25], // D#4, F#4, A4, D5 (Crimson/Immortal neon thud)
+      ETHEREAL: [466.16, 523.25, 587.33, 659.25],     // F#4, G4, A4, E5 (Ghostly airy)
+      CHRONO_DILATION: [329.63, 493.88, 659.25, 987.77] // E4, B4, E5, B5 (Time-warp harmonics)
     };
 
     const notes = chords[type];

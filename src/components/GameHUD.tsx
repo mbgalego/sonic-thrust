@@ -12,7 +12,9 @@ import {
   Zap,
   Activity,
   Maximize,
-  Minimize
+  Minimize,
+  Clock,
+  Radio
 } from 'lucide-react';
 import { GameStats, DifficultyLevel } from '../types/game';
 import { ShipState } from '../physics/PhysicsWorld';
@@ -71,68 +73,68 @@ export const GameHUD: React.FC<GameHUDProps> = ({
   const speedKmh = Math.round(Math.sqrt(ship.vx * ship.vx + ship.vy * ship.vy) * 0.7);
 
   return (
-    <div className="absolute inset-0 z-20 pointer-events-none flex flex-col justify-between p-3 md:p-6 select-none">
+    <div className="absolute inset-0 z-20 pointer-events-none flex flex-col justify-between p-2 sm:p-3 md:p-6 select-none">
       
       {/* Top Stack: HUD bar → countdown → power-up notifications */}
-      <div className="flex flex-col items-center w-full gap-2">
+      <div className="flex flex-col items-center w-full gap-1.5 sm:gap-2">
 
       {/* Top Bar: Music Progress, Distance to Finish, Pause & Fullscreen Buttons */}
-      <header className="flex flex-col gap-2 max-w-5xl w-full mx-auto">
-        <div className="flex items-center justify-between gap-3 text-xs font-mono">
+      <header className="flex flex-col gap-1.5 sm:gap-2 max-w-5xl w-full mx-auto">
+        <div className="flex items-center justify-between gap-2 sm:gap-3 text-xs font-mono">
           
           {/* Track and Difficulty cluster */}
-          <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 pointer-events-auto">
-            <Activity className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-            <span className="font-orbitron font-semibold text-white truncate max-w-[150px] md:max-w-[260px]">
+          <div className="flex items-center gap-1.5 sm:gap-2 bg-black/60 backdrop-blur-md px-2.5 sm:px-3 py-1.5 rounded-lg border border-white/10 pointer-events-auto">
+            <Activity className="w-3.5 h-3.5 text-cyan-400 animate-pulse shrink-0" />
+            <span className="font-orbitron font-semibold text-white truncate max-w-[110px] sm:max-w-[180px] md:max-w-[260px] text-[11px] sm:text-xs">
               {trackTitle}
             </span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-500/30 uppercase font-bold">
+            <span className="text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-500/30 uppercase font-bold">
               {difficulty}
             </span>
           </div>
 
           {/* Top Controls Cluster: Fullscreen & Pause Buttons */}
-          <div className="flex items-center gap-2 pointer-events-auto">
+          <div className="flex items-center gap-1.5 sm:gap-2 pointer-events-auto">
             <button
               onClick={toggleFullscreen}
-              className="bg-black/60 hover:bg-slate-900 border border-white/20 hover:border-cyan-400 text-white p-2 rounded-lg transition cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-sm"
+              className="bg-black/60 hover:bg-slate-900 border border-white/20 hover:border-cyan-400 text-white p-1.5 sm:p-2 rounded-lg transition cursor-pointer flex items-center gap-1 active:scale-95 shadow-sm"
               title={isFullscreen ? 'Sair de Ecrã Inteiro (F11)' : 'Ecrã Inteiro (F11)'}
             >
               {isFullscreen ? (
-                <Minimize className="w-4 h-4 text-cyan-400" />
+                <Minimize className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-cyan-400" />
               ) : (
-                <Maximize className="w-4 h-4 text-cyan-400" />
+                <Maximize className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-cyan-400" />
               )}
             </button>
 
             <button
               onClick={onPause}
-              className="bg-black/60 hover:bg-slate-900 border border-white/20 hover:border-cyan-400 text-white p-2 rounded-lg transition cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-sm"
+              className="bg-black/60 hover:bg-slate-900 border border-white/20 hover:border-cyan-400 text-white p-1.5 sm:p-2 rounded-lg transition cursor-pointer flex items-center gap-1 active:scale-95 shadow-sm"
               title="Pausar jogo (ESC)"
             >
-              <Pause className="w-4 h-4 text-cyan-400" />
+              <Pause className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-cyan-400" />
               <span className="hidden sm:inline font-orbitron text-xs">PAUSA</span>
             </button>
           </div>
         </div>
 
         {/* Global Progress Bar towards Goal Portal */}
-        <div className="relative w-full h-2.5 bg-slate-900/80 rounded-full border border-white/15 overflow-hidden backdrop-blur-sm">
+        <div className="relative w-full h-2 sm:h-2.5 bg-slate-900/80 rounded-full border border-white/15 overflow-hidden backdrop-blur-sm">
           <div
             className="h-full bg-gradient-to-r from-cyan-500 via-sky-400 to-fuchsia-500 transition-all duration-150 rounded-full shadow-[0_0_12px_rgba(6,182,212,0.8)]"
             style={{ width: `${Math.max(1, Math.min(100, stats.percentCompleted))}%` }}
           />
           {/* Finish Portal Pin marker */}
-          <div className="absolute right-0 top-0 bottom-0 w-3 bg-fuchsia-400 shadow-[0_0_8px_rgba(236,72,153,1)]" />
+          <div className="absolute right-0 top-0 bottom-0 w-2.5 sm:w-3 bg-fuchsia-400 shadow-[0_0_8px_rgba(236,72,153,1)]" />
         </div>
       </header>
 
-      {/* Big centered remaining-time display — close under the HUD bar */}
-      <div className="flex flex-col items-center gap-0.5 pointer-events-none select-none">
-        <span className={`text-[10px] font-mono tracking-[0.3em] uppercase transition-colors duration-300 ${
+      {/* Big centered remaining-time display — sleek & responsive */}
+      <div className="flex flex-col items-center gap-0 pointer-events-none select-none">
+        <span className={`text-[9px] sm:text-[10px] font-mono tracking-[0.25em] sm:tracking-[0.3em] uppercase transition-colors duration-300 ${
           isCountCritical ? 'text-rose-400/90' : isCountWarning ? 'text-amber-400/80' : 'text-cyan-400/70'
         }`}>Tempo Restante</span>
-        <span className={`text-5xl md:text-7xl font-black font-orbitron tracking-tighter whitespace-nowrap leading-none transition-colors duration-300 ${
+        <span className={`text-3xl sm:text-5xl md:text-6xl font-black font-orbitron tracking-tighter whitespace-nowrap leading-none transition-colors duration-300 ${
           isCountCritical
             ? 'text-rose-400 drop-shadow-[0_0_22px_rgba(244,63,94,0.95)] animate-pulse'
             : isCountWarning
@@ -184,6 +186,20 @@ export const GameHUD: React.FC<GameHUDProps> = ({
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-950/80 border border-cyan-400/50 text-cyan-300 font-mono text-xs shadow-lg shadow-cyan-950/50 animate-pulse">
             <Zap className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
             <span className="drop-shadow-[0_0_6px_rgba(0,240,255,0.8)]">PULSO SÓNICO!</span>
+          </div>
+        )}
+
+        {ship.chronoDilationTimer > 0 && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-teal-950/80 border border-teal-400/50 text-teal-300 font-mono text-xs shadow-lg shadow-teal-950/50 animate-pulse">
+            <Clock className="w-3.5 h-3.5 text-teal-400 animate-spin" />
+            <span className="drop-shadow-[0_0_6px_rgba(20,184,166,0.8)]">DISTORÇÃO TEMPORAL: {ship.chronoDilationTimer.toFixed(1)}s</span>
+          </div>
+        )}
+
+        {ship.singularityNotifyTimer > 0 && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-950/90 border border-purple-400/60 text-purple-300 font-mono text-xs shadow-lg shadow-purple-950/60 animate-pulse">
+            <Radio className="w-3.5 h-3.5 text-purple-400 animate-spin" />
+            <span className="drop-shadow-[0_0_8px_rgba(192,132,252,0.9)]">SINGULARIDADE DE RESSONÂNCIA!</span>
           </div>
         )}
       </div>

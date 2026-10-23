@@ -24,8 +24,8 @@ export const PauseModal: React.FC<PauseModalProps> = ({
   allowFlightAssist
 }) => {
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-      <div className="max-w-md w-full bg-slate-950 border border-cyan-500/40 rounded-2xl p-6 shadow-2xl space-y-6">
+    <div className="fixed inset-0 z-40 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+      <div className="max-w-md w-full max-h-[94vh] overflow-y-auto my-auto bg-slate-950 border border-cyan-500/40 rounded-2xl p-4 sm:p-6 shadow-2xl space-y-3 sm:space-y-6">
         
         {/* Header */}
         <div className="text-center space-y-1">
