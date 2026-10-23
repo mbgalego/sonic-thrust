@@ -94,7 +94,7 @@ export class AudioEngine {
     // Analyser Node for Real-time FFT connected PRE-FADER
     this.analyser = this.ctx.createAnalyser();
     this.analyser.fftSize = 1024;
-    this.analyser.smoothingTimeConstant = 0.65; // Snappy graphic equalizer response
+    this.analyser.smoothingTimeConstant = 0.40; // Faster response for more dynamic equalizer movement
     this.analyser.minDecibels = -90;
     this.analyser.maxDecibels = -10;
     this.musicPreGain.connect(this.analyser);
