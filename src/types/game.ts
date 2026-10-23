@@ -32,7 +32,15 @@ export interface TrackMetadata {
   audioBuffer?: AudioBuffer;
 }
 
-export type PowerUpType = 'SHIELD' | 'DAMPER' | 'LOW_G' | 'INVULNERABLE' | 'ETHEREAL' | 'PULSE';
+export type PowerUpType = 
+  | 'SHIELD' 
+  | 'DAMPER' 
+  | 'LOW_G' 
+  | 'PULSE' 
+  | 'ETHEREAL' 
+  | 'INVULNERABLE' 
+  | 'CHRONO_DILATION' 
+  | 'SINGULARITY';
 
 export interface PowerUpItem {
   id: string;
@@ -49,8 +57,7 @@ export interface PowerUpItem {
 }
 
 export type ObstacleType = 
-  | 'EJECTOR_BLOCK'    // Blocks emerging from the walls on music beats
-  | 'SONIC_SPIKE'      // Searing stalactite / stalagmite spikes from ceiling/floor
+  | 'VU_TOWER'        // Retro-LED Equalizer VU Pillar rising from floor or ceiling on bass kicks
   | 'RESONANCE_MINE'   // Floating pulsing geometric mines
   | 'ROTATING_BLADE'   // Rotating neon hazard cross
   | 'LASER_CURTAIN';   // Oscillating electric plasma gate

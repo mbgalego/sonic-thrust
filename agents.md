@@ -65,6 +65,14 @@
 ---
 
 ## 3. Changelog & Recent Fixes
+- **v1.11.0 (Dynamic Mobile Detection & Adaptive Play Area Zoom)**:
+  1. *Dynamic Mobile Viewport Detection*: Dynamically identifies smartphone and small-screen devices across touch points, user-agent indicators, and aspect ratios (`isPortrait` vs `isLandscapeMobile`), reacting immediately to window resize and screen orientation flips (`resize` + `orientationchange` with delayed reflow passes).
+  2. *Adaptive Camera Zoom on Play Area*:
+     - **Mobile Portrait** ($w < h$, e.g. 390×844): Dynamically zooms out (`targetZoom` ~0.55–0.82) to guarantee a full ~640px of visible world runway ahead. Anchors the ship at 18% of screen width, leaving over 80% as reaction runway for upcoming bends and hazards.
+     - **Mobile Landscape** ($h < 560$px, e.g. 844×390): Automatically calculates zoom based on the active corridor and outer bedrock equalizer ribbons (`targetZoom = h / desiredPlayHeight` ~0.60–0.88), ensuring ceiling, floor, and bedrock waves fit comfortably between HUD clusters without clipping.
+     - **Desktop** ($w \ge 900, h \ge 600$): Preserves native crisp 1:1 scale and 28% ship offset.
+  3. *Corridor-Centric Vertical Camera Tracking*: Smoothly leads the corridor center (70%) and ship position (30%), naturally anticipating roller-coaster climbs and dips so terrain boundaries never clip off-screen.
+  4. *Responsive HUD Footprint*: Reduced countdown typography on mobile (`text-3xl sm:text-5xl md:text-6xl`) and container padding (`p-2 sm:p-3 md:p-6`), maximizing the visible play area.
 - **v1.10.0 (Sonic Pulse Power-up, Clean HUD & Refined Beams)**:
   1. *Sonic Pulse Power-up (PULSE, cyan)*: New one-shot power-up — on pickup an **expanding shockwave ring** erupts around the ship (small, local — not full-screen): double cyan rings + core flare in the game world, a sub-bass thump + sonar-chirp sfx, and a brief "PULSO SÓNICO!" HUD notification. **Practical effect**: the wavefront **disarms every laser energy beam it crosses** (beam stays dark for 5.5s recharge then re-arms) and **permanently disables resonance mines** inside the envelope. Gives real strategic counter-play against tunnel-beam gauntlets.
   2. *Beam Polish (bright but rarer)*: Laser energy beams are ~2x brighter (aura/body/spine/granulation alphas raised) while spawn density and firing threshold are now **difficulty-scaled**: Principiante 0.55× density + treble gate 0.42 (clearly rarer), Pro 1.0×/0.28, Extreme 1.2×/0.24.

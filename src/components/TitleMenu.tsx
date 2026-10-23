@@ -11,13 +11,12 @@ import {
   Sliders,
   Compass,
   AlertTriangle,
-  HelpCircle,
-  Zap,
   Music,
   CheckCircle2,
   Maximize,
   Minimize,
-  Activity
+  Activity,
+  BookOpen
 } from 'lucide-react';
 import {
   DifficultyLevel,
@@ -88,8 +87,18 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
       <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-fuchsia-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Top Bar Controls: Fullscreen Toggle */}
-      <div className="absolute top-4 right-4 md:top-6 md:right-8 z-40 flex items-center gap-2">
+      {/* Top Bar Controls: Guide Access & Fullscreen Toggle */}
+      <div className="absolute top-4 right-4 md:top-6 md:right-8 z-40 flex items-center gap-2.5">
+        <button
+          type="button"
+          onClick={() => setShowHelp(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-cyan-400/50 bg-cyan-950/70 hover:bg-cyan-900/80 hover:border-cyan-300 text-cyan-300 hover:text-white text-xs font-orbitron tracking-wider transition-all shadow-[0_0_12px_rgba(6,182,212,0.3)] cursor-pointer"
+          title="Abrir Manual do Piloto e Guia de Voo"
+        >
+          <BookOpen className="w-3.5 h-3.5 text-cyan-400" />
+          <span className="hidden sm:inline">Manual de Voo</span>
+        </button>
+
         <button
           type="button"
           onClick={toggleFullscreen}
@@ -110,10 +119,9 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
         </button>
       </div>
 
-      {/* Header & Bespoke Title Lockup */}
+      {/* Header & Bespoke Title Lockup (without lightning bolt before title) */}
       <header className="relative z-10 flex flex-col items-center justify-center text-center pt-2 pb-4">
-        <h1 className="text-4xl md:text-6xl font-black tracking-wider uppercase italic font-orbitron neon-text-cyan flex items-center justify-center gap-3">
-          <Zap className="w-9 h-9 md:w-12 md:h-12 text-cyan-400 stroke-[2.5]" />
+        <h1 className="text-4xl md:text-6xl font-black tracking-wider uppercase italic font-orbitron neon-text-cyan flex items-center justify-center">
           <span>SONIC <span className="text-fuchsia-400 neon-text-magenta">THRUST</span></span>
         </h1>
         <p className="text-gray-400 text-sm md:text-base max-w-xl mt-1 font-rajdhani">
@@ -362,24 +370,50 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
       </main>
 
       {/* Footer / Mission Start & Help CTAs */}
-      <footer className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-4 max-w-6xl w-full mx-auto pt-3 border-t border-white/10">
+      <footer className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-4 max-w-6xl w-full mx-auto pt-3 border-t border-white/10">
         <button
-          onClick={() => setShowHelp(!showHelp)}
-          className="text-xs text-gray-400 hover:text-white flex items-center gap-1.5 transition cursor-pointer font-mono"
+          type="button"
+          onClick={() => setShowHelp(true)}
+          className="px-4 py-2 rounded-xl bg-slate-900/90 border border-cyan-500/40 hover:border-cyan-400 text-cyan-300 hover:text-white flex items-center gap-2.5 transition cursor-pointer font-orbitron text-xs tracking-wider shadow-[0_0_12px_rgba(6,182,212,0.2)] hover:shadow-[0_0_18px_rgba(6,182,212,0.4)]"
         >
-          <HelpCircle className="w-4 h-4 text-cyan-400" />
-          <span>{showHelp ? 'Ocultar Guia' : 'Ver Guia de Controlos & Regra Zero Contact'}</span>
+          <BookOpen className="w-4 h-4 text-cyan-400" />
+          <span>MANUAL DE VOO & GUIA TÉCNICO</span>
         </button>
 
-        <div className="flex items-center gap-3">
-          <div className="hidden md:block text-right font-mono text-[11px] text-gray-400">
-            <div>[A] ou [←] Motor Esquerdo · [D] ou [→] Motor Direito</div>
-            <div className="text-cyan-400">[A+D] Subida Vertical · [ESC] Pausa</div>
+        {/* Flight instructions and Start Mission Button */}
+        <div className="flex flex-col sm:flex-row items-center gap-3.5 w-full md:w-auto justify-end">
+          {/* Sleek Cyber-Neon Flight Instructions Console */}
+          <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-slate-950/80 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.12)] font-mono text-xs">
+            {/* Left thruster keycap */}
+            <div className="flex items-center gap-1">
+              <span className="px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-400/60 text-cyan-300 font-bold font-orbitron text-[11px] shadow-[0_0_6px_rgba(6,182,212,0.35)]">A</span>
+              <span className="text-gray-500 text-[10px]">/</span>
+              <span className="px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-400/60 text-cyan-300 font-bold font-orbitron text-[11px] shadow-[0_0_6px_rgba(6,182,212,0.35)]">←</span>
+              <span className="text-[10px] text-cyan-300 font-sans ml-0.5 hidden lg:inline">Prop. Esq</span>
+            </div>
+            
+            <div className="w-px h-5 bg-white/15" />
+
+            {/* Vertical climb combo */}
+            <div className="flex items-center gap-1">
+              <span className="px-1.5 py-0.5 rounded bg-fuchsia-950/80 border border-fuchsia-400/60 text-fuchsia-300 font-bold font-orbitron text-[11px] shadow-[0_0_6px_rgba(236,72,153,0.35)]">A+D</span>
+              <span className="text-[10px] text-fuchsia-300 font-sans ml-0.5">Subida Vertical</span>
+            </div>
+
+            <div className="w-px h-5 bg-white/15" />
+
+            {/* Right thruster keycap */}
+            <div className="flex items-center gap-1">
+              <span className="px-1.5 py-0.5 rounded bg-pink-950/80 border border-pink-400/60 text-pink-300 font-bold font-orbitron text-[11px] shadow-[0_0_6px_rgba(244,63,94,0.35)]">D</span>
+              <span className="text-gray-500 text-[10px]">/</span>
+              <span className="px-1.5 py-0.5 rounded bg-pink-950/80 border border-pink-400/60 text-pink-300 font-bold font-orbitron text-[11px] shadow-[0_0_6px_rgba(244,63,94,0.35)]">→</span>
+              <span className="text-[10px] text-pink-300 font-sans ml-0.5 hidden lg:inline">Prop. Dir</span>
+            </div>
           </div>
 
           <button
             onClick={onStartMission}
-            className="px-8 py-3.5 rounded-lg bg-gradient-to-r from-cyan-500 via-sky-500 to-fuchsia-500 text-black font-orbitron font-black text-sm md:text-base tracking-widest uppercase shadow-lg shadow-cyan-500/40 hover:shadow-cyan-400/60 hover:scale-[1.02] active:scale-[0.98] transition cursor-pointer flex items-center gap-3"
+            className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 via-sky-500 to-fuchsia-500 text-black font-orbitron font-black text-sm md:text-base tracking-widest uppercase shadow-lg shadow-cyan-500/40 hover:shadow-cyan-400/60 hover:scale-[1.02] active:scale-[0.98] transition cursor-pointer flex items-center justify-center gap-3"
           >
             <Play className="w-5 h-5 fill-current" />
             <span>INICIAR MISSÃO</span>
@@ -387,63 +421,189 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
         </div>
       </footer>
 
-      {/* Help Modal Overlay */}
+      {/* Comprehensive Cyber-Neon Pilot Guide Modal */}
       {showHelp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-lg">
-          <div className="max-w-lg w-full bg-slate-950 border border-cyan-500/40 rounded-xl p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <h3 className="text-lg font-orbitron font-bold text-cyan-400 flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-yellow-400" />
-                MANUAL DO PILOTO: SONIC THRUST
-              </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/90 backdrop-blur-xl">
+          <div className="max-w-3xl w-full max-h-[90vh] bg-slate-950 border border-cyan-500/50 rounded-2xl p-5 md:p-7 shadow-[0_0_50px_rgba(6,182,212,0.25)] flex flex-col space-y-5 overflow-hidden">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-white/10 pb-3 shrink-0">
+              <div className="flex items-center gap-3">
+                <BookOpen className="w-6 h-6 text-cyan-400" />
+                <div>
+                  <h3 className="text-base sm:text-lg font-orbitron font-black text-cyan-400 tracking-wider">
+                    MANUAL DO PILOTO: SONIC THRUST
+                  </h3>
+                  <p className="text-[11px] font-mono text-cyan-300/70 uppercase">
+                    Protocolos de Voo Dinâmico · Ressonância FFT & Defesas
+                  </p>
+                </div>
+              </div>
               <button
+                type="button"
                 onClick={() => setShowHelp(false)}
-                className="text-gray-400 hover:text-white font-mono text-sm px-2 py-1 rounded bg-white/5"
+                className="text-gray-400 hover:text-white font-mono text-base px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 transition cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-3 text-xs md:text-sm text-gray-300 font-rajdhani leading-relaxed">
-              <div className="p-3 rounded bg-red-950/40 border border-red-500/40 text-red-200">
-                <span className="font-bold font-orbitron text-red-400 uppercase">Regra de Ouro (Zero Contact):</span>{' '}
-                Qualquer contacto da nave contra o teto, chão ou obstáculos resulta na destruição imediata. Somente o Escudo de Fase absorve impactos!
+            {/* Modal Scrollable Body */}
+            <div className="space-y-4 overflow-y-auto pr-1.5 text-xs text-gray-300 font-rajdhani leading-relaxed">
+              
+              {/* 1. Golden Rule (Zero Contact) */}
+              <div className="p-3.5 rounded-xl bg-red-950/40 border border-red-500/50 text-red-200 shadow-md shadow-red-950/50">
+                <div className="flex items-center gap-2 font-orbitron font-bold text-red-400 text-xs sm:text-sm uppercase mb-1">
+                  <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                  <span>Regra Fundamental: Zero Contact & Física de Ressonância</span>
+                </div>
+                <p>
+                  As paredes de rocha do túnel deformam-se em tempo real sincronizadas com a música através de análise espectral FFT (os graves inflam o leito, os médios alteram as encostas e os agudos geram micro-ondulações). Qualquer colisão sem escudo resulta na desintegração imediata da nave.
+                </p>
               </div>
 
-              <div className="space-y-1">
-                <div className="font-orbitron font-semibold text-cyan-400 text-xs">CONTROLOS DUAL-THRUSTER:</div>
-                <ul className="list-disc pl-5 space-y-1 font-mono text-xs text-gray-300">
-                  <li><strong className="text-white">Motor Esquerdo (A / Seta Esquerda / Metade Esquerda):</strong> Impulso para cima/direita e rotação horária.</li>
-                  <li><strong className="text-white">Motor Direito (D / Seta Direita / Metade Direita):</strong> Impulso para cima/esquerda e rotação anti-horária.</li>
-                  <li><strong className="text-white">Subida Vertical (A + D / Toque duplo):</strong> Ativa ambos os propulsores para subir em linha reta.</li>
-                </ul>
-              </div>
-
-              <div className="space-y-1">
-                <div className="font-orbitron font-semibold text-cyan-400 text-xs">POWER-UPS DO PERCURSO:</div>
-                <div className="grid grid-cols-3 gap-2 text-center text-[11px] font-mono">
-                  <div className="p-2 rounded bg-sky-950/60 border border-sky-500/40 text-sky-300">
-                    <div>ESCUDO (AZUL)</div>
-                    <div className="text-[10px] text-gray-400 mt-0.5">Absorve 1 colisão</div>
+              {/* 2. Controls & Flight Mechanics */}
+              <div className="p-3.5 rounded-xl bg-slate-900/60 border border-cyan-500/30 space-y-2">
+                <div className="font-orbitron font-bold text-cyan-400 text-xs uppercase flex items-center gap-2">
+                  <Sliders className="w-4 h-4 text-cyan-400" />
+                  Mecânica dos Propulsores Dual-Thruster
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 font-mono text-[11px]">
+                  <div className="p-2.5 rounded-lg bg-cyan-950/40 border border-cyan-500/30">
+                    <div className="text-cyan-300 font-bold mb-0.5">MOTOR ESQUERDO</div>
+                    <div className="text-gray-300 text-[10px]">Tecla [A], [←] ou Metade Esquerda do Ecrã: Impulso e rotação horária.</div>
                   </div>
-                  <div className="p-2 rounded bg-emerald-950/60 border border-emerald-500/40 text-emerald-300">
-                    <div>DAMPER (VERDE)</div>
-                    <div className="text-[10px] text-gray-400 mt-0.5">Acalma terreno 6s</div>
+                  <div className="p-2.5 rounded-lg bg-pink-950/40 border border-pink-500/30">
+                    <div className="text-pink-300 font-bold mb-0.5">MOTOR DIREITO</div>
+                    <div className="text-gray-300 text-[10px]">Tecla [D], [→] ou Metade Direita do Ecrã: Impulso e rotação anti-horária.</div>
                   </div>
-                  <div className="p-2 rounded bg-yellow-950/60 border border-yellow-500/40 text-yellow-300">
-                    <div>LOW-G (AMARELO)</div>
-                    <div className="text-[10px] text-gray-400 mt-0.5">50% gravidade 5s</div>
+                  <div className="p-2.5 rounded-lg bg-fuchsia-950/40 border border-fuchsia-500/30">
+                    <div className="text-fuchsia-300 font-bold mb-0.5">SUBIDA VERTICAL</div>
+                    <div className="text-gray-300 text-[10px]">Premir [A+D] ou ambos os lados simultaneamente: Empuxo vertical direto.</div>
                   </div>
                 </div>
               </div>
+
+              {/* 3. The 8 Active Power-Ups */}
+              <div className="p-3.5 rounded-xl bg-slate-900/60 border border-white/10 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="font-orbitron font-bold text-cyan-400 text-xs uppercase flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-cyan-400" />
+                    Os 8 Power-Ups de Ressonância
+                  </div>
+                  <span className="text-[10px] font-mono text-gray-400">Distribuição Equilibrada por Dificuldade</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] font-mono">
+                  {/* Phase Shield */}
+                  <div className="p-2.5 rounded-lg bg-sky-950/40 border border-sky-400/40 flex items-start gap-2.5">
+                    <div className="w-3 h-3 rounded-full bg-sky-400 shadow-[0_0_8px_#38bdf8] shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-sky-300">ESCUDO DE FASE <span className="text-[9px] text-gray-400 font-normal">(Todos os Níveis)</span></div>
+                      <div className="text-[10px] text-gray-300 mt-0.5">Bólide hexagonal de proteção quântica. Absorve 1 colisão de qualquer tipo. Acumulável até 3 camadas.</div>
+                    </div>
+                  </div>
+
+                  {/* Low-G Surge */}
+                  <div className="p-2.5 rounded-lg bg-yellow-950/40 border border-yellow-400/40 flex items-start gap-2.5">
+                    <div className="w-3 h-3 rounded-full bg-yellow-400 shadow-[0_0_8px_#facc15] shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-yellow-300">SURTO LOW-G <span className="text-[9px] text-gray-400 font-normal">(Todos os Níveis)</span></div>
+                      <div className="text-[10px] text-gray-300 mt-0.5">Giroscópio anti-gravítico que reduz a gravidade em 50% por 5 segundos, facilitando a ascensão vertical.</div>
+                    </div>
+                  </div>
+
+                  {/* Sonic Pulse */}
+                  <div className="p-2.5 rounded-lg bg-cyan-950/40 border border-cyan-400/40 flex items-start gap-2.5">
+                    <div className="w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_8px_#00f0ff] shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-cyan-300">PULSO SÓNICO <span className="text-[9px] text-gray-400 font-normal">(Todos os Níveis)</span></div>
+                      <div className="text-[10px] text-gray-300 mt-0.5">Onda de choque acústica omnidirecional instantânea que desativa minas de ressonância e feixes laser na proximidade.</div>
+                    </div>
+                  </div>
+
+                  {/* Ethereal Ghost Mode */}
+                  <div className="p-2.5 rounded-lg bg-cyan-950/40 border border-cyan-400/40 flex items-start gap-2.5">
+                    <div className="w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_8px_#00f0ff] shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-cyan-300">MODO FANTASMA <span className="text-[9px] text-gray-400 font-normal">(Todos os Níveis)</span></div>
+                      <div className="text-[10px] text-gray-300 mt-0.5">Envolve a nave numa borda pulsante de néon ciano com opacidade translúcida. Permite atravessar obstáculos físicos sem sofrer danos por 5s mantendo a silhueta perfeitamente visível.</div>
+                    </div>
+                  </div>
+
+                  {/* Sonic Damper */}
+                  <div className="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-400/40 flex items-start gap-2.5">
+                    <div className="w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_8px_#22c55e] shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-emerald-300">AMORTECEDOR SÓNICO <span className="text-[9px] text-emerald-400 font-normal">(Pro & Extreme)</span></div>
+                      <div className="text-[10px] text-gray-300 mt-0.5">Acalma as ondas sísmicas de áudio no leito rochoso e absorve impactos de raspão nas paredes por 6s.</div>
+                    </div>
+                  </div>
+
+                  {/* Chrono Dilation */}
+                  <div className="p-2.5 rounded-lg bg-teal-950/40 border border-teal-400/40 flex items-start gap-2.5">
+                    <div className="w-3 h-3 rounded-full bg-teal-400 shadow-[0_0_8px_#14b8a6] shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-teal-300">DISTORÇÃO TEMPORAL <span className="text-[9px] text-teal-400 font-normal">(Pro & Extreme)</span></div>
+                      <div className="text-[10px] text-gray-300 mt-0.5">Matriz de tempo em câmara lenta (50% de velocidade durante 4s), permitindo esquivas cirúrgicas em secções críticas.</div>
+                    </div>
+                  </div>
+
+                  {/* Sonic Immortality */}
+                  <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-500/50 flex items-start gap-2.5">
+                    <div className="w-3 h-3 rounded-full bg-rose-500 shadow-[0_0_8px_#ff0055] shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-rose-300">IMORTALIDADE SÓNICA <span className="text-[9px] text-rose-400 font-bold uppercase">(Apenas Extreme)</span></div>
+                      <div className="text-[10px] text-gray-300 mt-0.5">Invulnerabilidade total e contínua durante 6s, protegendo contra qualquer colisão física ou feixe laser.</div>
+                    </div>
+                  </div>
+
+                  {/* Resonance Singularity */}
+                  <div className="p-2.5 rounded-lg bg-purple-950/40 border border-purple-400/40 flex items-start gap-2.5">
+                    <div className="w-3 h-3 rounded-full bg-purple-400 shadow-[0_0_8px_#c084fc] shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-purple-300">SINGULARIDADE DE RESSONÂNCIA <span className="text-[9px] text-gray-400 font-normal">(Todos os Níveis)</span></div>
+                      <div className="text-[10px] text-gray-300 mt-0.5">Vórtice gravitacional cósmico que suga e desintegra todos os perigos no ecrã e reduz o avanço descontrolado da nave.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Hazards & Obstacles Guide */}
+              <div className="p-3.5 rounded-xl bg-slate-900/60 border border-white/10 space-y-2">
+                <div className="font-orbitron font-bold text-cyan-400 text-xs uppercase flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-cyan-400" />
+                  Perigos Sonoros do Túnel
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 font-mono text-[11px]">
+                  <div className="p-2 rounded bg-slate-950 border border-white/10">
+                    <span className="text-emerald-400 font-bold">PILAR DE EQUALIZADOR VU:</span> Torres retro-LED segmentadas (verde $\rightarrow$ âmbar $\rightarrow$ vermelho) com balística áudio suave e ataque dinâmico sincronizado com os graves.
+                  </div>
+                  <div className="p-2 rounded bg-slate-950 border border-white/10">
+                    <span className="text-rose-400 font-bold">LÂMINAS GIRATÓRIAS NÉON:</span> Cruzetas cinéticas de rotação sónica aceleradas pelas frequências médias.
+                  </div>
+                  <div className="p-2 rounded bg-slate-950 border border-white/10">
+                    <span className="text-orange-400 font-bold">MINAS DE RESSONÂNCIA:</span> Minas espaciais com satélites orbitais que expandem com a pulsação musical.
+                  </div>
+                  <div className="p-2 rounded bg-slate-950 border border-white/10">
+                    <span className="text-amber-300 font-bold">FEIXES E CORTINAS LASER:</span> Feixes de plasma verticais oscilantes através do túnel.
+                  </div>
+                </div>
+              </div>
+
             </div>
 
-            <button
-              onClick={() => setShowHelp(false)}
-              className="w-full py-2.5 rounded bg-cyan-500 text-black font-orbitron font-bold text-xs uppercase cursor-pointer hover:bg-cyan-400"
-            >
-              ENTENDIDO, VOLTAR
-            </button>
+            {/* Modal Footer CTA */}
+            <div className="pt-2 border-t border-white/10 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowHelp(false)}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-black font-orbitron font-black text-xs md:text-sm tracking-wider uppercase cursor-pointer hover:opacity-95 transition shadow-lg shadow-cyan-500/30"
+              >
+                ENTENDIDO · REGRESSAR AO MENU
+              </button>
+            </div>
+
           </div>
         </div>
       )}
