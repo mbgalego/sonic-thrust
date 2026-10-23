@@ -192,7 +192,8 @@ export const GameHUD: React.FC<GameHUDProps> = ({
       {/* Bottom Perimeter Cluster: Speed + Dual-Thruster pressure bars */}
       <footer className="flex items-end justify-start gap-4 max-w-5xl w-full mx-auto">
 
-        <div className="flex items-center gap-3 bg-black/60 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 font-mono text-xs">
+        <div className="flex items-end gap-4 bg-black/60 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 font-mono text-xs">
+          {/* Speed */}
           <div className="flex items-center gap-2 shrink-0">
             <Gauge className="w-4 h-4 text-cyan-400 shrink-0" />
             <div className="min-w-[82px] shrink-0">
@@ -204,27 +205,53 @@ export const GameHUD: React.FC<GameHUDProps> = ({
             </div>
           </div>
 
-          <div className="w-px h-7 bg-white/10" />
+          <div className="w-px self-stretch bg-white/10" />
 
-          {/* Dual-Thruster pressure indicators (beside the speed) */}
-          <div className="flex items-center gap-2">
-            <span className={`text-[9px] font-bold ${ship.leftThrusterPower > 0.1 ? 'text-cyan-400' : 'text-gray-600'}`}>L</span>
-            <div className="w-12 h-2 bg-slate-900 rounded border border-white/15 overflow-hidden">
-              <div
-                className="h-full bg-cyan-400 transition-all duration-75"
-                style={{ width: `${ship.leftThrusterPower * 100}%` }}
-              />
+          {/* Dual-Thruster pressure gauges — segmented vertical bars (L = cyan, R = fuchsia) */}
+          <div className="flex items-end gap-3.5">
+            <div className="flex items-end gap-1.5">
+              <span className={`text-[9px] font-bold pb-1 ${ship.leftThrusterPower > 0.1 ? 'text-cyan-400 drop-shadow-[0_0_5px_rgba(6,182,212,0.9)]' : 'text-gray-600'}`}>
+                L
+              </span>
+              <div className="flex flex-col-reverse gap-[3px] h-8" aria-label="Motor esquerdo">
+                {Array.from({ length: 6 }).map((_, i) => {
+                  const active = ship.leftThrusterPower >= (i + 1) / 6;
+                  return (
+                    <div
+                      key={i}
+                      className={`w-2.5 rounded-sm transition-all duration-75 ${
+                        active
+                          ? 'bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.9)]'
+                          : 'bg-slate-800 border border-white/5'
+                      }`}
+                      style={{ height: '4px' }}
+                    />
+                  );
+                })}
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-2">
-            <div className="w-12 h-2 bg-slate-900 rounded border border-white/15 overflow-hidden">
-              <div
-                className="h-full bg-fuchsia-400 transition-all duration-75"
-                style={{ width: `${ship.rightThrusterPower * 100}%` }}
-              />
+            <div className="flex items-end gap-1.5">
+              <div className="flex flex-col-reverse gap-[3px] h-8" aria-label="Motor direito">
+                {Array.from({ length: 6 }).map((_, i) => {
+                  const active = ship.rightThrusterPower >= (i + 1) / 6;
+                  return (
+                    <div
+                      key={i}
+                      className={`w-2.5 rounded-sm transition-all duration-75 ${
+                        active
+                          ? 'bg-fuchsia-400 shadow-[0_0_6px_rgba(232,121,249,0.9)]'
+                          : 'bg-slate-800 border border-white/5'
+                      }`}
+                      style={{ height: '4px' }}
+                    />
+                  );
+                })}
+              </div>
+              <span className={`text-[9px] font-bold pb-1 ${ship.rightThrusterPower > 0.1 ? 'text-fuchsia-400 drop-shadow-[0_0_5px_rgba(232,121,249,0.9)]' : 'text-gray-600'}`}>
+                R
+              </span>
             </div>
-            <span className={`text-[9px] font-bold ${ship.rightThrusterPower > 0.1 ? 'text-fuchsia-400' : 'text-gray-600'}`}>R</span>
           </div>
         </div>
       </footer>

@@ -1588,7 +1588,11 @@ export class GameRenderer {
     const barWidth = 4;
     const barGap = 3;
     const totalBarsWidth = barCount * barWidth + (barCount - 1) * barGap;
-    const startX = 20;
+    // Bottom-right corner of the centered HUD container (max-w-5xl), baseline-aligned
+    // with the velocity indicator row on the left side of the same container.
+    const containerW = Math.min(this.width, 1024); // mirrors max-w-5xl
+    const containerOffsetX = (this.width - containerW) / 2;
+    const startX = containerOffsetX + containerW - totalBarsWidth - 20;
     const maxHeight = 32;
     const startY = this.height - 20;
     const segH = 3;
