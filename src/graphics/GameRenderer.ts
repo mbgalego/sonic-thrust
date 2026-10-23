@@ -1408,39 +1408,63 @@ export class GameRenderer {
       }
     }
 
-    // Laser curtains with rhythmic sweep
+    // Laser Energy Beams: concentrated semi-oval plasma traveling floor→ceiling and back.
+    // Soft, "half-defined" edges pulse to the music; safe pass windows exist above/below the beam.
     for (const laser of lasers) {
       if (laser.x < this.cameraX - 100 || laser.x > this.cameraX + this.width + 100) continue;
       if (laser.alpha <= 0.05) continue;
 
       const curX = laser.x + laser.sweepOffset;
+      const coreY = laser.beamCenter;
+      const coreW = 15; // horizontal half-width of the hot core
+      // Wobbly, ill-defined oval: radius wobbles slowly along the beam's vertical axis
+      const wobble = Math.sin(Date.now() * 0.004 + laser.pulsePhase * 2.2);
+      const halfH = laser.beamHalf * (1 + wobble * 0.06);
 
       ctx.save();
-      ctx.strokeStyle = `rgba(250, 204, 21, ${laser.alpha})`;
-      ctx.shadowColor = '#facc15';
-      ctx.shadowBlur = laser.active ? 22 : 6;
-      ctx.lineWidth = laser.active ? 5.0 : 2;
 
-      // Laser beam line
+      // 1. Outer ambient halo (loose glow, very soft — the "half-defined" illusive edge)
+      const haloGr = ctx.createRadialGradient(curX, coreY, coreW * 0.3, curX, coreY, halfH * 2.1);
+      haloGr.addColorStop(0, `rgba(250, 204, 21, ${(laser.alpha * 0.22).toFixed(3)})`);
+      haloGr.addColorStop(0.55, `rgba(250, 204, 21, ${(laser.alpha * 0.10).toFixed(3)})`);
+      haloGr.addColorStop(1, 'rgba(250, 204, 21, 0)');
+      ctx.fillStyle = haloGr;
       ctx.beginPath();
-      ctx.moveTo(curX, laser.yTop);
-      ctx.lineTo(curX, laser.yBottom);
-      ctx.stroke();
+      ctx.ellipse(curX, coreY, coreW * 3.2, halfH * 2.1, 0, 0, Math.PI * 2);
+      ctx.fill();
 
-      // Core electric white thread
+      // 2. Semi-oval capsule body (the concentrated energy beam)
+      ctx.shadowColor = '#facc15';
+      ctx.shadowBlur = laser.active ? 26 : 8;
+      ctx.fillStyle = `rgba(250, 204, 21, ${(laser.alpha * 0.34).toFixed(3)})`;
+      ctx.beginPath();
+      ctx.ellipse(curX, coreY, coreW * 1.6, halfH, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 3. White-hot plasma core with shimmering boundary flicker
       if (laser.active) {
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
+        const flicker = 0.72 + Math.sin(Date.now() * 0.02 + laser.pulsePhase * 5.0) * 0.10;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${(laser.alpha * flicker * 0.85).toFixed(3)})`;
+        ctx.lineWidth = 2.2;
         ctx.beginPath();
-        ctx.moveTo(curX, laser.yTop);
-        ctx.lineTo(curX, laser.yBottom);
+        ctx.ellipse(curX, coreY, coreW * 1.6 + Math.sin(Date.now() * 0.006) * 1.5, halfH, 0, 0, Math.PI * 2);
         ctx.stroke();
+
+        ctx.fillStyle = `rgba(255, 255, 255, ${(laser.alpha * flicker).toFixed(3)})`;
+        ctx.beginPath();
+        ctx.ellipse(curX, coreY, coreW * 0.65, halfH * 0.9, 0, 0, Math.PI * 2);
+        ctx.fill();
       }
 
-      // Laser emitters top and bottom
-      ctx.fillStyle = '#facc15';
-      ctx.fillRect(curX - 6, laser.yTop - 6, 12, 6);
-      ctx.fillRect(curX - 6, laser.yBottom, 12, 6);
+      // 4. Channel guides along the track (thin rails showing the beam's travel path)
+      ctx.strokeStyle = `rgba(250, 204, 21, ${(laser.alpha * 0.20).toFixed(3)})`;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 10]);
+      ctx.beginPath();
+      ctx.moveTo(curX, laser.yTop - 4);
+      ctx.lineTo(curX, laser.yBottom + 4);
+      ctx.stroke();
+      ctx.setLineDash([]);
 
       ctx.restore();
     }

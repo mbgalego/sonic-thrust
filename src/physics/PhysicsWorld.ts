@@ -113,6 +113,7 @@ export class PhysicsWorld {
   public ship: ShipState;
   public difficulty: DifficultyConfig;
   public flightAssistEnabled: boolean;
+  public driftCompensationEnabled: boolean;
   
   // World geometry
   public trackDuration: number = 90;
@@ -157,10 +158,12 @@ export class PhysicsWorld {
     flightAssist: boolean,
     trackDuration: number = 90,
     trackId: string = 'kosmonova-take-me-away',
-    trackBpm: number = 135
+    trackBpm: number = 135,
+    driftCompensation: boolean = true
   ) {
     this.difficulty = DIFFICULTY_PRESETS[difficultyLevel];
     this.flightAssistEnabled = this.difficulty.allowFlightAssist && flightAssist;
+    this.driftCompensationEnabled = driftCompensation;
     this.trackDuration = Math.max(30, trackDuration);
     this.trackId = trackId;
     this.trackBpm = trackBpm;
@@ -488,7 +491,7 @@ export class PhysicsWorld {
       }
     }
 
-    // 3. Laser curtains (reactive to Treble FFT with rhythmic sweep)
+    // 3. Laser Energy Beams (concentrated oval beam that travels floor→ceiling and back, treble-gated)
     const totalLasers = Math.max(8, Math.floor(this.trackDuration / 8));
     const laserStep = playableRange / totalLasers;
     for (let i = 0; i < totalLasers; i++) {
@@ -507,9 +510,11 @@ export class PhysicsWorld {
         yTop: terrain.ceilY + 10,
         yBottom: terrain.floorY - 10,
         active: false,
-        pulsePhase: i * 0.9,
+        pulsePhase: i * 1.4, // stagger so beams travel out of sync
         alpha: 0,
-        sweepOffset: 0
+        sweepOffset: 0,
+        beamCenter: (terrain.ceilY + terrain.floorY) / 2,
+        beamHalf: 60
       });
     }
   }
@@ -714,6 +719,20 @@ export class PhysicsWorld {
       this.ship.vx += forwardAcceleration * dt;
     }
 
+    // Lateral Drift & Compensation:
+    // Without compensation the ship has a slight rightward pull (the ship "wants" to climb speed
+    // past the cruise baseline and its nose naturally drifts right). With compensation ON
+    // (default), excess forward speed is gently reeled back toward the cruise baseline.
+    if (this.driftCompensationEnabled) {
+      if (this.ship.vx > this.baseForwardVelocity) {
+        this.ship.vx += (this.baseForwardVelocity - this.ship.vx) * 1.4 * dt;
+      }
+      this.ship.angularVelocity += this.ship.angle * 2.2 * dt; // keeps nose steady on course
+    } else {
+      this.ship.vx += 46 * dt; // slight rightward drift (overcome by tilting the nose down)
+      this.ship.vx = Math.min(this.ship.vx, this.baseForwardVelocity * 1.35); // hard cap for fairness
+    }
+
     // Update positions
     this.ship.x += this.ship.vx * dt;
     this.ship.y += this.ship.vy * dt;
@@ -795,20 +814,31 @@ export class PhysicsWorld {
       }
     }
 
-    // Laser curtains: rhythmic oscillation & treble energy
+    // Laser Energy Beams: concentrated oval plasma that travels floor→ceiling and back.
+    // Treble/high-mids keep the same gating as before, but the full tunnel is NEVER blocked:
+    // the beam only occupies roughly half the corridor, alternating top/bottom as it sweeps.
     for (const laser of this.laserGates) {
       if (Math.abs(laser.x - this.ship.x) > 1600) continue;
-      const trebleEnergy = audioFreq.treble;
-      laser.pulsePhase += dt * 4.2;
-      laser.sweepOffset = Math.sin(laser.pulsePhase) * 52; // Rhythmic dynamic horizontal sweep!
+      laser.pulsePhase += dt * (1.05 + audioFreq.highMids * 1.1 + audioFreq.energy * 0.35);
 
+      const trebleEnergy = audioFreq.treble;
       const targetAlpha = trebleEnergy > 0.28 ? Math.min(1.0, trebleEnergy * 2.0) : 0.05;
       laser.alpha += (targetAlpha - laser.alpha) * 0.25;
       laser.active = laser.alpha > 0.45;
 
-      const t = this.getTerrainAt(laser.x + laser.sweepOffset);
-      laser.yTop = t.ceilY + 5;
-      laser.yBottom = t.floorY - 5;
+      const t = this.getTerrainAt(laser.x);
+      laser.yTop = t.ceilY + 10;
+      laser.yBottom = t.floorY - 10;
+
+      // Vertical travel: sine bounce between floor and ceiling (leaves safe windows on both sides)
+      const corridorH = laser.yBottom - laser.yTop;
+      const travelSpan = Math.max(40, corridorH * 0.5 - 70); // beam center never hugs the walls too tightly
+      laser.beamCenter = (laser.yTop + laser.yBottom) * 0.5 + Math.sin(laser.pulsePhase) * travelSpan;
+
+      // Semi-oval beam: half-height pulses with bass/energy (soft, "half-defined" bulge)
+      const baseHalf = Math.max(34, Math.min(72, corridorH * 0.16));
+      const halfFactor = 0.82 + 0.26 * audioFreq.bass + 0.10 * audioFreq.energy;
+      laser.beamHalf = baseHalf * halfFactor;
     }
   }
 
@@ -951,13 +981,16 @@ export class PhysicsWorld {
       }
     }
 
-    // 4. Laser gates with sweeping beam check
+    // 4. Laser Energy Beams — capsule collision against the traveling oval beam
     for (const laser of this.laserGates) {
       if (!laser.active) continue;
       const laserCurX = laser.x + laser.sweepOffset;
-      if (Math.abs(laserCurX - this.ship.x) < shipRadius + 6) {
-        if (this.ship.y >= laser.yTop && this.ship.y <= laser.yBottom) {
-          this.handleCollision('LASER', -1, 0);
+      const beamHalfWidth = 14; // concentrated horizontal thickness of the beam core
+      if (Math.abs(this.ship.x - laserCurX) < beamHalfWidth + shipRadius * 0.4) {
+        const dy = Math.abs(this.ship.y - laser.beamCenter);
+        if (dy < laser.beamHalf + shipRadius * 0.5) {
+          // Push the ship away from the beam center (so near-misses deflect top/bottom)
+          this.handleCollision('LASER', -1, this.ship.y >= laser.beamCenter ? 1 : -1);
           return;
         }
       }
@@ -1033,5 +1066,9 @@ export class PhysicsWorld {
     if (this.difficulty.allowFlightAssist) {
       this.flightAssistEnabled = enabled;
     }
+  }
+
+  public setDriftCompensation(enabled: boolean): void {
+    this.driftCompensationEnabled = enabled;
   }
 }

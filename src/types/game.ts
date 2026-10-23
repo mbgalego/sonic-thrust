@@ -84,6 +84,8 @@ export interface LaserGate {
   pulsePhase: number;
   alpha: number;
   sweepOffset: number;
+  beamCenter: number;  // current Y center of the traveling oval energy beam
+  beamHalf: number;    // current half-height (px) of the semi-oval beam (pulses with music)
 }
 
 export interface AudioFrequencyData {
@@ -107,6 +109,7 @@ export interface AudioFrequencyData {
 
 export interface GameOptions {
   flightAssist: boolean;
+  driftCompensation: boolean; // neutralizes the ship's slight rightward drift when ON
   musicVolume: number; // 0.0 - 1.0
   sfxVolume: number;   // 0.0 - 1.0
 }

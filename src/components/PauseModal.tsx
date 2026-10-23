@@ -54,6 +54,19 @@ export const PauseModal: React.FC<PauseModalProps> = ({
             )}
           </div>
 
+          <div className="flex items-center justify-between text-xs font-mono">
+            <span className="text-gray-300">Compensação de Deriva</span>
+            <button
+              type="button"
+              onClick={() => onOptionsChange({ ...options, driftCompensation: !options.driftCompensation })}
+              className={`px-3 py-1 rounded text-xs font-mono font-bold cursor-pointer transition ${
+                options.driftCompensation ? 'bg-cyan-500 text-black' : 'bg-white/10 text-gray-400'
+              }`}
+            >
+              {options.driftCompensation ? 'LIGADO' : 'DESLIGADO'}
+            </button>
+          </div>
+
           <div>
             <div className="flex justify-between text-[11px] font-mono text-gray-400 mb-1">
               <span>Volume Música</span>

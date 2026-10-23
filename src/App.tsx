@@ -119,6 +119,7 @@ export default function App() {
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('PRINCIPIANTE');
   const [options, setOptions] = useState<GameOptions>({
     flightAssist: true,
+    driftCompensation: true,
     musicVolume: 0.85,
     sfxVolume: 0.8
   });
@@ -160,6 +161,7 @@ export default function App() {
 
   // Input states
   const keysHeld = useRef<{ left: boolean; right: boolean }>({ left: false, right: false });
+  const countTickLastSecRef = useRef<number>(-1);
   const touchesHeld = useRef<{ left: boolean; right: boolean }>({ left: false, right: false });
   const touchMapRef = useRef<Map<number, 'left' | 'right'>>(new Map());
 
@@ -244,8 +246,16 @@ export default function App() {
     const trackBpm = selectedTrack.estimatedBpm || 135;
 
     // Create Physics World with music-seeded terrain derived from track ID and BPM
-    const newWorld = new PhysicsWorld(difficulty, options.flightAssist, trackDuration, selectedTrack.id, trackBpm);
+    const newWorld = new PhysicsWorld(
+      difficulty,
+      options.flightAssist,
+      trackDuration,
+      selectedTrack.id,
+      trackBpm,
+      options.driftCompensation
+    );
     newWorld.stats.currentBpm = trackBpm;
+    countTickLastSecRef.current = -1; // reset countdown tick state for the new mission
 
     // Attach callbacks
     newWorld.onWallScrape = (scrapeX, scrapeY, shipVx, isCeiling, intensity) => {
@@ -474,6 +484,13 @@ export default function App() {
           const trackCurrentTime = audio.getCurrentTime();
           world.update(dt, leftPressed, rightPressed, audioFreq, trackCurrentTime);
 
+          // Countdown tick: alternating tic-toc in the final 25 seconds (rising tension)
+          const remainingWholeSec = Math.ceil(world.stats.totalDuration - world.stats.timeElapsed);
+          if (remainingWholeSec <= 25 && remainingWholeSec > 0 && remainingWholeSec !== countTickLastSecRef.current) {
+            countTickLastSecRef.current = remainingWholeSec;
+            audio.playCountdownTick();
+          }
+
           // Throttled HUD update (~12Hz) to prevent React state from slowing down 60fps canvas
           hudThrottleTimerRef.current += dt;
           if (hudThrottleTimerRef.current > 0.08) {
@@ -557,6 +574,7 @@ export default function App() {
             setOptions(o);
             if (worldRef.current) {
               worldRef.current.setFlightAssist(o.flightAssist);
+              worldRef.current.setDriftCompensation(o.driftCompensation);
             }
           }}
           onStartMission={handleStartMission}
@@ -577,6 +595,7 @@ export default function App() {
             setOptions(o);
             if (worldRef.current) {
               worldRef.current.setFlightAssist(o.flightAssist);
+              worldRef.current.setDriftCompensation(o.driftCompensation);
             }
           }}
           allowFlightAssist={difficulty !== 'EXTREME'}

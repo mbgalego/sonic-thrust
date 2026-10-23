@@ -67,6 +67,10 @@ export const GameHUD: React.FC<GameHUDProps> = ({
   const remainingMin = Math.floor(remainingSec / 60);
   const remainingSecPadded = String(remainingSec % 60).padStart(2, '0');
 
+  // Countdown color phases: sane cyan → amber at 45s → red with pulsing tension at 25s
+  const isCountWarning = remainingSec <= 45 && remainingSec > 25;
+  const isCountCritical = remainingSec <= 25;
+
   const speedKmh = Math.round(Math.sqrt(ship.vx * ship.vx + ship.vy * ship.vy) * 0.7);
 
   return (
@@ -128,8 +132,16 @@ export const GameHUD: React.FC<GameHUDProps> = ({
 
       {/* Big centered remaining-time display — close under the HUD bar */}
       <div className="flex flex-col items-center gap-0.5 pointer-events-none select-none">
-        <span className="text-[10px] font-mono text-cyan-400/70 tracking-[0.3em] uppercase">Tempo Restante</span>
-        <span className="text-5xl md:text-7xl font-black font-orbitron text-cyan-300 tracking-tighter drop-shadow-[0_0_20px_rgba(6,182,212,0.9)] whitespace-nowrap leading-none">
+        <span className={`text-[10px] font-mono tracking-[0.3em] uppercase transition-colors duration-300 ${
+          isCountCritical ? 'text-rose-400/90' : isCountWarning ? 'text-amber-400/80' : 'text-cyan-400/70'
+        }`}>Tempo Restante</span>
+        <span className={`text-5xl md:text-7xl font-black font-orbitron tracking-tighter whitespace-nowrap leading-none transition-colors duration-300 ${
+          isCountCritical
+            ? 'text-rose-400 drop-shadow-[0_0_22px_rgba(244,63,94,0.95)] animate-pulse'
+            : isCountWarning
+              ? 'text-amber-300 drop-shadow-[0_0_20px_rgba(251,191,36,0.85)]'
+              : 'text-cyan-300 drop-shadow-[0_0_20px_rgba(6,182,212,0.9)]'
+        }`}>
           {String(remainingMin).padStart(2, '0')}:{remainingSecPadded}
         </span>
       </div>
