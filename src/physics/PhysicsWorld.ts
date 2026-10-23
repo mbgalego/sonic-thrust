@@ -713,22 +713,19 @@ export class PhysicsWorld {
     const maxAngle = Math.PI * 0.42;
     this.ship.angle = Math.max(-maxAngle, Math.min(maxAngle, this.ship.angle + this.ship.angularVelocity * dt));
 
-    // Baseline forward cruise velocity (keeps navigation flowing along the music track)
-    const forwardAcceleration = 140;
-    if (this.ship.vx < this.baseForwardVelocity) {
-      this.ship.vx += forwardAcceleration * dt;
-    }
-
     // Lateral Drift & Compensation:
-    // Without compensation the ship has a slight rightward pull (the ship "wants" to climb speed
-    // past the cruise baseline and its nose naturally drifts right). With compensation ON
-    // (default), excess forward speed is gently reeled back toward the cruise baseline.
+    // Compensation ON (default): true strategic hover — NO forced forward cruise.
+    // The ship holds its horizontal position; it only advances when piloted
+    // (nose-up thrust) and Atmospheric damping brings residual speed to ~0.
+    // Compensation OFF: forced auto-cruise to the right PLUS a slight rightward
+    // drift pull (+46 px/s²) that must be fought with nose-down tilt.
     if (this.driftCompensationEnabled) {
-      if (this.ship.vx > this.baseForwardVelocity) {
-        this.ship.vx += (this.baseForwardVelocity - this.ship.vx) * 1.4 * dt;
-      }
-      this.ship.angularVelocity += this.ship.angle * 2.2 * dt; // keeps nose steady on course
+      // Hold station — nothing pushes the ship sideways on its own.
     } else {
+      const forwardAcceleration = 140;
+      if (this.ship.vx < this.baseForwardVelocity) {
+        this.ship.vx += forwardAcceleration * dt;
+      }
       this.ship.vx += 46 * dt; // slight rightward drift (overcome by tilting the nose down)
       this.ship.vx = Math.min(this.ship.vx, this.baseForwardVelocity * 1.35); // hard cap for fairness
     }
@@ -836,7 +833,7 @@ export class PhysicsWorld {
       laser.beamCenter = (laser.yTop + laser.yBottom) * 0.5 + Math.sin(laser.pulsePhase) * travelSpan;
 
       // Semi-oval beam: half-height pulses with bass/energy (soft, "half-defined" bulge)
-      const baseHalf = Math.max(34, Math.min(72, corridorH * 0.16));
+      const baseHalf = Math.max(26, Math.min(60, corridorH * 0.14));
       const halfFactor = 0.82 + 0.26 * audioFreq.bass + 0.10 * audioFreq.energy;
       laser.beamHalf = baseHalf * halfFactor;
     }
@@ -985,7 +982,7 @@ export class PhysicsWorld {
     for (const laser of this.laserGates) {
       if (!laser.active) continue;
       const laserCurX = laser.x + laser.sweepOffset;
-      const beamHalfWidth = 14; // concentrated horizontal thickness of the beam core
+      const beamHalfWidth = 12; // concentrated horizontal thickness of the beam core
       if (Math.abs(this.ship.x - laserCurX) < beamHalfWidth + shipRadius * 0.4) {
         const dy = Math.abs(this.ship.y - laser.beamCenter);
         if (dy < laser.beamHalf + shipRadius * 0.5) {

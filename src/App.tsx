@@ -162,6 +162,8 @@ export default function App() {
   // Input states
   const keysHeld = useRef<{ left: boolean; right: boolean }>({ left: false, right: false });
   const countTickLastSecRef = useRef<number>(-1);
+  const timeUpRef = useRef(false);
+  const [outOfTime, setOutOfTime] = useState(false);
   const touchesHeld = useRef<{ left: boolean; right: boolean }>({ left: false, right: false });
   const touchMapRef = useRef<Map<number, 'left' | 'right'>>(new Map());
 
@@ -256,6 +258,8 @@ export default function App() {
     );
     newWorld.stats.currentBpm = trackBpm;
     countTickLastSecRef.current = -1; // reset countdown tick state for the new mission
+    timeUpRef.current = false;
+    setOutOfTime(false);
 
     // Attach callbacks
     newWorld.onWallScrape = (scrapeX, scrapeY, shipVx, isCeiling, intensity) => {
@@ -491,6 +495,17 @@ export default function App() {
             audio.playCountdownTick();
           }
 
+          // Time's up: the song ended before the ship reached the goal portal → defeat
+          if (remainingWholeSec <= 0 && !timeUpRef.current) {
+            timeUpRef.current = true;
+            audio.silenceAllContinuous();
+            audio.playTimeUpSfx();
+            setOutOfTime(true);
+            setTimeout(() => {
+              setGameState('GAMEOVER');
+            }, 900);
+          }
+
           // Throttled HUD update (~12Hz) to prevent React state from slowing down 60fps canvas
           hudThrottleTimerRef.current += dt;
           if (hudThrottleTimerRef.current > 0.08) {
@@ -606,6 +621,7 @@ export default function App() {
       {(gameState === 'VICTORY' || gameState === 'GAMEOVER') && (
         <EndGameModal
           isVictory={gameState === 'VICTORY'}
+          outOfTime={outOfTime}
           stats={hudStats}
           difficulty={difficulty}
           trackTitle={selectedTrack?.title || 'Faixa Musical'}

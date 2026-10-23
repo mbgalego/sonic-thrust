@@ -8,6 +8,7 @@ import { GameStats, DifficultyLevel } from '../types/game';
 
 interface EndGameModalProps {
   isVictory: boolean;
+  outOfTime?: boolean;
   stats: GameStats;
   difficulty: DifficultyLevel;
   trackTitle: string;
@@ -17,6 +18,7 @@ interface EndGameModalProps {
 
 export const EndGameModal: React.FC<EndGameModalProps> = ({
   isVictory,
+  outOfTime = false,
   stats,
   difficulty,
   trackTitle,
@@ -61,18 +63,20 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
               isVictory ? 'text-cyan-300 neon-text-cyan' : 'text-rose-400 neon-text-magenta'
             }`}
           >
-            {isVictory ? 'MISSÃO CUMPRIDA!' : 'SINAL PERDIDO · NAVE DESTRUÍDA'}
+            {isVictory ? 'MISSÃO CUMPRIDA!' : outOfTime ? 'TEMPO ESGOTADO' : 'SINAL PERDIDO · NAVE DESTRUÍDA'}
           </h2>
 
           <p className="text-xs md:text-sm text-gray-300 font-rajdhani">
             {isVictory
               ? 'Atingiste o Portal de Meta no exato compasso de encerramento da faixa!'
-              : reasonText}
+              : outOfTime
+                ? 'A faixa terminou antes de alcançares o Portal de Meta — a missão expirou.'
+                : reasonText}
           </p>
 
           {!isVictory && (
             <div className="inline-block px-3 py-1 rounded bg-rose-950/60 border border-rose-500/30 text-[11px] font-mono text-rose-300">
-              REGRA DE OURO: ZERO CONTACT
+              {outOfTime ? 'A MÚSICA NÃO ESPERA' : 'REGRA DE OURO: ZERO CONTACT'}
             </div>
           )}
         </div>

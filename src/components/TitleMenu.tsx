@@ -306,7 +306,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                 <Activity className="w-4 h-4 text-cyan-400" />
                 <div>
                   <div className="text-xs font-orbitron font-medium text-white">Compensação de Deriva</div>
-                  <div className="text-[11px] text-gray-400 font-rajdhani">Neutraliza o ligeiro drift lateral da nave</div>
+                  <div className="text-[11px] text-gray-400 font-rajdhani">A nave mantém a posição — sem avanço automático para a direita</div>
                 </div>
               </div>
 
