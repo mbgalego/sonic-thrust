@@ -96,13 +96,13 @@ export interface AudioFrequencyData {
 
   // Enriched multi-band envelope follower metrics (for clean musical rhythm & ripples)
   subBass: number;  // 20Hz - 85Hz: Deep sub-bass foundation & shockwave thrust
-  lowMids: number;  // 250Hz - 800Hz: Bass warmth & harmonic wave spacing
-  highMids: number; // 800Hz - 4000Hz: Snare/vocal/synth transients & luminous edge flash
-  beatPulse: number; // Smooth decaying impulse (1.0 on beat, exponential decay)
+  lowMids: number;  // 250Hz - 900Hz: Bass warmth & harmonic wave spacing
+  highMids: number; // 900Hz - 4500Hz: Snare/vocal/synth transients & luminous edge flash
+  beatPulse: number; // Smooth decaying impulse (1.0 on beat, 180ms exponential decay)
 
   // Macro energy dynamics (tracking musical sections: breakdowns vs builds vs drops)
   macroEnergy: number;   // 0.0 (quiet ambient intro/breakdown) to 1.0 (peak drop / full climax)
-  energyContrast: number; // Instantaneous burst above macro baseline (for sharp explosive drops)
+  energyContrast: number; // Instantaneous burst above macro baseline (produced, not yet consumed)
 }
 
 export interface GameOptions {
