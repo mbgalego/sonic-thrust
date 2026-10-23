@@ -110,6 +110,16 @@ const DEFAULT_TRACKS: TrackMetadata[] = [
     "duration": 84,
     "description": "Ondas subsónicas profundas com fortes oscilações no teto e chão.",
     "isProcedural": true
+  },
+  {
+    "id": "redux-abyssum",
+    "title": "Redux Abyssum",
+    "artist": "Abyss Project",
+    "filename": "Redux Abyssum.mp3",
+    "estimatedBpm": 128,
+    "duration": 300,
+    "description": "Faixa synthwave abissal com graves profundos e pulsos rítmicos que criam uma atmosfera imersiva.",
+    "isProcedural": false
   }
 ];
 
