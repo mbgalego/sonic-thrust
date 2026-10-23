@@ -10,6 +10,7 @@ export class AudioEngine {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
   private musicGain: GainNode | null = null;
+  private musicPreGain: GainNode | null = null; // Pre-fader bus: unity gain connected to analyser
   private sfxGain: GainNode | null = null;
   private analyser: AnalyserNode | null = null;
   private currentSource: AudioBufferSourceNode | null = null;
@@ -22,7 +23,7 @@ export class AudioEngine {
   private isPaused: boolean = false;
   private trackDuration: number = 0;
 
-  // Real-time FFT analysis cache
+  // Real-time FFT analysis cache & Envelope Followers
   private freqByteData: Uint8Array = new Uint8Array(512);
   private lerpedBass: number = 0;
   private lerpedMids: number = 0;
@@ -30,6 +31,15 @@ export class AudioEngine {
   private lerpedEnergy: number = 0;
   private energyHistory: number[] = [];
   private beatCooldown: number = 0;
+
+  // Multi-band Attack/Decay envelope followers (for musical dynamics without jitter)
+  private envSubBass: number = 0;
+  private envBass: number = 0;
+  private envLowMids: number = 0;
+  private envHighMids: number = 0;
+  private envTreble: number = 0;
+  private beatPulse: number = 0;
+  private macroEnergy: number = 0; // Macro envelope tracking musical movement (breakdown vs drop)
 
   // Procedural thruster & radar proximity audio nodes
   private leftThrusterGain: GainNode | null = null;
@@ -57,26 +67,36 @@ export class AudioEngine {
     const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     this.ctx = new AudioContextClass();
     
-    // Master, Music, SFX Routing
+    // Master, SFX Routing
     this.masterGain = this.ctx.createGain();
     this.masterGain.gain.setValueAtTime(1.0, this.ctx.currentTime);
     this.masterGain.connect(this.ctx.destination);
 
+    // Pre-fader music bus with constant 1.0 gain.
+    // Tapped directly into analyser so FFT analysis ALWAYS receives 100% full-scale
+    // track audio signal, even when music volume is lowered or muted!
+    this.musicPreGain = this.ctx.createGain();
+    this.musicPreGain.gain.setValueAtTime(1.0, this.ctx.currentTime);
+
+    // Music gain controls audible playback volume to speakers
     this.musicGain = this.ctx.createGain();
     this.musicGain.gain.setValueAtTime(this.currentMusicVolume, this.ctx.currentTime);
     this.musicGain.connect(this.masterGain);
+
+    // Feed pre-fader signal into musicGain
+    this.musicPreGain.connect(this.musicGain);
 
     this.sfxGain = this.ctx.createGain();
     this.sfxGain.gain.setValueAtTime(0.8, this.ctx.currentTime);
     this.sfxGain.connect(this.masterGain);
 
-    // Analyser Node for Real-time FFT
+    // Analyser Node for Real-time FFT connected PRE-FADER
     this.analyser = this.ctx.createAnalyser();
     this.analyser.fftSize = 1024;
-    this.analyser.smoothingTimeConstant = 0.8;
+    this.analyser.smoothingTimeConstant = 0.65; // Snappy graphic equalizer response
     this.analyser.minDecibels = -90;
     this.analyser.maxDecibels = -10;
-    this.musicGain.connect(this.analyser);
+    this.musicPreGain.connect(this.analyser);
 
     this.freqByteData = new Uint8Array(this.analyser.frequencyBinCount);
 
@@ -495,7 +515,12 @@ export class AudioEngine {
 
     this.currentSource = this.ctx.createBufferSource();
     this.currentSource.buffer = buffer;
-    this.currentSource.connect(this.musicGain);
+    // Connect to pre-fader bus so analyser receives unmuted, full-scale signal
+    if (this.musicPreGain) {
+      this.currentSource.connect(this.musicPreGain);
+    } else {
+      this.currentSource.connect(this.musicGain);
+    }
 
     this.playbackStartTime = this.ctx.currentTime - startOffset;
     this.currentSource.start(0, startOffset);
@@ -550,14 +575,28 @@ export class AudioEngine {
   }
 
   /**
-   * Real-time FFT Frequency Extractor with smooth LERP
-   * Bass: 20Hz - 250Hz (height / oscillation of ceiling and floor)
-   * Mids: 250Hz - 4kHz (rotation and emergence of blocks / platforms)
-   * Treble: 4kHz - 20kHz (laser barriers)
+   * Real-time Multi-Band FFT Extractor with Attack/Decay Envelope Followers
+   * Splits audio into physical resonant bands:
+   * Sub-Bass (20 - 85 Hz): Gravitational heave & bedrock shockwave expansion
+   * Punch Bass (85 - 250 Hz): Kick transients & boundary thickness
+   * Low-Mids (250 - 800 Hz): Harmonic spacing & acoustic warmth
+   * High-Mids (800 - 4000 Hz): Snares, claps, vocal transients & neon edge flashes
+   * Treble (4000 - 16000 Hz): Shimmer & hi-hat air
    */
-  public getFrequencyData(lerpFactor: number = 0.22): AudioFrequencyData {
+  public getFrequencyData(lerpFactor: number = 0.22, dt: number = 0.016): AudioFrequencyData {
+    const safeDt = Math.min(0.05, Math.max(0.001, dt));
+
     if (!this.analyser || !this.isPlaying) {
-      // Gentle decay when stopped
+      // Gentle musical exponential decay when stopped
+      const decayFast = Math.exp(-safeDt / 0.12);
+      const decaySlow = Math.exp(-safeDt / 0.25);
+      this.envSubBass *= decaySlow;
+      this.envBass *= decaySlow;
+      this.envLowMids *= decaySlow;
+      this.envHighMids *= decayFast;
+      this.envTreble *= decayFast;
+      this.beatPulse *= decayFast;
+      this.macroEnergy *= decaySlow;
       this.lerpedBass *= 0.92;
       this.lerpedMids *= 0.92;
       this.lerpedTreble *= 0.92;
@@ -568,7 +607,13 @@ export class AudioEngine {
         treble: this.lerpedTreble,
         energy: this.lerpedEnergy,
         isBeat: false,
-        frequencyArray: this.freqByteData
+        frequencyArray: this.freqByteData,
+        subBass: this.envSubBass,
+        lowMids: this.envLowMids,
+        highMids: this.envHighMids,
+        beatPulse: this.beatPulse,
+        macroEnergy: this.macroEnergy,
+        energyContrast: 0
       };
     }
 
@@ -577,45 +622,123 @@ export class AudioEngine {
     const nyquist = (this.ctx?.sampleRate || 44100) / 2;
     const hzPerBin = nyquist / binCount;
 
-    // Band limits
-    const bassEndBin = Math.max(2, Math.floor(250 / hzPerBin));
-    const midsEndBin = Math.min(binCount - 1, Math.floor(4000 / hzPerBin));
-    const trebleEndBin = Math.min(binCount - 1, Math.floor(18000 / hzPerBin));
+    // Band bin limits calibrated to musical instrumentation:
+    // Sub-Bass (20 - 85 Hz): Deep sub-kick & 808 drop
+    // Punch Bass (85 - 250 Hz): Kick punch & bassline body
+    // Low-Mids (250 - 900 Hz): Synth body, chords, acoustic warmth
+    // High-Mids (900 - 4500 Hz): Snares, vocal leads, claps, crisp transients
+    // Treble (4500 - 16000 Hz): Hi-hats, cymbals, air, and shimmer
+    const subBassEndBin = Math.max(1, Math.min(binCount - 1, Math.floor(85 / hzPerBin)));
+    const bassEndBin = Math.max(subBassEndBin + 1, Math.min(binCount - 1, Math.floor(250 / hzPerBin)));
+    const lowMidsEndBin = Math.max(bassEndBin + 1, Math.min(binCount - 1, Math.floor(900 / hzPerBin)));
+    const highMidsEndBin = Math.max(lowMidsEndBin + 1, Math.min(binCount - 1, Math.floor(4500 / hzPerBin)));
+    const trebleEndBin = Math.max(highMidsEndBin + 1, Math.min(binCount - 1, Math.floor(16000 / hzPerBin)));
 
-    let rawBass = 0;
-    let countBass = 0;
-    for (let i = 1; i <= bassEndBin; i++) {
-      rawBass += this.freqByteData[i];
-      countBass++;
+    // 1. Sub-Bass (20 - 85 Hz)
+    let rawSubBass = 0;
+    let countSubBass = 0;
+    for (let i = 1; i <= subBassEndBin; i++) {
+      rawSubBass += this.freqByteData[i];
+      countSubBass++;
     }
-    const normBass = countBass > 0 ? (rawBass / countBass) / 255 : 0;
+    const normSubBass = countSubBass > 0 ? (rawSubBass / countSubBass) / 255 : 0;
 
-    let rawMids = 0;
-    let countMids = 0;
-    for (let i = bassEndBin + 1; i <= midsEndBin; i++) {
-      rawMids += this.freqByteData[i];
-      countMids++;
+    // 2. Punch Bass (85 - 250 Hz)
+    let rawBassPunch = 0;
+    let countBassPunch = 0;
+    for (let i = subBassEndBin + 1; i <= bassEndBin; i++) {
+      rawBassPunch += this.freqByteData[i];
+      countBassPunch++;
     }
-    const normMids = countMids > 0 ? (rawMids / countMids) / 255 : 0;
+    const normBassPunch = countBassPunch > 0 ? (rawBassPunch / countBassPunch) / 255 : 0;
+    const normBass = normSubBass * 0.40 + normBassPunch * 0.60;
 
+    // 3. Low-Mids (250 - 900 Hz)
+    let rawLowMids = 0;
+    let countLowMids = 0;
+    for (let i = bassEndBin + 1; i <= lowMidsEndBin; i++) {
+      rawLowMids += this.freqByteData[i];
+      countLowMids++;
+    }
+    const normLowMids = countLowMids > 0 ? (rawLowMids / countLowMids) / 255 : 0;
+
+    // 4. High-Mids (900 - 4500 Hz)
+    let rawHighMids = 0;
+    let countHighMids = 0;
+    for (let i = lowMidsEndBin + 1; i <= highMidsEndBin; i++) {
+      rawHighMids += this.freqByteData[i];
+      countHighMids++;
+    }
+    const normHighMids = countHighMids > 0 ? (rawHighMids / countHighMids) / 255 : 0;
+    const normMids = normLowMids * 0.45 + normHighMids * 0.55;
+
+    // 5. Treble (4500 - 16000 Hz)
     let rawTreble = 0;
     let countTreble = 0;
-    for (let i = midsEndBin + 1; i <= trebleEndBin; i++) {
+    for (let i = highMidsEndBin + 1; i <= trebleEndBin; i++) {
       rawTreble += this.freqByteData[i];
       countTreble++;
     }
     const normTreble = countTreble > 0 ? (rawTreble / countTreble) / 255 : 0;
 
-    const currentEnergy = normBass * 0.55 + normMids * 0.3 + normTreble * 0.15;
+    // Graphic Equalizer normalization with spectral tilt weighting:
+    // Natural audio drops ~3-4.5 dB per octave. Vintage hardware equalizers boost high
+    // bands proportionally so all 5 columns/waves bounce with lively dynamic range [0.0 - 1.0].
+    const eqCurve = (val: number, boost: number): number => {
+      const v = Math.min(1.0, val * boost);
+      if (v < 0.02) return 0;
+      const normalized = (v - 0.02) / 0.98;
+      return Math.min(1.0, Math.pow(normalized, 1.15) * 1.25);
+    };
 
-    // LERP smoothing
-    this.lerpedBass += (normBass - this.lerpedBass) * lerpFactor;
-    this.lerpedMids += (normMids - this.lerpedMids) * lerpFactor;
-    this.lerpedTreble += (normTreble - this.lerpedTreble) * lerpFactor;
+    const expSubBass = eqCurve(normSubBass, 1.30);
+    const expBassPunch = eqCurve(normBassPunch, 1.25);
+    const expBass = eqCurve(normBass, 1.25);
+    const expLowMids = eqCurve(normLowMids, 1.60);
+    const expHighMids = eqCurve(normHighMids, 2.20);
+    const expMids = eqCurve(normMids, 1.80);
+    const expTreble = eqCurve(normTreble, 2.80);
+
+    // Multi-band Attack / Decay Envelope Follower:
+    // Fast attack (6-12ms) guarantees instant reaction on drum/synth transients
+    // Smooth exponential decay (90-200ms) preserves rhythmic musical flow without digital jitter
+    const followEnv = (current: number, target: number, attackTime: number, decayTime: number): number => {
+      const timeConst = target > current ? attackTime : decayTime;
+      const coeff = 1.0 - Math.exp(-safeDt / timeConst);
+      return current + (target - current) * coeff;
+    };
+
+    // Sub-Bass: 12ms attack, 200ms decay (resonant, heavy bedrock thrust)
+    this.envSubBass = followEnv(this.envSubBass, expSubBass, 0.012, 0.200);
+    // Bass: 10ms attack, 160ms decay (tight, punchy kick drum)
+    this.envBass = followEnv(this.envBass, expBass, 0.010, 0.160);
+    // Low-Mids: 10ms attack, 180ms decay (warm chords)
+    this.envLowMids = followEnv(this.envLowMids, expLowMids, 0.010, 0.180);
+    // High-Mids: 8ms attack, 130ms decay (crisp snare/vocal flash)
+    this.envHighMids = followEnv(this.envHighMids, expHighMids, 0.008, 0.130);
+    // Treble: 6ms attack, 90ms decay (sparkling shimmer and fast hi-hat chatter)
+    this.envTreble = followEnv(this.envTreble, expTreble, 0.006, 0.090);
+
+    const currentEnergy = this.envSubBass * 0.35 + expBassPunch * 0.25 + this.envLowMids * 0.18 + this.envHighMids * 0.14 + this.envTreble * 0.08;
+
+    // Macro Energy Tracking:
+    // Tracks the overarching musical movement (breakdown vs build-up vs drop) across ~1.6 - 2.0s.
+    // Quick to elevate on drops (0.75s time constant) and relaxes gracefully into breakdowns (2.2s).
+    const macroTimeConst = currentEnergy > this.macroEnergy ? 0.75 : 2.2;
+    const macroCoeff = 1.0 - Math.exp(-safeDt / macroTimeConst);
+    this.macroEnergy += (currentEnergy - this.macroEnergy) * macroCoeff;
+
+    // Dynamic contrast ratio: burst above current macro baseline (highlights drops and impacts)
+    const energyContrast = Math.min(1.0, Math.max(0.0, (currentEnergy - this.macroEnergy * 0.65) * 1.6));
+
+    // Legacy lerp smoothing
+    this.lerpedBass += (expBass - this.lerpedBass) * lerpFactor;
+    this.lerpedMids += (expMids - this.lerpedMids) * lerpFactor;
+    this.lerpedTreble += (expTreble - this.lerpedTreble) * lerpFactor;
     this.lerpedEnergy += (currentEnergy - this.lerpedEnergy) * lerpFactor;
 
-    // Real-time Beat Detection
-    this.energyHistory.push(normBass);
+    // Real-time Beat Detection with decay impulse
+    this.energyHistory.push(expBass);
     if (this.energyHistory.length > 40) this.energyHistory.shift();
 
     let isBeat = false;
@@ -623,10 +746,16 @@ export class AudioEngine {
       this.beatCooldown--;
     } else {
       const avgBass = this.energyHistory.reduce((a, b) => a + b, 0) / this.energyHistory.length;
-      if (normBass > avgBass * 1.35 && normBass > 0.35) {
+      if (expBass > avgBass * 1.35 && expBass > 0.25) {
         isBeat = true;
         this.beatCooldown = 12; // Frames cooldown
       }
+    }
+
+    if (isBeat) {
+      this.beatPulse = 1.0;
+    } else {
+      this.beatPulse *= Math.exp(-safeDt / 0.18);
     }
 
     return {
@@ -635,7 +764,13 @@ export class AudioEngine {
       treble: this.lerpedTreble,
       energy: this.lerpedEnergy,
       isBeat,
-      frequencyArray: this.freqByteData
+      frequencyArray: this.freqByteData,
+      subBass: this.envSubBass,
+      lowMids: this.envLowMids,
+      highMids: this.envHighMids,
+      beatPulse: this.beatPulse,
+      macroEnergy: this.macroEnergy,
+      energyContrast
     };
   }
 

@@ -65,6 +65,21 @@
 ---
 
 ## 3. Changelog & Recent Fixes
+- **v1.7.1 (Macro-Energy Dynamics & Dynamic Contrast Overhaul)**:
+  1. *Dynamic Range Expansion & Noise-Floor Suppression*: Implemented non-linear musical noise-floor subtraction and power-law contrast curves (`Math.pow((val - floor) / (1 - floor), 1.65)`) in `AudioEngine.getFrequencyData()`. Replaces flat linear FFT values with true musical contrast: quiet breakdowns and ambient interludes drop to near-zero (~0.01-0.03) while bass drops and climaxes surge to 0.85-1.00.
+  2. *Macro Energy Envelope Tracking (`macroEnergy` & `energyContrast`)*: Introduced long-term moving envelope tracking (~1.6-2.0s) with fast rise on drops (0.75s) and slow release into breakdowns (2.2s). Distinguishes song sections (breakdown vs verse vs buildup vs peak drop).
+  3. *Dynamic Layer Awakening in Gravitational Ripples*: Outer bedrock ripples now wake up dynamically based on musical energy (`combinedDrive - layerThreshold`). During quiet breakdowns (e.g. Kosmonova - Ayla synth intro/breakdown), outer layers 1-4 sleep peacefully in the dark rock while layer 0 forms a serene, thin, calm glass contour. During buildups and drops, layers 1-4 awaken and illuminate the rock face.
+  4. *Energy-Responsive Shockwave Expansion & Tidal Crests*: Outward bedrock thrust scales from a tight 8px baseline in breakdowns to 70-95px in drops (`shockwaveExpansion`). Wave crest amplitude scales from 1-2px in quiet passages to 28-38px in drops.
+  5. *Rhythmic Propagation Acceleration*: Monotonic `ripplePhase` and terrain breathing dynamically slow to a gentle subterranean drift (~0.55 rad/s) in quiet sections, accelerating up to 4.2 rad/s during bass surges and beat impulses.
+- **v1.7.0 (Multi-Band Rhythmic Gravitational Ripples & Anti-Jitter Architecture)**:
+  1. *Multi-Band Attack/Decay Envelope Followers*: Split real-time FFT frequency extraction into distinct physical resonant bands:
+     - `subBass` (20-85Hz, 15ms attack / 240ms decay): Governs gravitational heave and deep bedrock outward shockwave expansion.
+     - `bass` (85-250Hz, 12ms attack / 180ms decay): Controls kick drum punch, contour line thickness, and boundary breathing.
+     - `lowMids` (250-800Hz, 18ms attack / 200ms decay): Governs musical harmonic wavelength and spacing along the flight path, replacing chaotic high-frequency jitter with majestic undulating curves.
+     - `highMids` (800-4000Hz, 10ms attack / 140ms decay): Drives luminous neon glow bursts and snare/clap flashes along ripple wavefronts.
+     - `beatPulse` (instant rise, 180ms exponential decay): Sequentially propels concentric ripples outward across layers on each beat.
+  2. *Monotonic Phase Accumulators*: Replaced erratic frame-to-frame phase addition (`phase = time + energy * 4.2`) with persistent monotonic phase integration in both `PhysicsWorld` (`terrainPhase`) and `GameRenderer` (`ripplePhase`). Completely eliminates 60 FPS spatial phase tearing and erratic visual vibrations.
+  3. *Concentric Stone-in-Pond Shockwaves*: Gravitational ripple contour lines in outer bedrock now propagate with true physical outward wave delays (`layerDelay = layer * 0.46`), radiating outward away from the boundary surface like water ripples when a stone drops into a calm pond, while keeping the central playable corridor 100% clean and unobstructed.
 - **v1.6.0 (Terrain Variation Overhaul)**:
   1. *Per-Track Terrain Personality*: Each track derives a stable multi-axis "personality" from its music seed (hill/chicane amplitude multipliers ~0.7x-1.9x, bend-frequency sharpness ~0.8x-1.45x, wobble 16-46px, an extra mid-band harmonic 14-50px, and breathing-depth factor ~0.45-1.6). Different songs now produce clearly distinct roller-coasters — measured typical bend peaks range from ~210px (floating cruisers) to ~310px (hard, twisting tracks).
   2. *Guaranteed Fair Corridor Clamp*: The corridor center is clamped so `macroCenter ± half-width` always stays inside the world bounds (40px edge margin) — hard bends can no longer squash the tunnel against the world edge.
