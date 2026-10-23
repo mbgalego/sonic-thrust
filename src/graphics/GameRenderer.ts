@@ -42,6 +42,9 @@ export class GameRenderer {
   private pulseSpawnTimer: number = 0;
   private pulseIdCounter: number = 0;
 
+  // Persistent continuous gravitational ripple phase accumulator (monotonic, rhythm-synced)
+  private ripplePhase: number = 0;
+
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     const context = canvas.getContext('2d', { alpha: false });
@@ -149,6 +152,15 @@ export class GameRenderer {
 
     // Full-screen background 'Neon Pulse' layer propagating outwards from center of viewport
     this.renderNeonPulse(audioFreq, isPaused ? 0 : dt);
+
+    // Advance gravitational ripple phase monotonically (strictly forward in time, synced to music tempo & beat impulses)
+    const animDt = isPaused ? 0 : dt;
+    const macroE = audioFreq.macroEnergy ?? audioFreq.energy;
+    // In quiet breakdowns: ripples drift in a calm, hypnotic glide (0.55 rad/s)
+    // In energetic sections & drops: accelerates smoothly up to 3.8 - 4.5 rad/s
+    const speedBase = 0.55 + 1.9 * Math.pow(macroE, 1.3);
+    const speedImpulse = (audioFreq.subBass || 0) * 1.8 + (audioFreq.beatPulse || 0) * 2.2;
+    this.ripplePhase += (speedBase + speedImpulse) * animDt;
 
     // Save for world translation
     ctx.save();
@@ -540,7 +552,7 @@ export class GameRenderer {
     // Pass 2: Ceiling Neon Vector Line
     const beatColor = audioFreq.isBeat ? '#ffffff' : '#06b6d4';
     ctx.shadowColor = audioFreq.isBeat ? '#ffffff' : '#06b6d4';
-    ctx.shadowBlur = 16 + audioFreq.bass * 14;
+    ctx.shadowBlur = (audioFreq.isBeat ? 24 : 8) + (audioFreq.macroEnergy ?? audioFreq.energy) * 16 + audioFreq.bass * 10;
     ctx.strokeStyle = beatColor;
     ctx.lineWidth = 3.5;
 
@@ -558,7 +570,7 @@ export class GameRenderer {
     // Pass 3: Floor Neon Vector Line
     const floorColor = audioFreq.isBeat ? '#ffffff' : '#a855f7';
     ctx.shadowColor = audioFreq.isBeat ? '#ffffff' : '#a855f7';
-    ctx.shadowBlur = 16 + audioFreq.bass * 14;
+    ctx.shadowBlur = (audioFreq.isBeat ? 24 : 8) + (audioFreq.macroEnergy ?? audioFreq.energy) * 16 + audioFreq.bass * 10;
     ctx.strokeStyle = floorColor;
     ctx.lineWidth = 3.5;
 
@@ -574,63 +586,130 @@ export class GameRenderer {
     ctx.stroke();
 
     // Pass 4: Gravitational Ripple Waves (Stone-in-Pond Shockwaves OUTSIDE the Playable Corridor)
-    // 5 multi-layer neon harmonic ripples propagating strictly outward into the bedrock
-    // (above ceiling and below floor), simulating gravitational shockwaves radiating away from the boundary surface
-    // in exact sync with the musical beat, bass transients, and tempo.
-    const echoColorsCeil = [
-      '#00f0ff', // Layer 0: Searing Electric Cyan
-      '#a855f7', // Layer 1: Radiant Neon Violet
-      '#ec4899', // Layer 2: Vivid Neon Magenta
-      '#fbbf24', // Layer 3: Laser Amber Gold
-      '#22c55e'  // Layer 4: Neon Electric Lime
+    // Multi-layer neon gravitational shockwaves propagating outward into bedrock (above ceiling and below floor),
+    // physically modeling concentric ripples radiating away from an impact in still water.
+    // Dynamic Energy Architecture:
+    // - Quiet Breakdowns (ambient intro/melodic breakdowns): Outer layers sleep in dark rock; primary wave is serene, flat, sleek, and tight.
+    // - Buildups & Climaxes: Outer layers progressively awaken and illuminate the bedrock.
+    // - Bass Drops & Transients: Massive shockwaves thrust up to 80-100px deep into stone, with explosive neon luminescence and surging tidal crests.
+    // Pass 4: Vintage Hi-Fi Graphic Equalizer Waves (5 Frequency Bands in Bedrock)
+    // Multi-band undulating equalizer ribbons outside the playable corridor (above ceiling and below floor).
+    // Modeled after vintage audio equalizers with responsive multi-frequency LED displays:
+    // - Band 0: Sub-Bass (20 - 85 Hz): Deep rolling ocean swell, heaves outward on kicks and sub-drops
+    // - Band 1: Punch Bass (85 - 250 Hz): Bounces forcefully with kick drums and basslines
+    // - Band 2: Low-Mids (250 - 900 Hz): Harmonic undulating wave driven by synth and chord body
+    // - Band 3: High-Mids (900 - 4500 Hz): Spikes with rapid crests & luminous flashes on snares, vocals, claps
+    // - Band 4: Treble (4500 - 16000 Hz): High-frequency jitter shimmer reacting to hi-hats, rides, and cymbals
+    //
+    // Crucially:
+    // 1. All 5 bands have distinct baseline spacing into bedrock so they NEVER collapse into one line.
+    // 2. Each band's wave amplitude, line thickness, and glow jump dynamically with that band's exact energy.
+    // 3. Independent of audible volume/mute: the pre-fader tap ensures the waves always dance at 100% full fidelity!
+    const eqBands = [
+      {
+        name: 'SUB_BASS',
+        energy: audioFreq.subBass,
+        ceilColor: '#00f0ff',   // Electric Cyan
+        floorColor: '#ef4444',  // Laser Red
+        spatialFreq: 0.0032,    // Long rolling ocean swell
+        speedMult: 0.85,
+        baseDist: 14,           // px into bedrock
+        maxAmp: 26,
+        phaseOffset: 0
+      },
+      {
+        name: 'BASS',
+        energy: audioFreq.bass,
+        ceilColor: '#38bdf8',   // Laser Sky Blue
+        floorColor: '#f97316',  // Neon Orange
+        spatialFreq: 0.0062,    // Punchy rhythmic wave
+        speedMult: 1.05,
+        baseDist: 28,
+        maxAmp: 24,
+        phaseOffset: 0.80
+      },
+      {
+        name: 'LOW_MIDS',
+        energy: audioFreq.lowMids,
+        ceilColor: '#818cf8',   // Neon Indigo
+        floorColor: '#eab308',  // Electric Gold / Amber
+        spatialFreq: 0.0105,    // Harmonic undulating roll
+        speedMult: 1.25,
+        baseDist: 42,
+        maxAmp: 22,
+        phaseOffset: 1.60
+      },
+      {
+        name: 'HIGH_MIDS',
+        energy: audioFreq.highMids,
+        ceilColor: '#c084fc',   // Radiant Purple
+        floorColor: '#10b981',  // Vibrant Emerald
+        spatialFreq: 0.0175,    // Snappy melodic crests
+        speedMult: 1.50,
+        baseDist: 56,
+        maxAmp: 20,
+        phaseOffset: 2.40
+      },
+      {
+        name: 'TREBLE',
+        energy: audioFreq.treble,
+        ceilColor: '#f43f5e',   // Searing Hot Pink / Crimson
+        floorColor: '#06b6d4',  // Bright Turquoise
+        spatialFreq: 0.0280,    // High-frequency jitter shimmer
+        speedMult: 1.85,
+        baseDist: 70,
+        maxAmp: 18,
+        phaseOffset: 3.20
+      }
     ];
-    const echoColorsFloor = [
-      '#f43f5e', // Layer 0: Searing Hot Rose / Crimson
-      '#c026d3', // Layer 1: Electric Fuchsia / Purple
-      '#06b6d4', // Layer 2: Brilliant Neon Turquoise
-      '#10b981', // Layer 3: Radiant Mint / Emerald
-      '#f59e0b'  // Layer 4: Sunset Laser Orange
-    ];
 
-    const echoLayers = 5;
-    const timeAnim = Date.now() * 0.0035;
-    const rippleTravel = timeAnim * 6.5 + audioFreq.energy * 4.2;
-    const bassAmpKick = 12 + audioFreq.bass * 26 + (audioFreq.isBeat ? 16 : 0);
-    const accordionPulse = 1.0 + audioFreq.bass * 0.65 + (audioFreq.isBeat ? 0.40 : 0);
+    const beatPulseVal = audioFreq.beatPulse || (audioFreq.isBeat ? 1.0 : 0.0);
 
-    for (let layer = 0; layer < echoLayers; layer++) {
-      // Expanding gravitational wavefront propagating outward into bedrock
-      const wavePhase = rippleTravel - layer * 1.15;
-      const outwardExpansion = ((layer + 1) * 15 + Math.sin(wavePhase) * 5) * accordionPulse;
-      
-      // Exponential fadeout as ripples expand further away from the tunnel into the outer void
-      const baseAlpha = (0.50 - layer * 0.085) * (0.75 + audioFreq.bass * 0.65);
-      const alpha = Math.max(0.04, Math.min(0.85, baseAlpha));
-      const lineWidth = Math.max(1.0, 3.2 - layer * 0.42);
+    for (let b = 0; b < eqBands.length; b++) {
+      const band = eqBands[b];
+      const bandE = Math.max(0, Math.min(1.0, band.energy));
 
-      // --- Ceiling Gravitational Echo (Radiating UPWARDS into bedrock, outside playable space) ---
+      // Dynamic amplitude: idle breathing (2.5px) up to (2.5 + maxAmp) on heavy rhythm hits!
+      const beatBoost = (b <= 1 ? beatPulseVal * 8.0 : (b === 3 ? beatPulseVal * 5.0 : 0));
+      const amp = 2.5 + bandE * band.maxAmp + beatBoost;
+
+      // Dynamic glow, thickness, and opacity reflecting vintage Hi-Fi equalizer LED meters
+      const alpha = Math.max(0.30, Math.min(0.95, 0.35 + bandE * 0.55 + (b === 0 ? 0.08 : 0)));
+      const lineWidth = 1.4 + bandE * 2.4 + (b <= 1 ? beatPulseVal * 0.8 : 0);
+      const shadowBlur = 4 + bandE * 18 + (audioFreq.isBeat && b <= 1 ? 14 : 0);
+
+      const wavePhase = this.ripplePhase * band.speedMult + band.phaseOffset;
+
+      // --- Ceiling Equalizer Wave (UPWARDS into bedrock above currentCeilY) ---
       ctx.save();
-      ctx.strokeStyle = echoColorsCeil[layer];
+      ctx.strokeStyle = band.ceilColor;
       ctx.globalAlpha = alpha;
-      ctx.shadowColor = echoColorsCeil[layer];
-      ctx.shadowBlur = layer === 0 ? (16 + audioFreq.bass * 18) : (8 + audioFreq.bass * 10);
+      ctx.shadowColor = band.ceilColor;
+      ctx.shadowBlur = shadowBlur;
       ctx.lineWidth = lineWidth;
 
       ctx.beginPath();
       for (let i = firstVisibleIdx; i <= lastVisibleIdx; i++) {
         const curr = points[i];
-        const primaryRipple = Math.sin(curr.x * 0.016 - rippleTravel * 1.8 + layer * 1.1) * bassAmpKick;
-        const harmonicShimmer = Math.cos(curr.x * 0.035 + rippleTravel * 2.2) * (4 + audioFreq.mids * 10);
-        // Strictly SUBTRACT so contour line is ABOVE ceiling (outside playable tunnel)
-        const y = curr.currentCeilY - (outwardExpansion + primaryRipple + harmonicShimmer);
+        // Harmonic synthesis: primary wave + secondary overtone
+        const s1 = Math.sin(curr.x * band.spatialFreq - wavePhase);
+        const s2 = Math.cos(curr.x * (band.spatialFreq * 0.45) - wavePhase * 0.6) * 0.30;
+        const waveY = (s1 + s2) * amp;
+
+        // Guaranteed strictly above ceiling
+        const totalOffset = Math.max(8, band.baseDist + waveY);
+        const y = curr.currentCeilY - totalOffset;
 
         if (i === firstVisibleIdx) {
           ctx.moveTo(curr.x, y);
         } else {
           const prev = points[i - 1];
-          const prevPrimary = Math.sin(prev.x * 0.016 - rippleTravel * 1.8 + layer * 1.1) * bassAmpKick;
-          const prevShimmer = Math.cos(prev.x * 0.035 + rippleTravel * 2.2) * (4 + audioFreq.mids * 10);
-          const prevY = prev.currentCeilY - (outwardExpansion + prevPrimary + prevShimmer);
+          const prevS1 = Math.sin(prev.x * band.spatialFreq - wavePhase);
+          const prevS2 = Math.cos(prev.x * (band.spatialFreq * 0.45) - wavePhase * 0.6) * 0.30;
+          const prevWaveY = (prevS1 + prevS2) * amp;
+          const prevOffset = Math.max(8, band.baseDist + prevWaveY);
+          const prevY = prev.currentCeilY - prevOffset;
+
           const midX = (prev.x + curr.x) / 2;
           const midY = (prevY + y) / 2;
           ctx.quadraticCurveTo(prev.x, prevY, midX, midY);
@@ -639,29 +718,35 @@ export class GameRenderer {
       ctx.stroke();
       ctx.restore();
 
-      // --- Floor Gravitational Echo (Radiating DOWNWARDS into bedrock, outside playable space) ---
+      // --- Floor Equalizer Wave (DOWNWARDS into bedrock below currentFloorY) ---
       ctx.save();
-      ctx.strokeStyle = echoColorsFloor[layer];
+      ctx.strokeStyle = band.floorColor;
       ctx.globalAlpha = alpha;
-      ctx.shadowColor = echoColorsFloor[layer];
-      ctx.shadowBlur = layer === 0 ? (16 + audioFreq.bass * 18) : (8 + audioFreq.bass * 10);
+      ctx.shadowColor = band.floorColor;
+      ctx.shadowBlur = shadowBlur;
       ctx.lineWidth = lineWidth;
 
       ctx.beginPath();
       for (let i = firstVisibleIdx; i <= lastVisibleIdx; i++) {
         const curr = points[i];
-        const primaryRipple = Math.sin(curr.x * 0.016 - rippleTravel * 1.8 - layer * 1.1) * bassAmpKick;
-        const harmonicShimmer = Math.cos(curr.x * 0.035 + rippleTravel * 2.2) * (4 + audioFreq.mids * 10);
-        // Strictly ADD so contour line is BELOW floor (outside playable tunnel)
-        const y = curr.currentFloorY + (outwardExpansion + primaryRipple + harmonicShimmer);
+        const s1 = Math.sin(curr.x * band.spatialFreq - wavePhase);
+        const s2 = Math.cos(curr.x * (band.spatialFreq * 0.45) - wavePhase * 0.6) * 0.30;
+        const waveY = (s1 + s2) * amp;
+
+        // Guaranteed strictly below floor
+        const totalOffset = Math.max(8, band.baseDist + waveY);
+        const y = curr.currentFloorY + totalOffset;
 
         if (i === firstVisibleIdx) {
           ctx.moveTo(curr.x, y);
         } else {
           const prev = points[i - 1];
-          const prevPrimary = Math.sin(prev.x * 0.016 - rippleTravel * 1.8 - layer * 1.1) * bassAmpKick;
-          const prevShimmer = Math.cos(prev.x * 0.035 + rippleTravel * 2.2) * (4 + audioFreq.mids * 10);
-          const prevY = prev.currentFloorY + (outwardExpansion + prevPrimary + prevShimmer);
+          const prevS1 = Math.sin(prev.x * band.spatialFreq - wavePhase);
+          const prevS2 = Math.cos(prev.x * (band.spatialFreq * 0.45) - wavePhase * 0.6) * 0.30;
+          const prevWaveY = (prevS1 + prevS2) * amp;
+          const prevOffset = Math.max(8, band.baseDist + prevWaveY);
+          const prevY = prev.currentFloorY + prevOffset;
+
           const midX = (prev.x + curr.x) / 2;
           const midY = (prevY + y) / 2;
           ctx.quadraticCurveTo(prev.x, prevY, midX, midY);
@@ -1515,26 +1600,57 @@ export class GameRenderer {
 
   private renderAudioSpectrumMini(audioFreq: AudioFrequencyData): void {
     const ctx = this.ctx;
-    const barCount = 18;
-    const barWidth = 3;
-    const barGap = 2;
+    const barCount = 16;
+    const barWidth = 4;
+    const barGap = 3;
+    const totalBarsWidth = barCount * barWidth + (barCount - 1) * barGap;
     const startX = 20;
-    const startY = this.height - 24;
-    const maxHeight = 28;
+    const maxHeight = 32;
+    const startY = this.height - 20;
+    const segH = 3;
+    const segGap = 1.5;
+    const maxSegments = Math.floor(maxHeight / (segH + segGap));
 
     ctx.save();
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.6)';
-    ctx.fillRect(startX - 6, startY - maxHeight - 6, (barWidth + barGap) * barCount + 12, maxHeight + 16);
+    // Glass HUD chassis
+    ctx.fillStyle = 'rgba(10, 15, 30, 0.75)';
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+    ctx.lineWidth = 1;
+    ctx.fillRect(startX - 8, startY - maxHeight - 18, totalBarsWidth + 16, maxHeight + 26);
+    ctx.strokeRect(startX - 8, startY - maxHeight - 18, totalBarsWidth + 16, maxHeight + 26);
 
-    const step = Math.floor(audioFreq.frequencyArray.length / barCount);
+    // Header label
+    ctx.font = 'bold 8px Orbitron, monospace';
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.8)';
+    ctx.fillText('HI-FI EQUALIZER', startX - 2, startY - maxHeight - 8);
+
+    const step = Math.max(1, Math.floor(audioFreq.frequencyArray.length / barCount));
     for (let i = 0; i < barCount; i++) {
-      const val = audioFreq.frequencyArray[i * step] / 255;
-      const h = Math.max(2, val * maxHeight);
+      // Tilting boost across spectrum bins so higher frequencies have equal visual presence
+      const boost = 1.0 + (i / barCount) * 1.5;
+      const rawVal = (audioFreq.frequencyArray[i * step] || 0) / 255;
+      const val = Math.min(1.0, rawVal * boost);
+      const activeSegs = Math.max(1, Math.round(val * maxSegments));
       const x = startX + i * (barWidth + barGap);
-      const y = startY - h;
 
-      ctx.fillStyle = i < 4 ? '#06b6d4' : i < 11 ? '#ec4899' : '#facc15';
-      ctx.fillRect(x, y, barWidth, h);
+      for (let s = 0; s < maxSegments; s++) {
+        const segY = startY - (s + 1) * (segH + segGap);
+        const isActive = s < activeSegs;
+
+        if (isActive) {
+          // Classic vintage Hi-Fi LED colors: Green base, Amber mids, Crimson peak
+          const ratio = s / maxSegments;
+          ctx.fillStyle = ratio > 0.78 ? '#ef4444' : ratio > 0.50 ? '#f59e0b' : '#10b981';
+          ctx.shadowColor = ctx.fillStyle;
+          ctx.shadowBlur = ratio > 0.78 ? 6 : 2;
+        } else {
+          // Dim inactive LED segment
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+          ctx.shadowBlur = 0;
+        }
+
+        ctx.fillRect(x, segY, barWidth, segH);
+      }
     }
     ctx.restore();
   }

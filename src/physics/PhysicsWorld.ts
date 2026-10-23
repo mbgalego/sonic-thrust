@@ -139,6 +139,9 @@ export class PhysicsWorld {
   public obstacles: ObstaclePlatform[] = [];
   public laserGates: LaserGate[] = [];
 
+  // Persistent continuous terrain phase accumulator (monotonic, eliminates audio jitter)
+  public terrainPhase: number = 0;
+
   // Stats tracking
   public stats: GameStats;
 
@@ -561,8 +564,8 @@ export class PhysicsWorld {
       this.ship.etherealActiveTimer -= safeDt;
     }
 
-    // 1. Audio-Reactive Terrain Update (FFT)
-    this.updateAudioTerrain(audioFreq);
+    // 1. Audio-Reactive Terrain Update (FFT with smooth phase accumulation)
+    this.updateAudioTerrain(audioFreq, safeDt);
 
     // 2. Flight Dynamics & Dual-Thruster Physics
     this.applyThrusterForces(leftPressed, rightPressed, safeDt);
@@ -595,13 +598,21 @@ export class PhysicsWorld {
     this.stats.maxSpeed = Math.max(this.stats.maxSpeed, Math.round(speed));
   }
 
-  private updateAudioTerrain(audioFreq: AudioFrequencyData): void {
+  private updateAudioTerrain(audioFreq: AudioFrequencyData, dt: number): void {
     // Sonic Damper calms down deformation if active
     const damperMult = this.ship.damperActiveTimer > 0 ? 0.22 : 1.0;
     const maxDeformPx = Math.min(36, (this.difficulty.tunnelWidth * 0.22) * this.difficulty.deformMax * damperMult);
-    const bassVal = audioFreq.bass;
+
+    // Monotonic phase progression modulated by Sub-Bass, Macro Energy and Kick transients
+    const macroE = audioFreq.macroEnergy ?? audioFreq.energy;
+    const heave = (audioFreq.subBass || audioFreq.bass) * 0.65 + audioFreq.bass * 0.35;
+    const speedBoost = 0.65 + 1.2 * macroE + (audioFreq.subBass || 0) * 2.0 + (audioFreq.beatPulse || 0) * 1.4;
+    this.terrainPhase += 1.6 * speedBoost * dt;
 
     // Deform each point in viewing radius
+    // Deformation scales with macro energy: calm & steady in quiet breakdowns, dynamic & breathing in drops
+    const deformScale = (0.18 + 0.82 * macroE) * maxDeformPx;
+
     for (let i = 0; i < this.terrainPoints.length; i++) {
       const pt = this.terrainPoints[i];
       // Skip launchpad start area to ensure safe liftoff
@@ -611,14 +622,14 @@ export class PhysicsWorld {
         continue;
       }
 
-      // Traveling harmonic wave modulated by Bass
-      const wavePhase = pt.x * 0.006 + (audioFreq.energy * 3.5);
+      // Smooth traveling harmonic wave with graceful spatial frequency (no jittery oscillations)
+      const wavePhase = pt.x * 0.0035 - this.terrainPhase;
       const deformSine = Math.sin(wavePhase);
-      const deformCosine = Math.cos(wavePhase * 1.4);
+      const deformCosine = Math.cos(wavePhase * 1.3);
 
-      // Ceiling pushes down, floor pushes up (channel compression)
-      const ceilOffset = (bassVal * 0.7 + deformSine * 0.3) * maxDeformPx;
-      const floorOffset = (bassVal * 0.7 + deformCosine * 0.3) * maxDeformPx;
+      // Ceiling pushes down, floor pushes up (rhythmic tunnel breathing)
+      const ceilOffset = (heave * 0.72 + deformSine * 0.28) * deformScale;
+      const floorOffset = (heave * 0.72 + deformCosine * 0.28) * deformScale;
 
       // Smooth lerp
       pt.currentCeilY += (pt.baseCeilY + ceilOffset - pt.currentCeilY) * 0.18;

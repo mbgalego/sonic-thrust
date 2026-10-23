@@ -461,8 +461,8 @@ export default function App() {
         const leftPressed = keysHeld.current.left || touchesHeld.current.left;
         const rightPressed = keysHeld.current.right || touchesHeld.current.right;
 
-        // Extract real-time FFT
-        const audioFreq = audio.getFrequencyData(0.24);
+        // Extract real-time multi-band FFT with envelope followers
+        const audioFreq = audio.getFrequencyData(0.24, dt);
 
         // Step physics only when PLAYING
         if (gameState === 'PLAYING') {
