@@ -796,9 +796,37 @@ export class AudioEngine {
     osc.stop(now + 0.08);
   }
 
-  public playPowerUpSfx(type: 'SHIELD' | 'DAMPER' | 'LOW_G' | 'INVULNERABLE' | 'ETHEREAL'): void {
+  public playPowerUpSfx(type: 'SHIELD' | 'DAMPER' | 'LOW_G' | 'INVULNERABLE' | 'ETHEREAL' | 'PULSE'): void {
     if (!this.ctx || !this.sfxGain) return;
     const now = this.ctx.currentTime;
+
+    if (type === 'PULSE') {
+      // Sonic Pulse: sub-bass shockwave thump + fast upward chirp "sonar" sweep
+      const sub = this.ctx.createOscillator();
+      const subGain = this.ctx.createGain();
+      sub.type = 'sine';
+      sub.frequency.setValueAtTime(70, now);
+      sub.frequency.exponentialRampToValueAtTime(38, now + 0.45);
+      subGain.gain.setValueAtTime(0.3, now);
+      subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+      sub.connect(subGain);
+      subGain.connect(this.sfxGain);
+      sub.start(now);
+      sub.stop(now + 0.52);
+
+      const sweep = this.ctx.createOscillator();
+      const sweepGain = this.ctx.createGain();
+      sweep.type = 'sine';
+      sweep.frequency.setValueAtTime(320, now);
+      sweep.frequency.exponentialRampToValueAtTime(1500, now + 0.28);
+      sweepGain.gain.setValueAtTime(0.12, now);
+      sweepGain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      sweep.connect(sweepGain);
+      sweepGain.connect(this.sfxGain);
+      sweep.start(now);
+      sweep.stop(now + 0.32);
+      return;
+    }
 
     const chords = {
       SHIELD: [523.25, 659.25, 783.99, 1046.50], // C5, E5, G5, C6 (Crystal blue)

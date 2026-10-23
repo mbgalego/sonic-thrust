@@ -15,6 +15,8 @@ export interface DifficultyConfig {
   initialShields: number;       // 1, 0, 0
   allowFlightAssist: boolean;   // true, true, false
   defaultFlightAssist: boolean; // true, false, false
+  laserDensity: number;         // laser beam spawn multiplier (0.55 principiante, 1.0 pro, 1.2 extreme)
+  laserGateThreshold: number;   // treble energy needed to fire the beam
   description: string;
 }
 
@@ -30,7 +32,7 @@ export interface TrackMetadata {
   audioBuffer?: AudioBuffer;
 }
 
-export type PowerUpType = 'SHIELD' | 'DAMPER' | 'LOW_G' | 'INVULNERABLE' | 'ETHEREAL';
+export type PowerUpType = 'SHIELD' | 'DAMPER' | 'LOW_G' | 'INVULNERABLE' | 'ETHEREAL' | 'PULSE';
 
 export interface PowerUpItem {
   id: string;
@@ -73,6 +75,7 @@ export interface ObstaclePlatform {
   maxExtensionHeight: number; // px extended into tunnel
   warningPhase: number;       // telegraph indicator 0.0 to 1.0
   beatTriggerTimer: number;   // rhythm timer
+  disabled?: boolean;         // permanently neutralized (e.g. disarmed by a Sonic Pulse)
 }
 
 export interface LaserGate {
@@ -86,6 +89,7 @@ export interface LaserGate {
   sweepOffset: number;
   beamCenter: number;  // current Y center of the traveling oval energy beam
   beamHalf: number;    // current half-height (px) of the semi-oval beam (pulses with music)
+  rearmTimer: number;  // >0 = beam discharged by a sonic pulse, recharging
 }
 
 export interface AudioFrequencyData {

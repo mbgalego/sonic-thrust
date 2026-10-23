@@ -25,6 +25,8 @@ export const DIFFICULTY_PRESETS: Record<DifficultyLevel, DifficultyConfig> = {
     initialShields: 1,
     allowFlightAssist: true,
     defaultFlightAssist: true,
+    laserDensity: 0.55,          // ~half the beams, far less frequent
+    laserGateThreshold: 0.42,    // beam needs strong treble to fire
     description: 'Canal muito largo, deformação suave (28%), gravidade reduzida (70%) e 1 escudo inicial.'
   },
   PRO: {
@@ -36,6 +38,8 @@ export const DIFFICULTY_PRESETS: Record<DifficultyLevel, DifficultyConfig> = {
     initialShields: 0,
     allowFlightAssist: true,
     defaultFlightAssist: false,
+    laserDensity: 1.0,
+    laserGateThreshold: 0.28,
     description: 'Canal dinâmico equilibrado, deformação ajustada (48%), gravidade padrão e sem escudos.'
   },
   EXTREME: {
@@ -47,6 +51,8 @@ export const DIFFICULTY_PRESETS: Record<DifficultyLevel, DifficultyConfig> = {
     initialShields: 0,
     allowFlightAssist: false,
     defaultFlightAssist: false,
+    laserDensity: 1.2,
+    laserGateThreshold: 0.24,
     description: 'Canal estreito, deformação forte (70%), gravidade 130% e Flight Assist desligado.'
   }
 };
@@ -99,6 +105,7 @@ export interface ShipState {
   damperActiveTimer: number; // 6s duration
   lowGActiveTimer: number;    // 5s duration
   etherealActiveTimer: number; // 0 = off, >0 = ghost mode
+  sonicPulseNotifyTimer: number; // brief HUD notification after a Sonic Pulse pickup
 }
 
 export interface TerrainVertex {
@@ -138,6 +145,10 @@ export class PhysicsWorld {
   // Dynamic obstacles & items
   public powerUps: PowerUpItem[] = [];
   public obstacles: ObstaclePlatform[] = [];
+
+  // Expanding Sonic Pulse shockwave (from a PULSE power-up pickup): disarms laser
+  // beams and destroys resonance mines inside its radius as it propagates.
+  public sonicPulseWave: { x: number; y: number; r: number; speed: number; maxR: number } | null = null;
   public laserGates: LaserGate[] = [];
 
   // Persistent continuous terrain phase accumulator (monotonic, eliminates audio jitter)
@@ -197,7 +208,8 @@ export class PhysicsWorld {
       isDestroyed: false,
       reachedGoal: false,
       damperActiveTimer: 0,
-      lowGActiveTimer: 0
+      lowGActiveTimer: 0,
+      sonicPulseNotifyTimer: 0
     };
 
     this.stats = {
@@ -337,7 +349,7 @@ export class PhysicsWorld {
     const playableRange = endSafeX - startSafeX;
 
     // 1. Power-ups distribution (Shields, Dampers, Low-G) with distinct celestial palettes
-    const powerUpTypes: PowerUpType[] = ['SHIELD', 'DAMPER', 'LOW_G', 'INVULNERABLE', 'ETHEREAL'];
+    const powerUpTypes: PowerUpType[] = ['SHIELD', 'DAMPER', 'LOW_G', 'INVULNERABLE', 'ETHEREAL', 'PULSE'];
     const totalPowerUps = Math.max(8, Math.floor(this.trackDuration / 11));
     
     for (let i = 0; i < totalPowerUps; i++) {
@@ -355,7 +367,8 @@ export class PhysicsWorld {
         DAMPER: '#00ff88', // Mint
         LOW_G: '#ffd700',   // Gold
         INVULNERABLE: '#ff0055', // Crimson / Immortality
-        ETHEREAL: '#a855f7'      // Violet / Ghost
+        ETHEREAL: '#a855f7',     // Violet / Ghost
+        PULSE: '#00f0ff'         // Cyan / Sonic Shockwave
       };
 
       const terrain = this.getTerrainAt(x);
@@ -492,7 +505,10 @@ export class PhysicsWorld {
     }
 
     // 3. Laser Energy Beams (concentrated oval beam that travels floor→ceiling and back, treble-gated)
-    const totalLasers = Math.max(8, Math.floor(this.trackDuration / 8));
+    const totalLasers = Math.max(
+      4,
+      Math.floor((this.trackDuration / 8) * this.difficulty.laserDensity)
+    );
     const laserStep = playableRange / totalLasers;
     for (let i = 0; i < totalLasers; i++) {
       const jitter =
@@ -514,7 +530,8 @@ export class PhysicsWorld {
         alpha: 0,
         sweepOffset: 0,
         beamCenter: (terrain.ceilY + terrain.floorY) / 2,
-        beamHalf: 60
+        beamHalf: 60,
+        rearmTimer: 0
       });
     }
   }
@@ -568,6 +585,12 @@ export class PhysicsWorld {
     if (this.ship.etherealActiveTimer > 0) {
       this.ship.etherealActiveTimer -= safeDt;
     }
+    if (this.ship.sonicPulseNotifyTimer > 0) {
+      this.ship.sonicPulseNotifyTimer -= safeDt;
+    }
+
+    // 0.5 Sonic Pulse shockwave propagation (disarms beams & mines)
+    this.updateSonicPulse(safeDt);
 
     // 1. Audio-Reactive Terrain Update (FFT with smooth phase accumulation)
     this.updateAudioTerrain(audioFreq, safeDt);
@@ -818,10 +841,17 @@ export class PhysicsWorld {
       if (Math.abs(laser.x - this.ship.x) > 1600) continue;
       laser.pulsePhase += dt * (1.05 + audioFreq.highMids * 1.1 + audioFreq.energy * 0.35);
 
-      const trebleEnergy = audioFreq.treble;
-      const targetAlpha = trebleEnergy > 0.28 ? Math.min(1.0, trebleEnergy * 2.0) : 0.05;
-      laser.alpha += (targetAlpha - laser.alpha) * 0.25;
-      laser.active = laser.alpha > 0.45;
+      if (laser.rearmTimer > 0) {
+        // Discharged by a sonic pulse: stays dark while recharging
+        laser.rearmTimer -= dt;
+        laser.alpha += (0.05 - laser.alpha) * 0.2;
+        laser.active = false;
+      } else {
+        const trebleEnergy = audioFreq.treble;
+        const targetAlpha = trebleEnergy > this.difficulty.laserGateThreshold ? Math.min(1.0, trebleEnergy * 2.0) : 0.05;
+        laser.alpha += (targetAlpha - laser.alpha) * 0.25;
+        laser.active = laser.alpha > 0.45;
+      }
 
       const t = this.getTerrainAt(laser.x);
       laser.yTop = t.ceilY + 10;
@@ -836,6 +866,39 @@ export class PhysicsWorld {
       const baseHalf = Math.max(26, Math.min(60, corridorH * 0.14));
       const halfFactor = 0.82 + 0.26 * audioFreq.bass + 0.10 * audioFreq.energy;
       laser.beamHalf = baseHalf * halfFactor;
+    }
+  }
+
+  /**
+   * Expanding Sonic Pulse shockwave: as the wave radius grows it disarms laser
+   * energy beams (rearmTimer = recharge delay) and permanently disables
+   * resonance mines inside the envelope.
+   */
+  private updateSonicPulse(dt: number): void {
+    if (!this.sonicPulseWave) return;
+    const wave = this.sonicPulseWave;
+    const prevR = wave.r;
+    wave.r += wave.speed * dt;
+
+    for (const laser of this.laserGates) {
+      if (laser.rearmTimer > 0) continue;
+      const dx = Math.abs(laser.x - wave.x);
+      // Only disarm beams whose x position the wavefront has just crossed
+      if (dx <= wave.r && dx > prevR - 60) {
+        laser.rearmTimer = 5.5;
+      }
+    }
+
+    for (const ob of this.obstacles) {
+      if (ob.disabled || ob.type !== 'RESONANCE_MINE') continue;
+      const d = Math.hypot(ob.x - wave.x, ob.y - wave.y);
+      if (d <= wave.r) {
+        ob.disabled = true;
+      }
+    }
+
+    if (wave.r >= wave.maxR) {
+      this.sonicPulseWave = null;
     }
   }
 
@@ -872,6 +935,10 @@ export class PhysicsWorld {
           this.ship.invulnerableTime = 3.0; // 3 seconds invulnerability
         } else if (p.type === 'ETHEREAL') {
           this.ship.etherealActiveTimer = 5.0; // 5 seconds ghost mode
+        } else if (p.type === 'PULSE') {
+          // Sonic Pulse: one-shot expanding shockwave from the pickup point
+          this.sonicPulseWave = { x: this.ship.x, y: this.ship.y, r: 26, speed: 620, maxR: 520 };
+          this.ship.sonicPulseNotifyTimer = 3.0;
         }
 
         if (this.onPowerUpCollected) {
@@ -911,6 +978,7 @@ export class PhysicsWorld {
 
     // 3. Multi-Archetype Obstacles collision check
     for (const obs of this.obstacles) {
+      if (obs.disabled) continue;
       if (Math.abs(obs.x - this.ship.x) > 120) continue;
 
       if (obs.type === 'EJECTOR_BLOCK') {

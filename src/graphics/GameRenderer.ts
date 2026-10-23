@@ -8,20 +8,6 @@ import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { AudioFrequencyData, PowerUpItem, ObstaclePlatform, LaserGate } from '../types/game';
 import { ParticleSystem } from './ParticleSystem';
 
-export interface NeonPulseWave {
-  id: number;
-  radius: number;
-  maxRadius: number;
-  speed: number;
-  color: string;
-  glowColor: string;
-  maxAlpha: number;
-  lineWidth: number;
-  rotation: number;
-  rotationSpeed: number;
-  arcAngles: { start: number; end: number }[];
-}
-
 export class GameRenderer {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
@@ -36,11 +22,6 @@ export class GameRenderer {
   // Dedicated Particle & VFX System
   public particleSystem: ParticleSystem;
   private backgroundStars: { x: number; y: number; speed: number; size: number; alpha: number }[] = [];
-
-  // Full-Screen Center-Outward Background Neon Pulse Waves
-  private neonPulseWaves: NeonPulseWave[] = [];
-  private pulseSpawnTimer: number = 0;
-  private pulseIdCounter: number = 0;
 
   // Persistent continuous gravitational ripple phase accumulator (monotonic, rhythm-synced)
   private ripplePhase: number = 0;
@@ -158,9 +139,6 @@ export class GameRenderer {
     ctx.fillStyle = '#06070c';
     ctx.fillRect(0, 0, w, h);
 
-    // Full-screen background 'Neon Pulse' layer propagating outwards from center of viewport
-    this.renderNeonPulse(audioFreq, isPaused ? 0 : dt);
-
     // Advance gravitational ripple phase monotonically (strictly forward in time, synced to music tempo & beat impulses)
     const animDt = isPaused ? 0 : dt;
     const macroE = audioFreq.macroEnergy ?? audioFreq.energy;
@@ -258,173 +236,6 @@ export class GameRenderer {
     ctx.fillStyle = edge;
     ctx.fillRect(0, 0, w, h);
 
-    ctx.restore();
-  }
-
-  /**
-   * Full-screen background 'Neon Pulse' layer:
-   * Rhythmic, fading arc-like waves that propagate from the center of the viewport outwards,
-   * reacting dynamically to the low-frequency (bass) energy and kick beats of the track.
-   */
-  private renderNeonPulse(audioFreq: AudioFrequencyData, dt: number): void {
-    const ctx = this.ctx;
-    const w = this.width;
-    const h = this.height;
-    const cx = w * 0.5;
-    const cy = h * 0.5;
-    const maxRadius = Math.hypot(w, h) * 0.68;
-    const bass = audioFreq.bass;
-
-    // 1. Subtle audio-reactive ambient radial core flare at viewport center (toned down to not interfere with craft)
-    const corePulse = 1.0 + bass * 0.65 + (audioFreq.isBeat ? 0.35 : 0);
-    const flareRadius = Math.min(w, h) * 0.45 * corePulse;
-
-    const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, flareRadius);
-    const coreAlpha = (0.03 + bass * 0.08 + (audioFreq.isBeat ? 0.05 : 0));
-    coreGrad.addColorStop(0, audioFreq.isBeat ? `rgba(255, 255, 255, ${coreAlpha * 1.4})` : `rgba(0, 240, 255, ${coreAlpha})`);
-    coreGrad.addColorStop(0.35, `rgba(168, 85, 247, ${coreAlpha * 0.5})`);
-    coreGrad.addColorStop(0.70, `rgba(236, 72, 153, ${coreAlpha * 0.2})`);
-    coreGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-
-    ctx.save();
-    ctx.fillStyle = coreGrad;
-    ctx.fillRect(0, 0, w, h);
-    ctx.restore();
-
-    // 2. Pulse Wave Spawner reacting to bass and beat
-    this.pulseSpawnTimer -= dt;
-    const triggerThreshold = 0.38;
-    if ((audioFreq.isBeat || bass > triggerThreshold) && this.pulseSpawnTimer <= 0) {
-      this.pulseSpawnTimer = audioFreq.isBeat ? 0.16 : 0.26;
-
-      const palette = [
-        { color: '#00f0ff', glow: '#00f0ff' }, // Electric Cyan
-        { color: '#ec4899', glow: '#ec4899' }, // Neon Rose / Magenta
-        { color: '#a855f7', glow: '#a855f7' }, // Electric Violet
-        { color: '#f43f5e', glow: '#f43f5e' }, // Searing Fuchsia
-        { color: '#38bdf8', glow: '#38bdf8' }, // Sky Laser
-        { color: '#fbbf24', glow: '#fbbf24' }  // Cyber Amber
-      ];
-      const pick = palette[this.pulseIdCounter % palette.length];
-
-      // Generate distinct arc formations: dual sweeping arcs, tri-phase arcs, or quad cyber arcs
-      const arcType = this.pulseIdCounter % 3;
-      let arcAngles: { start: number; end: number }[] = [];
-      if (arcType === 0) {
-        // Dual sweeping arcs
-        arcAngles = [
-          { start: -Math.PI * 0.36, end: Math.PI * 0.36 },
-          { start: Math.PI * 0.64, end: Math.PI * 1.36 }
-        ];
-      } else if (arcType === 1) {
-        // Tri-phase rhythm arcs
-        arcAngles = [
-          { start: 0.15, end: 1.65 },
-          { start: 2.25, end: 3.75 },
-          { start: 4.35, end: 5.85 }
-        ];
-      } else {
-        // Quad cyber arcs
-        arcAngles = [
-          { start: 0.15, end: 1.15 },
-          { start: 1.72, end: 2.72 },
-          { start: 3.29, end: 4.29 },
-          { start: 4.86, end: 5.86 }
-        ];
-      }
-
-      this.neonPulseWaves.push({
-        id: this.pulseIdCounter++,
-        radius: 20 + bass * 25,
-        maxRadius,
-        speed: 320 + bass * 380 + (audioFreq.isBeat ? 150 : 0),
-        color: pick.color,
-        glowColor: pick.glow,
-        maxAlpha: 0.60 + bass * 0.35,
-        lineWidth: 2.5 + bass * 3.5,
-        rotation: (this.pulseIdCounter * 0.45) % (Math.PI * 2),
-        rotationSpeed: (Math.random() - 0.5) * 0.85,
-        arcAngles
-      });
-    }
-
-    // 3. Update & Render propagating arc waves
-    for (let i = this.neonPulseWaves.length - 1; i >= 0; i--) {
-      const wave = this.neonPulseWaves[i];
-      wave.radius += wave.speed * (1.0 + bass * 0.55) * dt;
-      wave.rotation += wave.rotationSpeed * dt;
-
-      // Calculate progress and non-linear fadeout
-      const progress = wave.radius / wave.maxRadius;
-      if (progress >= 1.0) {
-        this.neonPulseWaves.splice(i, 1);
-        continue;
-      }
-
-      // Quick smooth fade-in as it leaves center, then long fading arc trail outward
-      const fadeIn = Math.min(1.0, progress / 0.08);
-      const fadeOut = Math.max(0.0, 1.0 - Math.pow(progress, 1.35));
-      const currentAlpha = fadeIn * fadeOut * wave.maxAlpha * (0.7 + bass * 0.6);
-
-      if (currentAlpha < 0.01) continue;
-
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(wave.rotation);
-
-      ctx.strokeStyle = wave.color;
-      ctx.globalAlpha = Math.min(0.85, currentAlpha);
-      ctx.shadowColor = wave.glowColor;
-      ctx.shadowBlur = 14 + bass * 20;
-      ctx.lineWidth = wave.lineWidth * (1.0 - progress * 0.28);
-
-      for (const arc of wave.arcAngles) {
-        ctx.beginPath();
-        ctx.arc(0, 0, wave.radius, arc.start, arc.end);
-        ctx.stroke();
-
-        // White energetic tip beads on arc terminals
-        if (progress < 0.72) {
-          ctx.fillStyle = '#ffffff';
-          const p1x = Math.cos(arc.start) * wave.radius;
-          const p1y = Math.sin(arc.start) * wave.radius;
-          const p2x = Math.cos(arc.end) * wave.radius;
-          const p2y = Math.sin(arc.end) * wave.radius;
-          ctx.beginPath();
-          ctx.arc(p1x, p1y, 2.5, 0, Math.PI * 2);
-          ctx.arc(p2x, p2y, 2.5, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-
-      // Secondary ghost harmonic echo wave for deeper depth
-      if (progress > 0.12 && progress < 0.85) {
-        ctx.globalAlpha = currentAlpha * 0.35;
-        ctx.lineWidth = 1.2;
-        for (const arc of wave.arcAngles) {
-          ctx.beginPath();
-          ctx.arc(0, 0, wave.radius * 0.94, arc.start + 0.05, arc.end - 0.05);
-          ctx.stroke();
-        }
-      }
-
-      ctx.restore();
-    }
-
-    // 4. MASK OUT PLAYABLE FLIGHT CORRIDOR:
-    // Ensures the central flight corridor remains completely clear and uncluttered,
-    // while the dramatic neon pulses expand majestically into the outer screen perimeter, horizons, and corners.
-    ctx.save();
-    ctx.globalCompositeOperation = 'destination-out';
-    const clearH = 340;
-    const cutGrad = ctx.createLinearGradient(0, cy - clearH * 0.5, 0, cy + clearH * 0.5);
-    cutGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    cutGrad.addColorStop(0.20, 'rgba(0, 0, 0, 0.88)');
-    cutGrad.addColorStop(0.50, 'rgba(0, 0, 0, 1.0)');
-    cutGrad.addColorStop(0.80, 'rgba(0, 0, 0, 0.88)');
-    cutGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = cutGrad;
-    ctx.fillRect(0, cy - clearH * 0.5, w, clearH);
     ctx.restore();
   }
 
@@ -1029,6 +840,45 @@ export class GameRenderer {
         ctx.arc(0, 0, 7.5, 0, Math.PI * 2);
         ctx.fill();
 
+      } else if (p.type === 'PULSE') {
+        // F) PULSE: concentric sonic rings — double oscillating shockwave emblem + cyan core
+        ctx.strokeStyle = p.color;
+        ctx.shadowColor = p.color;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, rad * (0.9 + Math.sin(Date.now() * 0.006) * 0.10), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 0.55;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, rad * (1.25 + Math.sin(Date.now() * 0.006 + 1.2) * 0.14), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(0, 0, rad * (0.55 + Math.cos(Date.now() * 0.008) * 0.08), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+
+        // Spokes (sound propagation ticks)
+        for (let s = 0; s < 8; s++) {
+          const a = (s * Math.PI * 2) / 8 + p.orbitAngle * 0.6;
+          ctx.strokeStyle = p.color;
+          ctx.lineWidth = 1;
+          ctx.globalAlpha = 0.4 + 0.4 * Math.abs(Math.sin(p.pulsePhase * 1.5 + s));
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a) * rad * 1.05, Math.sin(a) * rad * 1.05);
+          ctx.lineTo(Math.cos(a) * rad * 1.34, Math.sin(a) * rad * 1.34);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+
+        // Resonant cyan-white core
+        ctx.fillStyle = '#e0ffff';
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 24 + (audioFreq.bass * 14);
+        ctx.beginPath();
+        ctx.arc(0, 0, 4.5 + (audioFreq.bass * 2.4) + Math.sin(Date.now() * 0.012) * 1, 0, Math.PI * 2);
+        ctx.fill();
+
       } else {
         // C) LOW-G SURGE: Levitating anti-gravity gyroscope with gimbal rings
         ctx.strokeStyle = p.color;
@@ -1061,7 +911,7 @@ export class GameRenderer {
       ctx.font = 'bold 9px Orbitron';
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
-      const label = p.type === 'SHIELD' ? 'ESCUDO' : p.type === 'DAMPER' ? 'DAMPER' : p.type === 'LOW_G' ? 'LOW-G' : p.type === 'INVULNERABLE' ? 'IMUNE' : 'FANTASMA';
+      const label = p.type === 'SHIELD' ? 'ESCUDO' : p.type === 'DAMPER' ? 'DAMPER' : p.type === 'LOW_G' ? 'LOW-G' : p.type === 'INVULNERABLE' ? 'IMUNE' : p.type === 'PULSE' ? 'PULSO' : 'FANTASMA';
       ctx.shadowBlur = 8;
       ctx.fillText(label, 0, rad + 18);
 
@@ -1088,6 +938,7 @@ export class GameRenderer {
     ctx.save();
 
     for (const obs of obstacles) {
+      if (obs.disabled) continue; // neutralized by a sonic pulse
       if (obs.x < this.cameraX - 140 || obs.x > this.cameraX + this.width + 140) continue;
 
       const terrain = world.getTerrainAt(obs.x);
@@ -1440,20 +1291,20 @@ export class GameRenderer {
       };
 
       // 1. Ambient aura: barely-there outer haze with drifting center
-      blob(curX + w2 * 5, coreY + w1 * 6, 22 + w2 * 4, halfH * 1.9 * (1 + w3 * 0.05), laser.alpha * 0.08);
+      blob(curX + w2 * 5, coreY + w1 * 6, 26 + w2 * 5, halfH * 1.95 * (1 + w3 * 0.05), laser.alpha * 0.14);
 
       // 2. Body: three overlapping fuzzy ovals at slightly offset centers/heights
-      blob(curX + w1 * 2.5, coreY, 12 + w1 * 2.5, halfH * 1.02 + w2 * 6, laser.alpha * 0.15);
-      blob(curX + w2 * 2, coreY - halfH * 0.2, 9 + w2 * 2, halfH * 0.68 + w1 * 5, laser.alpha * 0.12);
-      blob(curX - w1 * 2, coreY + halfH * 0.22, 9 + w1 * 2, halfH * 0.56 + w2 * 4, laser.alpha * 0.11);
+      blob(curX + w1 * 2.5, coreY, 13 + w1 * 2.5, halfH * 1.04 + w2 * 6, laser.alpha * 0.28);
+      blob(curX + w2 * 2, coreY - halfH * 0.2, 10 + w2 * 2, halfH * 0.70 + w1 * 5, laser.alpha * 0.23);
+      blob(curX - w1 * 2, coreY + halfH * 0.22, 10 + w1 * 2, halfH * 0.58 + w2 * 4, laser.alpha * 0.20);
 
       // 3. Hot spine: narrow bright core that slides along the axis
       blob(
         curX + w3 * 1.5,
         coreY + Math.sin(tNow * 0.005) * halfH * 0.08,
-        4.5 + w1 * 1.2,
-        halfH * 0.46 + w2 * 3,
-        laser.alpha * (laser.active ? 0.32 : 0.14)
+        5 + w1 * 1.3,
+        halfH * 0.48 + w2 * 3,
+        laser.alpha * (laser.active ? 0.55 : 0.25)
       );
 
       // 4. Loose plasma granulation: specks drifting along the beam (softer, hotter)
@@ -1461,11 +1312,11 @@ export class GameRenderer {
         const p = laser.pulsePhase * 1.3 + k * 2.4 + tNow * 0.0009 * (k % 2 === 0 ? 1 : -1);
         const py = coreY + Math.sin(p) * halfH * 0.85;
         const px = curX + Math.cos(p * 1.7) * (5 + k * 2.2);
-        blob(px, py, 3.5 + (k % 2) * 2.5, 6 + Math.abs(Math.sin(p * 0.6)) * 4.5, laser.alpha * 0.09);
+        blob(px, py, 4 + (k % 2) * 3, 7 + Math.abs(Math.sin(p * 0.6)) * 5, laser.alpha * 0.16);
       }
 
       // 5. Faint travel rails (telegraph of the beam's vertical path)
-      ctx.strokeStyle = `rgba(250, 204, 21, ${(laser.alpha * 0.09).toFixed(3)})`;
+      ctx.strokeStyle = `rgba(250, 204, 21, ${(laser.alpha * 0.15).toFixed(3)})`;
       ctx.lineWidth = 1;
       ctx.setLineDash([3, 13]);
       ctx.beginPath();
@@ -1474,6 +1325,43 @@ export class GameRenderer {
       ctx.stroke();
       ctx.setLineDash([]);
 
+      ctx.restore();
+    }
+
+    // Sonic Pulse shockwave: expanding double ring + core flare around the pickup point
+    if (world.sonicPulseWave) {
+      const wave = world.sonicPulseWave;
+      const progress = Math.min(1, wave.r / wave.maxR);
+      const fade = 1 - Math.pow(progress, 1.6);
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = '#00f0ff';
+      ctx.shadowColor = '#00f0ff';
+      ctx.shadowBlur = 18;
+      ctx.globalAlpha = 0.75 * fade;
+      ctx.lineWidth = 4.5 * (1 - progress * 0.4);
+      ctx.beginPath();
+      ctx.arc(wave.x, wave.y, wave.r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 0.4 * fade;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(wave.x, wave.y, wave.r * 0.8, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(wave.x, wave.y, wave.r * 0.55, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Fading core flare at wave origin
+      const g = ctx.createRadialGradient(wave.x, wave.y, 0, wave.x, wave.y, 40);
+      g.addColorStop(0, `rgba(0, 240, 255, ${(0.35 * fade).toFixed(3)})`);
+      g.addColorStop(1, 'rgba(0, 240, 255, 0)');
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(wave.x, wave.y, 40, 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
     }
 
