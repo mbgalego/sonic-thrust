@@ -45,6 +45,14 @@ export class GameRenderer {
   // Persistent continuous gravitational ripple phase accumulator (monotonic, rhythm-synced)
   private ripplePhase: number = 0;
 
+  // Drop Flash — consumes AudioFrequencyData.energyContrast: full-arena bloom when the music
+  // bursts above its own macro baseline (the classic EDM "drop hit" moment).
+  private dropFlash: number = 0;              // 0..1 flash envelope (fast rise, ~0.45s decay)
+  private dropFlashCooldown: number = 0;      // seconds before another flash may trigger
+  private prevEnergyContrast: number = 0;     // rising-edge detection pocket
+  private static readonly DROP_FLASH_TRIGGER = 0.62; // cross this to fire
+  private static readonly DROP_FLASH_COOLDOWN_S = 1.5; // min seconds between flashes
+
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     const context = canvas.getContext('2d', { alpha: false });
@@ -162,6 +170,23 @@ export class GameRenderer {
     const speedImpulse = (audioFreq.subBass || 0) * 1.8 + (audioFreq.beatPulse || 0) * 2.2;
     this.ripplePhase += (speedBase + speedImpulse) * animDt;
 
+    // Drop Flash detection & decay (rising-edge of energyContrast with cooldown to avoid strobing)
+    if (!isPaused) {
+      const contrast = audioFreq.energyContrast || 0;
+      if (this.dropFlashCooldown > 0) this.dropFlashCooldown -= dt;
+      if (
+        contrast > GameRenderer.DROP_FLASH_TRIGGER &&
+        this.prevEnergyContrast <= GameRenderer.DROP_FLASH_TRIGGER &&
+        this.dropFlashCooldown <= 0
+      ) {
+        this.dropFlash = 1.0;
+        this.screenShake = Math.max(this.screenShake, 10.0);
+        this.dropFlashCooldown = GameRenderer.DROP_FLASH_COOLDOWN_S;
+      }
+      this.prevEnergyContrast = contrast;
+    }
+    this.dropFlash *= Math.exp(-(isPaused ? 0 : dt) / 0.45);
+
     // Save for world translation
     ctx.save();
     ctx.translate(-this.cameraX + shakeX, -this.cameraY + shakeY);
@@ -196,6 +221,44 @@ export class GameRenderer {
 
     // 9. Audio Waveform Spectrum Radar (Mini overlay in bottom left corner)
     this.renderAudioSpectrumMini(audioFreq);
+
+    // 10. Drop Flash overlay (last: blooms the whole arena)
+    if (this.dropFlash > 0.015) {
+      this.renderDropFlashOverlay();
+    }
+  }
+
+  /**
+   * Drop Flash full-arena bloom: additive light burst that engulfs the screen
+   * when the music detonates above its macro baseline (the "drop hits" moment).
+   */
+  private renderDropFlashOverlay(): void {
+    const ctx = this.ctx;
+    const w = this.width;
+    const h = this.height;
+    const cx = w * 0.5;
+    const cy = h * 0.5;
+    const maxR = Math.hypot(w, h) * 0.5;
+    const a = Math.pow(this.dropFlash, 1.5); // snappy attack, smooth perceptual falloff
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    // Core bloom from the viewport center
+    const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
+    core.addColorStop(0, `rgba(190, 240, 255, ${(0.16 * a).toFixed(3)})`);
+    core.addColorStop(1, 'rgba(190, 240, 255, 0)');
+    ctx.fillStyle = core;
+    ctx.fillRect(0, 0, w, h);
+
+    // Edge bloom: bedrock edges ignite outward-in
+    const edge = ctx.createRadialGradient(cx, cy, maxR * 0.45, cx, cy, maxR * 1.05);
+    edge.addColorStop(0, 'rgba(150, 200, 255, 0)');
+    edge.addColorStop(1, `rgba(150, 200, 255, ${(0.20 * a).toFixed(3)})`);
+    ctx.fillStyle = edge;
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.restore();
   }
 
   /**
@@ -552,7 +615,7 @@ export class GameRenderer {
     // Pass 2: Ceiling Neon Vector Line
     const beatColor = audioFreq.isBeat ? '#ffffff' : '#06b6d4';
     ctx.shadowColor = audioFreq.isBeat ? '#ffffff' : '#06b6d4';
-    ctx.shadowBlur = (audioFreq.isBeat ? 24 : 8) + (audioFreq.macroEnergy ?? audioFreq.energy) * 16 + audioFreq.bass * 10;
+    ctx.shadowBlur = (audioFreq.isBeat ? 24 : 8) + (audioFreq.macroEnergy ?? audioFreq.energy) * 16 + audioFreq.bass * 10 + this.dropFlash * 26;
     ctx.strokeStyle = beatColor;
     ctx.lineWidth = 3.5;
 
@@ -570,7 +633,7 @@ export class GameRenderer {
     // Pass 3: Floor Neon Vector Line
     const floorColor = audioFreq.isBeat ? '#ffffff' : '#a855f7';
     ctx.shadowColor = audioFreq.isBeat ? '#ffffff' : '#a855f7';
-    ctx.shadowBlur = (audioFreq.isBeat ? 24 : 8) + (audioFreq.macroEnergy ?? audioFreq.energy) * 16 + audioFreq.bass * 10;
+    ctx.shadowBlur = (audioFreq.isBeat ? 24 : 8) + (audioFreq.macroEnergy ?? audioFreq.energy) * 16 + audioFreq.bass * 10 + this.dropFlash * 26;
     ctx.strokeStyle = floorColor;
     ctx.lineWidth = 3.5;
 
@@ -671,12 +734,13 @@ export class GameRenderer {
 
       // Dynamic amplitude: idle breathing (2.5px) up to (2.5 + maxAmp) on heavy rhythm hits!
       const beatBoost = (b <= 1 ? beatPulseVal * 8.0 : (b === 3 ? beatPulseVal * 5.0 : 0));
-      const amp = 2.5 + bandE * band.maxAmp + beatBoost;
+      const dropFlashBoost = this.dropFlash * 6.0; // Arena-wide surge on drop hits
+      const amp = 2.5 + bandE * band.maxAmp + beatBoost + dropFlashBoost;
 
       // Dynamic glow, thickness, and opacity reflecting vintage Hi-Fi equalizer LED meters
-      const alpha = Math.max(0.30, Math.min(0.95, 0.35 + bandE * 0.55 + (b === 0 ? 0.08 : 0)));
-      const lineWidth = 1.4 + bandE * 2.4 + (b <= 1 ? beatPulseVal * 0.8 : 0);
-      const shadowBlur = 4 + bandE * 18 + (audioFreq.isBeat && b <= 1 ? 14 : 0);
+      const alpha = Math.max(0.30, Math.min(0.95, 0.35 + bandE * 0.55 + dropFlashBoost * 0.04 + (b === 0 ? 0.08 : 0)));
+      const lineWidth = 1.4 + bandE * 2.4 + (b <= 1 ? beatPulseVal * 0.8 : 0) + dropFlashBoost * 0.25;
+      const shadowBlur = 4 + bandE * 18 + (audioFreq.isBeat && b <= 1 ? 14 : 0) + this.dropFlash * 24;
 
       const wavePhase = this.ripplePhase * band.speedMult + band.phaseOffset;
 
