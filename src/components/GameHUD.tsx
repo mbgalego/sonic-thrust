@@ -133,8 +133,8 @@ export const GameHUD: React.FC<GameHUDProps> = ({
         </div>
       </header>
 
-      {/* Middle Floating Status Buffs (Launch Anti-G, Damper & Low-G) */}
-      <div className="flex flex-col gap-2 items-start self-start mt-4">
+      {/* Power-up Notifications — centered, directly below the countdown timer */}
+      <div className="absolute top-[calc(22%+5.75rem)] left-0 right-0 flex flex-col items-center gap-2 z-10 pointer-events-none">
         {launchGraceTimer > 0 && (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-950/90 border border-cyan-400 text-cyan-300 font-mono text-xs shadow-lg shadow-cyan-950/80 animate-pulse">
             <Zap className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
@@ -153,6 +153,20 @@ export const GameHUD: React.FC<GameHUDProps> = ({
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-950/80 border border-yellow-500/40 text-yellow-300 font-mono text-xs shadow-lg shadow-yellow-950/50">
             <Activity className="w-3.5 h-3.5 text-yellow-400 animate-pulse" />
             <span>LOW-G SURGE: {ship.lowGActiveTimer.toFixed(1)}s</span>
+          </div>
+        )}
+
+        {ship.invulnerableTime > 0 && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-950/80 border border-rose-500/50 text-rose-300 font-mono text-xs shadow-lg shadow-rose-950/60 animate-pulse">
+            <Shield className="w-3.5 h-3.5 text-rose-400 animate-spin" />
+            <span className="drop-shadow-[0_0_6px_rgba(255,0,85,0.8)]">INVULNERÁVEL: {ship.invulnerableTime.toFixed(1)}s</span>
+          </div>
+        )}
+
+        {ship.etherealActiveTimer > 0 && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-950/80 border border-violet-500/50 text-violet-300 font-mono text-xs shadow-lg shadow-violet-950/60 animate-pulse">
+            <Activity className="w-3.5 h-3.5 text-violet-400 animate-spin" />
+            <span className="drop-shadow-[0_0_6px_rgba(168,85,247,0.8)]">MODO FANTASMA: {ship.etherealActiveTimer.toFixed(1)}s</span>
           </div>
         )}
       </div>
@@ -229,18 +243,6 @@ export const GameHUD: React.FC<GameHUDProps> = ({
               )}
             </div>
           </div>
-          {ship.invulnerableTime > 0 && (
-            <div className="flex items-center gap-1 border-l border-white/10 pl-2 ml-1">
-              <div className="w-2 h-2 rounded-full bg-[#ff0055] animate-pulse" />
-              <span className="text-[10px] font-bold text-[#ff0055]">INV {ship.invulnerableTime.toFixed(0)}s</span>
-            </div>
-          )}
-          {ship.etherealActiveTimer > 0 && (
-            <div className="flex items-center gap-1 border-l border-white/10 pl-2 ml-1">
-              <div className="w-2 h-2 rounded-full bg-[#a855f7] animate-pulse" />
-              <span className="text-[10px] font-bold text-[#a855f7]">GHOST {ship.etherealActiveTimer.toFixed(0)}s</span>
-            </div>
-          )}
         </div>
       </footer>
     </div>

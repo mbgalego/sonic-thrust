@@ -772,49 +772,113 @@ export class GameRenderer {
         ctx.stroke();
 
       } else if (p.type === 'INVULNERABLE') {
-        // D) INVULNERABLE: Crimson rotating barrier with orbiting sigils
+        // D) INVULNERABLE: Crimson neon shield core — rotating hexagon barrier + orbiting sigils + blazing core
         ctx.strokeStyle = p.color;
         ctx.lineWidth = 3;
+        ctx.shadowBlur = 24 + (audioFreq.isBeat ? 22 : 0);
         ctx.rotate(p.orbitAngle);
-        ctx.beginPath();
-        ctx.arc(0, 0, rad * 0.8, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(0, 0, rad * 0.45, 0, Math.PI * 2);
-        ctx.stroke();
 
-        // Sigils orbiting the barrier
-        for (let s = 0; s < 4; s++) {
-          const sAngle = p.pulsePhase + (s * Math.PI * 2) / 4;
-          const sigilRad = rad * 0.65 + Math.sin(Date.now() * 0.005 + s * 1.3) * 3;
-          ctx.fillStyle = '#fff';
-          ctx.beginPath();
-          ctx.arc(Math.cos(sAngle) * sigilRad, Math.sin(sAngle) * sigilRad, 3.5, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-      } else if (p.type === 'ETHEREAL') {
-        // E) ETHEREAL: Semi-transparent violet ghost with trailing ribbon
-        ctx.strokeStyle = p.color;
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.4;
+        // Outer rotating hexagon barrier (neon glow fill)
         ctx.beginPath();
-        for (let t = 0; t < 8; t++) {
-          const tAngle = (t * Math.PI) / 4 + p.pulsePhase;
-          const tx = Math.cos(tAngle) * rad;
-          const ty = Math.sin(tAngle) * rad * 0.6;
-          if (t === 0) ctx.moveTo(tx, ty);
-          else ctx.lineTo(tx, ty);
+        for (let a = 0; a < 6; a++) {
+          const angle = (a * Math.PI) / 3 + p.pulsePhase * 0.8;
+          const hx = Math.cos(angle) * rad * 0.85;
+          const hy = Math.sin(angle) * rad * 0.85;
+          if (a === 0) ctx.moveTo(hx, hy);
+          else ctx.lineTo(hx, hy);
         }
         ctx.closePath();
         ctx.stroke();
-        ctx.globalAlpha = 0.2;
-        ctx.fillStyle = p.color;
+        ctx.fillStyle = 'rgba(255, 0, 85, 0.25)';
+        ctx.fill();
+
+        // Counter-rotating inner spin ring
+        ctx.rotate(-p.orbitAngle * 2.2);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, rad * 0.5, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // 4 orbiting sigils with comet trails
+        for (let s = 0; s < 4; s++) {
+          const sAngle = p.pulsePhase * 2 + (s * Math.PI * 2) / 4;
+          const sigilRad = rad * 0.65 + Math.sin(Date.now() * 0.005 + s * 1.3) * 3;
+          const sx = Math.cos(sAngle) * sigilRad;
+          const sy = Math.sin(sAngle) * sigilRad;
+          ctx.strokeStyle = p.color;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(sx * 0.55, sy * 0.55);
+          ctx.lineTo(sx, sy);
+          ctx.stroke();
+          ctx.fillStyle = '#fff';
+          ctx.beginPath();
+          ctx.arc(sx, sy, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Blazing white-hot core
+        ctx.fillStyle = '#fff';
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 30;
+        ctx.beginPath();
+        ctx.arc(0, 0, 5.5 + (audioFreq.bass * 2.5), 0, Math.PI * 2);
+        ctx.fill();
+
+      } else if (p.type === 'ETHEREAL') {
+        // E) ETHEREAL: Violet neon ghost prism — dashed glowing ring + orbiting wisps + spectral core
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([6, 5]);
+        ctx.lineDashOffset = -p.pulsePhase * 14;
+        ctx.beginPath();
+        ctx.arc(0, 0, rad, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = 'rgba(168, 85, 247, 0.22)';
         ctx.beginPath();
         ctx.arc(0, 0, rad, 0, Math.PI * 2);
         ctx.fill();
-        ctx.globalAlpha = 1.0;
+
+        // Inner spectral wave ribbon
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        for (let w = -rad * 0.6; w <= rad * 0.6; w += 3) {
+          const wy = Math.sin(w * 0.35 + p.pulsePhase * 3.2) * (rad * 0.28);
+          if (w === -rad * 0.6) ctx.moveTo(w, wy);
+          else ctx.lineTo(w, wy);
+        }
+        ctx.stroke();
+
+        // 3 orbiting ghost wisps with glow trails
+        for (let s = 0; s < 3; s++) {
+          const sAngle = p.orbitAngle * 1.4 + (s * Math.PI * 2) / 3;
+          const wx = Math.cos(sAngle) * (rad + 7);
+          const wy = Math.sin(sAngle) * (rad + 7);
+          ctx.fillStyle = p.color;
+          ctx.shadowBlur = 14;
+          ctx.beginPath();
+          ctx.arc(wx, wy, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = p.color;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.arc(wx, wy, 6.5 + Math.sin(Date.now() * 0.008 + s) * 2, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // Spectral core — white-violet pulsing eye
+        ctx.fillStyle = '#faf5ff';
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 26 + (audioFreq.bass * 10);
+        ctx.beginPath();
+        ctx.arc(0, 0, 4 + (audioFreq.bass * 2), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(168, 85, 247, 0.85)';
+        ctx.beginPath();
+        ctx.arc(0, 0, 7.5, 0, Math.PI * 2);
+        ctx.fill();
 
       } else {
         // C) LOW-G SURGE: Levitating anti-gravity gyroscope with gimbal rings
@@ -848,7 +912,7 @@ export class GameRenderer {
       ctx.font = 'bold 9px Orbitron';
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
-      const label = p.type === 'SHIELD' ? 'ESCUDO' : p.type === 'DAMPER' ? 'DAMPER' : p.type === 'LOW_G' ? 'LOW-G' : p.type === 'INVULNERABLE' ? 'INVM' : 'GHOST';
+      const label = p.type === 'SHIELD' ? 'ESCUDO' : p.type === 'DAMPER' ? 'DAMPER' : p.type === 'LOW_G' ? 'LOW-G' : p.type === 'INVULNERABLE' ? 'IMUNE' : 'FANTASMA';
       ctx.shadowBlur = 8;
       ctx.fillText(label, 0, rad + 18);
 
