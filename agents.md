@@ -65,6 +65,9 @@
 ---
 
 ## 3. Changelog & Recent Fixes
+- **v1.8.0 (Drop Flash — Energy Contrast Consumer)**:
+  1. *Drop Hit Bloom*: `GameRenderer` now consumes `AudioFrequencyData.energyContrast` (previously produced but unused). A rising edge above `0.62` (with a 1.5s cooldown) fires a full-arena light burst: additive core + edge bloom, 10px camera-shake kick, and surging EQ ripple amplitude/glow — synced to the "drop hits" moment of the track.
+  2. *Fast-decay envelope*: flash rises instantly to 1.0 and decays with a ~0.45s exponential tail, so hits feel percussive without strobing. Tuning constants: `DROP_FLASH_TRIGGER` / `DROP_FLASH_COOLDOWN_S` at the top of `GameRenderer.ts`.
 - **v1.7.1 (Macro-Energy Dynamics & Multi-Band EQ Ripples)**:
   1. *Non-Linear Noise-Floor Suppression & Spectral Tilt*: `AudioEngine.getFrequencyData()` now normalizes every band through `eqCurve(val, boost)`: values below 0.02 (noise floor) map to 0, then `(v - 0.02) / 0.98` is raised to `Math.pow(v, 1.15) * 1.25`. Per-band spectral-tilt boosts compensate for natural ~3-4.5 dB/octave falloff: subBass 1.30, punch bass 1.25, lowMids 1.60, highMids 2.20, treble 2.80. Quiet breakdowns land near 0.0-0.2 while drops/climaxes push toward 0.8-1.0.
   2. *Macro Energy Envelope Tracking (`macroEnergy` & `energyContrast`)*: Long-term envelope over the summed band energy: fast rise on drops (0.75s time constant), slow release into breakdowns (2.2s). `energyContrast = clamp((currentEnergy - macroEnergy * 0.65) * 1.6, 0, 1)` measures the instantaneous burst above the macro baseline — currently **produced but not yet consumed by any subsystem** (reserved for future drop-flash effects).
