@@ -16,7 +16,8 @@ import {
   Music,
   CheckCircle2,
   Maximize,
-  Minimize
+  Minimize,
+  Activity
 } from 'lucide-react';
 import {
   DifficultyLevel,
@@ -239,11 +240,11 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                     type="button"
                     onClick={() => {
                       onSelectDifficulty(level);
-                      // If EXTREME is selected, force flightAssist to false
+                      // Align flight assist default with the difficulty preset
                       if (!config.allowFlightAssist) {
                         onOptionsChange({ ...options, flightAssist: false });
-                      } else if (level === 'PRINCIPIANTE') {
-                        onOptionsChange({ ...options, flightAssist: true });
+                      } else {
+                        onOptionsChange({ ...options, flightAssist: config.defaultFlightAssist });
                       }
                     }}
                     className={`p-2.5 rounded-lg border text-center transition flex flex-col items-center justify-center cursor-pointer ${
@@ -257,18 +258,9 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                     <span className="font-orbitron font-bold text-xs uppercase tracking-wide">
                       {config.label}
                     </span>
-                    <span className="text-[10px] font-mono mt-0.5 opacity-80">
-                      {Math.round(config.deformMax * 100)}% Def
-                    </span>
                   </button>
                 );
               })}
-            </div>
-
-            {/* Difficulty detailed specs */}
-            <div className="p-2.5 rounded-lg bg-black/60 border border-white/10 text-xs font-rajdhani text-gray-300 leading-snug">
-              <span className="text-cyan-400 font-bold uppercase">{currentDiffConfig.label}:</span>{' '}
-              {currentDiffConfig.description}
             </div>
           </div>
 
@@ -306,6 +298,29 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                   BLOQUEADO (EXTREME)
                 </span>
               )}
+            </div>
+
+            {/* Drift Compensation Toggle */}
+            <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/50 border border-white/10">
+              <div className="flex items-center gap-2">
+                <Activity className="w-4 h-4 text-cyan-400" />
+                <div>
+                  <div className="text-xs font-orbitron font-medium text-white">Compensação de Deriva</div>
+                  <div className="text-[11px] text-gray-400 font-rajdhani">Neutraliza o ligeiro drift lateral da nave</div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => onOptionsChange({ ...options, driftCompensation: !options.driftCompensation })}
+                className={`px-3 py-1 rounded text-xs font-mono font-bold transition cursor-pointer ${
+                  options.driftCompensation
+                    ? 'bg-cyan-500 text-black shadow-md shadow-cyan-500/30'
+                    : 'bg-white/10 text-gray-400 hover:bg-white/20'
+                }`}
+              >
+                {options.driftCompensation ? 'LIGADO' : 'DESLIGADO'}
+              </button>
             </div>
 
             {/* Volumes */}

@@ -13,6 +13,7 @@ export class AudioEngine {
   private musicPreGain: GainNode | null = null; // Pre-fader bus: unity gain connected to analyser
   private sfxGain: GainNode | null = null;
   private analyser: AnalyserNode | null = null;
+  private tickAlt: boolean = false; // alternates tic / toc in countdown ticks
   private currentSource: AudioBufferSourceNode | null = null;
   private currentBuffer: AudioBuffer | null = null;
   
@@ -775,6 +776,25 @@ export class AudioEngine {
   }
 
   // ================= Procedural Sound Effects ================= //
+
+  public playCountdownTick(): void {
+    if (!this.ctx || !this.sfxGain) return;
+    const now = this.ctx.currentTime;
+    this.tickAlt = !this.tickAlt;
+    const freq = this.tickAlt ? 1320 : 920; // alternating tic / tock
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(freq, now);
+    gain.gain.setValueAtTime(0.14, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+    osc.start(now);
+    osc.stop(now + 0.08);
+  }
 
   public playPowerUpSfx(type: 'SHIELD' | 'DAMPER' | 'LOW_G' | 'INVULNERABLE' | 'ETHEREAL'): void {
     if (!this.ctx || !this.sfxGain) return;
