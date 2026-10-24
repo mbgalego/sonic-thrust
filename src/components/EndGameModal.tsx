@@ -123,7 +123,14 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
         {/* Track & Difficulty Info pill */}
         <div className="flex items-center justify-between text-[11px] sm:text-xs font-mono px-3 py-1.5 sm:py-2 rounded-lg bg-black/40 border border-white/5 text-gray-400">
           <span className="truncate max-w-[180px] sm:max-w-[240px] text-gray-300">{trackTitle}</span>
-          <span className="uppercase text-cyan-400 font-bold">{difficulty}</span>
+          <div className="flex items-center gap-2">
+            {stats.timePenalty > 0 && (
+              <span className="text-rose-400 font-bold bg-rose-950/60 px-1.5 py-0.5 rounded border border-rose-500/30">
+                Penalização: -{stats.timePenalty}s
+              </span>
+            )}
+            <span className="uppercase text-cyan-400 font-bold">{difficulty}</span>
+          </div>
         </div>
 
         {/* Action Buttons */}

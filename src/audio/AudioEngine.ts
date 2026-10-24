@@ -904,6 +904,37 @@ export class AudioEngine {
     osc.stop(now + 0.36);
   }
 
+  public playDamageSfx(): void {
+    if (!this.ctx || !this.sfxGain) return;
+    const now = this.ctx.currentTime;
+
+    // Metallic hull impact
+    const hullOsc = this.ctx.createOscillator();
+    const hullGain = this.ctx.createGain();
+    hullOsc.type = 'triangle';
+    hullOsc.frequency.setValueAtTime(260, now);
+    hullOsc.frequency.exponentialRampToValueAtTime(55, now + 0.3);
+    hullGain.gain.setValueAtTime(0.5, now);
+    hullGain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+    hullOsc.connect(hullGain);
+    hullGain.connect(this.sfxGain);
+    hullOsc.start(now);
+    hullOsc.stop(now + 0.32);
+
+    // Urgent electronic alarm chirp (-20s penalty alert)
+    const alertOsc = this.ctx.createOscillator();
+    const alertGain = this.ctx.createGain();
+    alertOsc.type = 'sawtooth';
+    alertOsc.frequency.setValueAtTime(880, now + 0.05);
+    alertOsc.frequency.setValueAtTime(440, now + 0.15);
+    alertGain.gain.setValueAtTime(0.25, now + 0.05);
+    alertGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    alertOsc.connect(alertGain);
+    alertGain.connect(this.sfxGain);
+    alertOsc.start(now + 0.05);
+    alertOsc.stop(now + 0.36);
+  }
+
   public playExplosionSfx(): void {
     if (!this.ctx || !this.sfxGain) return;
     const now = this.ctx.currentTime;

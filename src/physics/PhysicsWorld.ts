@@ -16,18 +16,19 @@ import {
 } from '../types/game';
 
 export const DIFFICULTY_PRESETS: Record<DifficultyLevel, DifficultyConfig> = {
-  PRINCIPIANTE: {
-    name: 'PRINCIPIANTE',
-    label: 'Principiante',
+  NORMAL: {
+    name: 'NORMAL',
+    label: 'Normal',
     tunnelWidth: 420,
     deformMax: 0.28,
     gravityMultiplier: 0.70,
     initialShields: 1,
+    initialLives: 3,
     allowFlightAssist: true,
     defaultFlightAssist: true,
     laserDensity: 0.55,          // ~half the beams, far less frequent
     laserGateThreshold: 0.42,    // beam needs strong treble to fire
-    description: 'Canal muito largo, gravidade 70% e 1 escudo inicial. Equipado com Escudo de Fase, Low-G, Pulso Sónico, Modo Fantasma e Singularidade.'
+    description: 'Canal muito largo, gravidade 70%, 3 vidas e 1 escudo inicial. Equipado com Escudo de Fase, Low-G, Pulso Sónico, Modo Fantasma e Singularidade.'
   },
   PRO: {
     name: 'PRO',
@@ -36,11 +37,12 @@ export const DIFFICULTY_PRESETS: Record<DifficultyLevel, DifficultyConfig> = {
     deformMax: 0.48,
     gravityMultiplier: 1.00,
     initialShields: 0,
+    initialLives: 3,
     allowFlightAssist: true,
     defaultFlightAssist: false,
     laserDensity: 1.0,
     laserGateThreshold: 0.28,
-    description: 'Canal dinâmico equilibrado e sem escudos. Desbloqueia o Amortecedor Sónico e a Distorção Temporal.'
+    description: 'Canal dinâmico equilibrado, 3 vidas e sem escudos iniciais. Desbloqueia o Amortecedor Sónico e a Distorção Temporal.'
   },
   EXTREME: {
     name: 'EXTREME',
@@ -49,11 +51,12 @@ export const DIFFICULTY_PRESETS: Record<DifficultyLevel, DifficultyConfig> = {
     deformMax: 0.70,
     gravityMultiplier: 1.30,
     initialShields: 0,
+    initialLives: 2,
     allowFlightAssist: false,
     defaultFlightAssist: false,
     laserDensity: 1.2,
     laserGateThreshold: 0.24,
-    description: 'Canal estreito, gravidade 130% e sem Flight Assist. Acesso exclusivo à Imortalidade Sónica.'
+    description: 'Canal estreito, gravidade 130%, 2 vidas e sem Flight Assist. Acesso exclusivo à Imortalidade Sónica.'
   }
 };
 
@@ -99,6 +102,8 @@ export interface ShipState {
   leftThrusterPower: number;
   rightThrusterPower: number;
   shields: number;
+  lives: number;
+  maxLives: number;
   invulnerableTime: number;
   isDestroyed: boolean;
   reachedGoal: boolean;
@@ -108,6 +113,7 @@ export interface ShipState {
   sonicPulseNotifyTimer: number; // brief HUD notification after a Sonic Pulse pickup
   chronoDilationTimer: number; // 5s duration (slows world/obstacles by 45%)
   singularityNotifyTimer: number; // brief notification after Singularity EMP pickup
+  timePenaltyNotifyTimer: number; // brief notification after taking damage (-20s)
 }
 
 export interface TerrainVertex {
@@ -167,6 +173,7 @@ export class PhysicsWorld {
 
   // Callbacks
   public onShipDestroyed?: (reason: 'CEILING' | 'FLOOR' | 'OBSTACLE' | 'LASER') => void;
+  public onShipDamaged?: (remainingLives: number, penaltySec: number) => void;
   public onPowerUpCollected?: (type: PowerUpType) => void;
   public onShieldAbsorbed?: () => void;
   public onGoalReached?: () => void;
@@ -211,6 +218,8 @@ export class PhysicsWorld {
       leftThrusterPower: 0,
       rightThrusterPower: 0,
       shields: this.difficulty.initialShields,
+      lives: this.difficulty.initialLives,
+      maxLives: this.difficulty.initialLives,
       invulnerableTime: 0,
       etherealActiveTimer: 0,
       isDestroyed: false,
@@ -219,7 +228,8 @@ export class PhysicsWorld {
       lowGActiveTimer: 0,
       sonicPulseNotifyTimer: 0,
       chronoDilationTimer: 0,
-      singularityNotifyTimer: 0
+      singularityNotifyTimer: 0,
+      timePenaltyNotifyTimer: 0
     };
 
     this.stats = {
@@ -228,6 +238,7 @@ export class PhysicsWorld {
       percentCompleted: 0,
       timeElapsed: 0,
       totalDuration: this.trackDuration,
+      timePenalty: 0,
       maxSpeed: 0,
       shieldsUsed: 0,
       powerUpsCollected: 0,
@@ -359,11 +370,11 @@ export class PhysicsWorld {
     const playableRange = endSafeX - startSafeX;
 
     // 1. Refined Power-up Distribution
-    // PRINCIPIANTE: Escudo, Low-G, Pulso, Fantasma e Singularidade
+    // NORMAL: Escudo, Low-G, Pulso, Fantasma e Singularidade
     // PRO: Adiciona Amortecedor Sónico e Distorção Temporal
     // EXTREME: Adiciona Imortalidade Sónica exclusiva
     let powerUpTypes: PowerUpType[];
-    if (this.difficulty.name === 'PRINCIPIANTE') {
+    if (this.difficulty.name === 'NORMAL') {
       powerUpTypes = ['SHIELD', 'LOW_G', 'PULSE', 'ETHEREAL', 'SINGULARITY'];
     } else if (this.difficulty.name === 'PRO') {
       powerUpTypes = ['SHIELD', 'DAMPER', 'LOW_G', 'PULSE', 'ETHEREAL', 'CHRONO_DILATION', 'SINGULARITY'];
@@ -619,6 +630,9 @@ export class PhysicsWorld {
     if (this.ship.singularityNotifyTimer > 0) {
       this.ship.singularityNotifyTimer -= safeDt;
     }
+    if (this.ship.timePenaltyNotifyTimer > 0) {
+      this.ship.timePenaltyNotifyTimer -= safeDt;
+    }
 
     // 0.4 Cosmic Singularity wave propagation (EXTREME tier)
     this.updateSingularity(safeDt);
@@ -655,8 +669,8 @@ export class PhysicsWorld {
       }
     }
 
-    // 7. Update Stats
-    this.stats.timeElapsed = currentTime;
+    // 7. Update Stats (accumulated time includes collision time penalty)
+    this.stats.timeElapsed = currentTime + this.stats.timePenalty;
     this.stats.distanceTravelled = Math.max(0, this.ship.x);
     this.stats.percentCompleted = Math.min(100, (this.ship.x / this.totalTrackLength) * 100);
     const speed = Math.sqrt(this.ship.vx * this.ship.vx + this.ship.vy * this.ship.vy);
@@ -1138,6 +1152,10 @@ export class PhysicsWorld {
     normalX: number,
     normalY: number
   ): void {
+    if (this.ship.invulnerableTime > 0) {
+      return;
+    }
+
     // Phase Shield protection
     if (this.ship.shields > 0) {
       this.ship.shields--;
@@ -1164,17 +1182,42 @@ export class PhysicsWorld {
       return;
     }
 
-    // Unprotected contact = Instant Destruction!
-    this.ship.isDestroyed = true;
-    // Cut thruster output so the rAF loop never re-heats the engine audio
-    // during the brief GAMEOVER delay (gameState is still PLAYING then).
-    this.ship.leftThrusterPower = 0;
-    this.ship.rightThrusterPower = 0;
-    this.stats.destructionReason = reason;
+    // Unprotected collision:
+    // Deduct 1 life and apply 20s time penalty to countdown clock
+    this.ship.lives--;
+    this.stats.timePenalty += 20;
+    this.ship.timePenaltyNotifyTimer = 2.4;
 
-    if (this.onShipDestroyed) {
-      this.onShipDestroyed(reason);
+    if (this.onShipDamaged) {
+      this.onShipDamaged(this.ship.lives, 20);
     }
+
+    // If all lives are lost, ship is destroyed!
+    if (this.ship.lives <= 0) {
+      this.ship.isDestroyed = true;
+      this.ship.leftThrusterPower = 0;
+      this.ship.rightThrusterPower = 0;
+      this.stats.destructionReason = reason;
+
+      if (this.onShipDestroyed) {
+        this.onShipDestroyed(reason);
+      }
+      return;
+    }
+
+    // Lives remain: safe reposition inward and 1.8s flashing invulnerability
+    this.ship.invulnerableTime = 1.8;
+    const terrain = this.getTerrainAt(this.ship.x);
+    const shipRadius = 14;
+    if (reason === 'CEILING') {
+      this.ship.y = terrain.ceilY + shipRadius + 8;
+    } else if (reason === 'FLOOR') {
+      this.ship.y = terrain.floorY - shipRadius - 8;
+    }
+
+    this.ship.vx = normalX * 140 + this.baseForwardVelocity * 0.55;
+    this.ship.vy = normalY * 280;
+    this.ship.angularVelocity = (Math.random() - 0.5) * 3.5;
   }
 
   public setFlightAssist(enabled: boolean): void {

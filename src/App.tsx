@@ -127,7 +127,7 @@ export default function App() {
   const [gameState, setGameState] = useState<GameState>('MENU');
   const [tracks, setTracks] = useState<TrackMetadata[]>(DEFAULT_TRACKS);
   const [selectedTrack, setSelectedTrack] = useState<TrackMetadata | null>(DEFAULT_TRACKS[0]);
-  const [difficulty, setDifficulty] = useState<DifficultyLevel>('PRINCIPIANTE');
+  const [difficulty, setDifficulty] = useState<DifficultyLevel>('NORMAL');
   const [options, setOptions] = useState<GameOptions>({
     flightAssist: true,
     driftCompensation: true,
@@ -144,6 +144,7 @@ export default function App() {
     percentCompleted: 0,
     timeElapsed: 0,
     totalDuration: 96,
+    timePenalty: 0,
     maxSpeed: 0,
     shieldsUsed: 0,
     powerUpsCollected: 0,
@@ -152,11 +153,18 @@ export default function App() {
 
   const [shipHudInfo, setShipHudInfo] = useState({
     shields: 1,
+    lives: 3,
+    maxLives: 3,
     damperActiveTimer: 0,
     lowGActiveTimer: 0,
+    invulnerableTime: 0,
+    etherealActiveTimer: 0,
+    chronoDilationTimer: 0,
+    singularityNotifyTimer: 0,
     leftThrusterPower: 0,
     rightThrusterPower: 0,
     sonicPulseNotifyTimer: 0,
+    timePenaltyNotifyTimer: 0,
     vx: 0,
     vy: 0
   });
@@ -290,6 +298,13 @@ export default function App() {
       setTimeout(() => {
         setGameState('GAMEOVER');
       }, 700);
+    };
+
+    newWorld.onShipDamaged = (_remainingLives, _penaltySec) => {
+      audio.playDamageSfx();
+      if (rendererRef.current) {
+        rendererRef.current.emitShieldAbsorb(newWorld.ship.x, newWorld.ship.y);
+      }
     };
 
     newWorld.onShieldAbsorbed = () => {
@@ -541,11 +556,18 @@ export default function App() {
             setHudStats({ ...world.stats });
             setShipHudInfo({
               shields: world.ship.shields,
+              lives: world.ship.lives,
+              maxLives: world.ship.maxLives,
               damperActiveTimer: world.ship.damperActiveTimer,
               lowGActiveTimer: world.ship.lowGActiveTimer,
+              invulnerableTime: world.ship.invulnerableTime,
+              etherealActiveTimer: world.ship.etherealActiveTimer,
+              chronoDilationTimer: world.ship.chronoDilationTimer,
+              singularityNotifyTimer: world.ship.singularityNotifyTimer,
               leftThrusterPower: world.ship.leftThrusterPower,
               rightThrusterPower: world.ship.rightThrusterPower,
               sonicPulseNotifyTimer: world.ship.sonicPulseNotifyTimer,
+              timePenaltyNotifyTimer: world.ship.timePenaltyNotifyTimer,
               vx: world.ship.vx,
               vy: world.ship.vy
             });

@@ -14,7 +14,9 @@ import {
   Maximize,
   Minimize,
   Clock,
-  Radio
+  Radio,
+  Heart,
+  AlertTriangle
 } from 'lucide-react';
 import { GameStats, DifficultyLevel } from '../types/game';
 import { ShipState } from '../physics/PhysicsWorld';
@@ -147,6 +149,13 @@ export const GameHUD: React.FC<GameHUDProps> = ({
 
       {/* Power-up Notifications — right below the countdown timer */}
       <div className="mt-1 flex flex-col items-center gap-2 z-10 pointer-events-none">
+        {ship.timePenaltyNotifyTimer > 0 && (
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-rose-950/95 border border-rose-500 text-rose-300 font-mono text-xs shadow-lg shadow-rose-950/80 animate-bounce">
+            <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 animate-pulse" />
+            <span className="font-orbitron font-bold tracking-wide">-20s PENALIZAÇÃO! ({ship.lives} {ship.lives === 1 ? 'VIDA RESTANTE' : 'VIDAS RESTANTES'})</span>
+          </div>
+        )}
+
         {launchGraceTimer > 0 && (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-950/90 border border-cyan-400 text-cyan-300 font-mono text-xs shadow-lg shadow-cyan-950/80 animate-pulse">
             <Zap className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
@@ -269,6 +278,47 @@ export const GameHUD: React.FC<GameHUDProps> = ({
               </span>
             </div>
           </div>
+
+          <div className="w-px self-stretch bg-white/10" />
+
+          {/* Lives (Vidas) indicator */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="min-w-[68px]">
+              <div className="text-[10px] text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                <Heart className="w-3 h-3 text-rose-400 fill-rose-400/80" />
+                <span>Vidas</span>
+              </div>
+              <div className="flex items-center gap-1.5 mt-1">
+                {Array.from({ length: ship.maxLives || 3 }).map((_, i) => {
+                  const active = i < ship.lives;
+                  return (
+                    <div
+                      key={i}
+                      className={`w-4 h-4 rounded flex items-center justify-center transition-all ${
+                        active
+                          ? 'bg-rose-500/25 border border-rose-400 text-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.8)] scale-105'
+                          : 'bg-slate-900 border border-white/10 text-gray-700 opacity-40'
+                      }`}
+                      title={`Vida ${i + 1}`}
+                    >
+                      <Heart className={`w-2.5 h-2.5 ${active ? 'fill-rose-400' : 'fill-transparent'}`} />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Optional Phase Shield badge if ship currently has shields */}
+          {ship.shields > 0 && (
+            <>
+              <div className="w-px self-stretch bg-white/10" />
+              <div className="flex items-center gap-1.5 shrink-0 px-2 py-0.5 rounded bg-sky-950/70 border border-sky-400/40 text-sky-300">
+                <Shield className="w-3.5 h-3.5 text-sky-400 animate-pulse" />
+                <span className="font-orbitron font-bold text-xs">{ship.shields}x ESCUDO</span>
+              </div>
+            </>
+          )}
         </div>
       </footer>
     </div>
