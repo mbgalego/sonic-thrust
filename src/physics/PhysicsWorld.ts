@@ -158,6 +158,10 @@ export class PhysicsWorld {
   // Persistent continuous terrain phase accumulator (monotonic, eliminates audio jitter)
   public terrainPhase: number = 0;
 
+  // VU tower group alternation: counts groups spawned so the ceiling/floor side
+  // toggles per group (never both simultaneously in the same viewport region)
+  private vuGroupCount: number = 0;
+
   // Stats tracking
   public stats: GameStats;
 
@@ -423,21 +427,31 @@ export class PhysicsWorld {
       const patternChoice = (i + (this.trackSeed % 3)) % 3;
 
       if (patternChoice === 0) {
-        // A) PILARES EQUALIZADOR VU EM GRUPO: 2-4 retro-LED columns placed close together,
-        // each one reacting to a DIFFERENT raw FFT band (kick/sub, body bass, low-mids, treble).
-        const isCeil = (i + (this.trackSeed % 2)) % 2 === 0;
-        // Vary group size 2-4 (seed-stable per track)
-        const groupSize = 2 + (this.trackSeed + i) % 3;
-        // Distinct FFT band ranges for each tower in the group
+        // A) PILARES EQUALIZADOR VU EM GRUPO: 4-6 retro-LED columns close together,
+        // each one reacting to a DIFFERENT raw FFT band (deep sub, kick, body, low-mids, presence, air).
+        // Groups alternate strictly between ceiling (up) and floor (down) —
+        // NEVER both at the same x-range — with a minimum gap so both can't overlap
+        // the viewport simultaneously. Side is seed-stable per track but toggles per group.
+        const isCeil = ((this.vuGroupCount + (this.trackSeed % 2)) % 2) === 0;
+        this.vuGroupCount++;
+        // Vary group size 4-6 (seed-stable per track)
+        const groupSize = 4 + (this.trackSeed + i) % 3;
+        // Distinct FFT band ranges; with 4-6 towers we reuse the 4 core bands and
+        // add a sub-harmonic (bins 0-4) and a presence bin (90-140) for the 5th/6th
         const bandRanges: { binStart: number; binEnd: number }[] = [
-          { binStart: 1, binEnd: 8 },     // kick / sub-bass
-          { binStart: 8, binEnd: 20 },    // body bass
-          { binStart: 20, binEnd: 45 },   // low-mids
-          { binStart: 45, binEnd: 90 }    // high-mids / presence
+          { binStart: 0, binEnd: 5 },     // deep sub-harmonic
+          { binStart: 5, binEnd: 12 },    // kick / sub-bass
+          { binStart: 12, binEnd: 24 },   // body bass
+          { binStart: 24, binEnd: 48 },   // low-mids
+          { binStart: 48, binEnd: 90 },   // high-mids / presence
+          { binStart: 90, binEnd: 140 }   // air / shimmer
         ];
         const spacing = 28; // px between towers in the group
+        // Keep the whole group inside the playable range (shift start left if needed)
+        const maxGroupX = Math.min(endSafeX - 30, x + (groupSize - 1) * spacing);
+        const gx0 = Math.max(startSafeX + 60, maxGroupX - (groupSize - 1) * spacing);
         for (let g = 0; g < groupSize; g++) {
-          const gx = x + g * spacing;
+          const gx = gx0 + g * spacing;
           const range = bandRanges[g % bandRanges.length];
           this.obstacles.push({
             id: `vu-${i}-${g}`,
