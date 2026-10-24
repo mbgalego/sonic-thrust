@@ -1185,16 +1185,6 @@ export class GameRenderer {
           const peakY = isCeil ? tipY - 4 : tipY;
           ctx.fillRect(obs.x - w / 2 + 2, peakY, w - 4, 4);
 
-          // Band label under the CLIP LED (SUB / BASS / MID / HI) — tinted by band color
-          const bandName =
-            (obs.binStart ?? 1) < 8 ? 'SUB' :
-            (obs.binStart ?? 8) < 20 ? 'BASS' :
-            (obs.binStart ?? 20) < 45 ? 'MID' : 'HI';
-          ctx.font = 'bold 7px Orbitron';
-          ctx.fillStyle = bandColor;
-          ctx.shadowBlur = 4;
-          ctx.textAlign = 'right';
-          ctx.fillText(obs.active ? 'CLIP' : bandName, obs.x - w / 2 - 4, tipY + (isCeil ? -2 : 8));
         }
 
         ctx.restore();

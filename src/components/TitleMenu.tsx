@@ -125,7 +125,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
           <span>SONIC <span className="text-fuchsia-400 neon-text-magenta">THRUST</span></span>
         </h1>
         <p className="text-gray-400 text-sm md:text-base max-w-xl mt-1 font-rajdhani">
-          Pilota da Plataforma de Descolagem até ao Portal de Meta. O terreno deforma-se ao ritmo da música através da análise FFT.
+          Navega por desfiladeiros de néon que vibram com as frequências sonoras e testa os teus reflexos.
         </p>
       </header>
 
@@ -222,10 +222,6 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
               );
             })}
           </div>
-
-          <p className="text-[11px] text-gray-400 font-mono">
-            * Para adicionar música: coloca o ficheiro em <code className="text-cyan-300">/public/tracks/</code> e regista-o em <code className="text-cyan-300">tracks.json</code>.
-          </p>
         </section>
 
         {/* Right Column: Difficulty & Flight Settings (5 cols) */}
@@ -239,7 +235,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
             </h2>
 
             <div className="grid grid-cols-3 gap-2">
-              {(['PRINCIPIANTE', 'PRO', 'EXTREME'] as DifficultyLevel[]).map((level) => {
+              {(['NORMAL', 'PRO', 'EXTREME'] as DifficultyLevel[]).map((level) => {
                 const config = DIFFICULTY_PRESETS[level];
                 const active = difficulty === level;
                 return (
@@ -451,14 +447,14 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
             {/* Modal Scrollable Body */}
             <div className="space-y-4 overflow-y-auto pr-1.5 text-xs text-gray-300 font-rajdhani leading-relaxed">
               
-              {/* 1. Golden Rule (Zero Contact) */}
+              {/* 1. Golden Rule (Zero Contact & Vidas) */}
               <div className="p-3.5 rounded-xl bg-red-950/40 border border-red-500/50 text-red-200 shadow-md shadow-red-950/50">
                 <div className="flex items-center gap-2 font-orbitron font-bold text-red-400 text-xs sm:text-sm uppercase mb-1">
                   <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-                  <span>Regra Fundamental: Zero Contact & Física de Ressonância</span>
+                  <span>Sistema de Vidas & Penalização de Tempo (-20s)</span>
                 </div>
                 <p>
-                  As paredes de rocha do túnel deformam-se em tempo real sincronizadas com a música através de análise espectral FFT (os graves inflam o leito, os médios alteram as encostas e os agudos geram micro-ondulações). Qualquer colisão sem escudo resulta na desintegração imediata da nave.
+                  A nave dispõe de 3 vidas (2 em Extreme). Quando sofres uma colisão desprotegida (sem Escudo de Fase), perdes 1 vida e sofres uma penalização imediata de <strong>-20 segundos</strong> no tempo restante da missão. A nave beneficia de 1.8s de invulnerabilidade e ressalta para o canal seguro. Se esgotares as vidas ou o cronómetro chegar a 0:00, a nave é destruída.
                 </p>
               </div>
 

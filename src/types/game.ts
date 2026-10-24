@@ -4,7 +4,7 @@
 
 export type GameState = 'MENU' | 'PLAYING' | 'PAUSED' | 'VICTORY' | 'GAMEOVER';
 
-export type DifficultyLevel = 'PRINCIPIANTE' | 'PRO' | 'EXTREME';
+export type DifficultyLevel = 'NORMAL' | 'PRO' | 'EXTREME';
 
 export interface DifficultyConfig {
   name: DifficultyLevel;
@@ -13,6 +13,7 @@ export interface DifficultyConfig {
   deformMax: number;            // 0.28, 0.48, 0.70
   gravityMultiplier: number;    // 0.70, 1.00, 1.30
   initialShields: number;       // 1, 0, 0
+  initialLives: number;         // 3, 3, 2
   allowFlightAssist: boolean;   // true, true, false
   defaultFlightAssist: boolean; // true, false, false
   laserDensity: number;         // laser beam spawn multiplier (0.55 principiante, 1.0 pro, 1.2 extreme)
@@ -136,6 +137,7 @@ export interface GameStats {
   percentCompleted: number;
   timeElapsed: number;
   totalDuration: number;
+  timePenalty: number;
   maxSpeed: number;
   shieldsUsed: number;
   powerUpsCollected: number;
