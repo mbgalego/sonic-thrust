@@ -44,27 +44,54 @@
   - **Obstacles**: Pneumatic Ejector Blocks with hazard chevrons, crystalline Sonic Spikes bursting to bass drops, floating Resonance Mines, and spinning hazard blades.
 
 ### C. Audio Engine (`/src/audio/AudioEngine.ts`)
-- Web Audio API pipeline with master, music, and sfx routing.
+- Web Audio API pipeline with master, pre-fader music bus, and sfx routing.
 - Real-time 1024-bin FFT analyser with smoothed bass, mids, treble, and beat detection.
 - Proximity radar clicks with frequency scaling as the craft nears terrain.
-- Instantaneous one-click track preview switching in the Title Menu.
+- Instantaneous one-click track preview switching in the Title Menu with automated menu music pause/resume and dedicated mute controls.
 - Smooth volume fadeout (`fadeOutAndStopTrack`) and continuous node silence on crash or menu exit.
+- Background track preloading (`preloadTrack`), in-flight promise caching/deduplication, and seamless buffer caching.
+- Seamless track looping (`setLoopTrack(true)`) to maintain continuous audio playback and live visualizers on the Victory screen.
 
 ### D. User Interface Components (`/src/components/`)
 - **TitleMenu (`/src/components/TitleMenu.tsx`)**:
   - Clean title lockup with `SONIC THRUST` neon glow.
-  - Fullscreen toggle button with `Maximize` / `Minimize` icons and native `fullscreenchange` listener.
-  - Curated track selector with instant 1-click preview, BPM estimation, and clean track count indicator (arbitrary client file upload removed for security hardening).
-  - Difficulty presets (`Principiante`, `Pro`, `Extreme`).
+  - Non-overlapping utility controls: Fullscreen and Menu Music Mute buttons positioned safely away from the game title.
+  - Ambient starfield background with subtle 1px twinkling white stars behind the 3D synthesizer visualizer.
+  - Interactive "INICIAR" pill button with circulating neon laser beam and rotating conic comet loader indicator when launching and decoding track audio.
+  - Curated track selector with inline scrollable dropdown, artist info, BPM, and instant 1-click preview.
+  - Inline scrollable dropdown menus for Difficulty, Options (Flight Assist, Drift Compensation), and Flight Manual / Rules.
 - **GameHUD (`/src/components/GameHUD.tsx`)**:
   - Non-occluding top bar with progress bar, track title, timer, and Pause + Fullscreen controls.
   - Anti-G launch stabilizer status banner during the first 2.8 seconds.
   - Speed readout formatted with `whitespace-nowrap` to prevent line wrapping.
   - Dual-thruster pressure gauges and altitude clearance indicators.
+- **EndGameModal (`/src/components/EndGameModal.tsx`)**:
+  - Pixel-faithful cyberpunk victory and defeat modal with zero DOM layout shifts (60 FPS direct-canvas rendering).
+  - Concentric pulsing neon rings, orbiting star particles, and neon trophy emblem for Victory.
+  - Live 60 FPS mirrored audio waveform and reactive bass/mids soundwave lines under telemetry stats (Progresso, Tempo Voo, Vel. Máx, Orbes).
+  - Dynamic corner mini VU equalizers rendered to dedicated canvases without triggering React state re-renders.
+  - Clean "GAME OVER" header for defeat, accompanied by explicit collision/destruction telemetry.
+  - Cyberpunk action buttons: `TENTAR NOVAMENTE` with side vibration soundwaves and `MENU INICIAL`.
 
 ---
 
 ## 3. Changelog & Recent Fixes
+- **v1.14.0 (Preloading & Circulating Laser Loading Indicator on INICIAR)**:
+  1. *Perimeter Laser & Orbiting Comet Indicator*: When clicking "INICIAR" and the audio track is loading or decoding, an electric cyan neon laser beam travels around the rounded button perimeter (`animate-laser-sweep`), paired with a counter-orbiting white/magenta particle dot and a high-speed rotating conic gradient comet tail.
+  2. *Interactive Button Feedback*: The button switches to `pointer-events-none` with an animated spinning cyber `Loader2` icon and dynamic labels ("A CARREGAR...", "A SINCRONIZAR MP3 & TERRENO"), eliminating confusion or dead freezes while decoding audio.
+  3. *Background Track Preloading & In-Flight Deduplication*: `AudioEngine.preloadTrack()` proactively downloads and decodes the selected track in the background when in the menu or when switching songs. Concurrent `loadTrack` calls reuse in-flight promises (`loadingPromises`), preventing duplicate network fetches or duplicate audio decoding.
+- **v1.13.0 (End Game Modal Overhaul, Zero-Jitter Canvas Spectrum & "Game Over" Redesign)**:
+  1. *Reference Mockup Recreation*: Redesigned `EndGameModal.tsx` following the neon cyberpunk mockup: concentric pulsing neon rings, orbiting star particles, neon vector trophy cup emblem, and vertical cyan-to-magenta gradient header `MISSÃO CUMPRIDA!`.
+  2. *Zero-Jitter Hardware-Accelerated Canvases*: Replaced DOM-rendered reactive elements with dedicated fixed-size HTML5 `<canvas>` elements updated directly in a single `requestAnimationFrame` loop without React `setState` calls, completely eliminating layout recalculations, modal jitter, and width/height pumping.
+  3. *Dynamic Telemetry & Soundwaves*: Added live dynamic 60 FPS soundwave lines under `PROGRESSO` and `TEMPO VOO` oscillating to live audio frequencies, alongside the central mirrored audio spectrum and 4 corner mini VU bars.
+  4. *Track Audio Persistence*: Audio playback loops seamlessly on victory (`audio.setLoopTrack(true)`), ensuring visualizers continue reacting dynamically without freezing when the track duration ends.
+  5. *Classic "GAME OVER" Defeat*: Replaced sci-fi text (`SINAL PERDIDO · DESTRUÍDA`) with standard arcade **`GAME OVER`**, preserving specific collision/destruction telemetry as the subtitle.
+- **v1.12.0 (Title Menu Synthwave Overhaul, Dropdowns & Audio Harmony)**:
+  1. *Procedural Menu Soundtrack & Preview Crossfading*: Added dedicated procedural synthwave audio generator for the title menu with automatic pause on track preview, resume on preview finish, and independent mute toggle.
+  2. *Starfield Twinkle Background*: Added subtle 1px twinkling white stars in the background behind the visualizer without overlapping the equalizers.
+  3. *Section Cleanup & Streamlined Buttons*: Removed numeric section indicators in the menu; renamed the primary action button to a clean "INICIAR"; removed the redundant "Alterar" label/icon on the track selector to maximize space for artist, BPM, and track length.
+  4. *Inline Scrollable Dropdowns*: Converted track selection, difficulty levels, game options (Flight Assist, Drift Compensation), and Flight Manual / Rules into inline scrollable dropdowns to adapt to smaller viewports and mobile screens.
+  5. *Header & Overlay Relocation*: Reorganized Fullscreen and Menu Mute controls away from the game title, preventing overlap across all screen dimensions.
 - **v1.11.0 (Dynamic Mobile Detection & Adaptive Play Area Zoom)**:
   1. *Dynamic Mobile Viewport Detection*: Dynamically identifies smartphone and small-screen devices across touch points, user-agent indicators, and aspect ratios (`isPortrait` vs `isLandscapeMobile`), reacting immediately to window resize and screen orientation flips (`resize` + `orientationchange` with delayed reflow passes).
   2. *Adaptive Camera Zoom on Play Area*:

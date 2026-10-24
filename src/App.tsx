@@ -182,6 +182,7 @@ export default function App() {
   const countTickLastSecRef = useRef<number>(-1);
   const timeUpRef = useRef(false);
   const [outOfTime, setOutOfTime] = useState(false);
+  const [isStartingMission, setIsStartingMission] = useState(false);
   const touchesHeld = useRef<{ left: boolean; right: boolean }>({ left: false, right: false });
   const touchMapRef = useRef<Map<number, 'left' | 'right'>>(new Map());
 
@@ -221,6 +222,13 @@ export default function App() {
   useEffect(() => {
     audio.setVolumes(options.musicVolume, options.sfxVolume);
   }, [options.musicVolume, options.sfxVolume]);
+
+  // Preload selected track in background so start mission is instant
+  useEffect(() => {
+    if (gameState === 'MENU' && selectedTrack) {
+      audio.preloadTrack(selectedTrack).catch(() => {});
+    }
+  }, [gameState, selectedTrack]);
 
   // 3. Menu Music Management: plays procedural soundtrack on menu, pauses on preview, resumes after
   useEffect(() => {
@@ -299,102 +307,108 @@ export default function App() {
 
   // 5. Start Mission
   const handleStartMission = async () => {
-    if (!selectedTrack) return;
-    audio.playButtonSfx();
-    audio.silenceAllContinuous();
-    audio.stopMenuMusic();
-    audio.stopTrack();
-    setPreviewingTrackId(null);
-    setLoadingTrackId(null);
-
-
-    await audio.init();
-    const trackBuffer = await audio.loadTrack(selectedTrack);
-    const trackDuration = trackBuffer.duration || selectedTrack.duration || 90;
-    const trackBpm = selectedTrack.estimatedBpm || 135;
-
-    // Create Physics World with music-seeded terrain derived from track ID and BPM
-    const newWorld = new PhysicsWorld(
-      difficulty,
-      options.flightAssist,
-      trackDuration,
-      selectedTrack.id,
-      trackBpm,
-      options.driftCompensation
-    );
-    newWorld.stats.currentBpm = trackBpm;
-    countTickLastSecRef.current = -1; // reset countdown tick state for the new mission
-    timeUpRef.current = false;
-    setOutOfTime(false);
-
-    // Attach callbacks
-    newWorld.onWallScrape = (scrapeX, scrapeY, shipVx, isCeiling, intensity) => {
-      if (rendererRef.current) {
-        rendererRef.current.emitWallScrape(scrapeX, scrapeY, shipVx, isCeiling, intensity);
-      }
-      audio.updateRadarClicks(intensity);
-    };
-
-    newWorld.onShipDestroyed = () => {
-      // Silence continuous thrusters immediately and fade out track as punishment
+    if (!selectedTrack || isStartingMission) return;
+    setIsStartingMission(true);
+    try {
+      audio.playButtonSfx();
       audio.silenceAllContinuous();
-      audio.fadeOutAndStopTrack(0.85);
-      audio.playExplosionSfx();
-      if (rendererRef.current) {
-        rendererRef.current.emitExplosion(newWorld.ship.x, newWorld.ship.y);
-      }
-      setTimeout(() => {
-        setGameState('GAMEOVER');
-      }, 700);
-    };
+      audio.stopMenuMusic();
+      audio.stopTrack();
+      setPreviewingTrackId(null);
+      setLoadingTrackId(null);
 
-    newWorld.onShipDamaged = (_remainingLives, _penaltySec) => {
-      audio.playDamageSfx();
-      if (rendererRef.current) {
-        rendererRef.current.emitShieldAbsorb(newWorld.ship.x, newWorld.ship.y);
-      }
-    };
+      await audio.init();
+      const trackBuffer = await audio.loadTrack(selectedTrack);
+      const trackDuration = trackBuffer.duration || selectedTrack.duration || 90;
+      const trackBpm = selectedTrack.estimatedBpm || 135;
 
-    newWorld.onShieldAbsorbed = () => {
-      audio.playShieldHitSfx();
-      if (rendererRef.current) {
-        rendererRef.current.emitShieldAbsorb(newWorld.ship.x, newWorld.ship.y);
-      }
-    };
+      // Create Physics World with music-seeded terrain derived from track ID and BPM
+      const newWorld = new PhysicsWorld(
+        difficulty,
+        options.flightAssist,
+        trackDuration,
+        selectedTrack.id,
+        trackBpm,
+        options.driftCompensation
+      );
+      newWorld.stats.currentBpm = trackBpm;
+      countTickLastSecRef.current = -1; // reset countdown tick state for the new mission
+      timeUpRef.current = false;
+      setOutOfTime(false);
 
-    newWorld.onPowerUpCollected = (type) => {
-      audio.playPowerUpSfx(type);
-      if (rendererRef.current) {
-        const colorMap: Record<PowerUpType, string> = {
-          SHIELD: '#00f0ff',
-          DAMPER: '#00ff88',
-          LOW_G: '#ffd700',
-          PULSE: '#06b6d4',
-          ETHEREAL: '#a855f7',
-          INVULNERABLE: '#ff0055',
-          CHRONO_DILATION: '#14b8a6',
-          SINGULARITY: '#c084fc'
-        };
-        rendererRef.current.emitPowerUpCollect(newWorld.ship.x, newWorld.ship.y, colorMap[type]);
-      }
-    };
+      // Attach callbacks
+      newWorld.onWallScrape = (scrapeX, scrapeY, shipVx, isCeiling, intensity) => {
+        if (rendererRef.current) {
+          rendererRef.current.emitWallScrape(scrapeX, scrapeY, shipVx, isCeiling, intensity);
+        }
+        audio.updateRadarClicks(intensity);
+      };
 
-    newWorld.onGoalReached = () => {
-      audio.silenceAllContinuous();
-      audio.setLoopTrack(true);
-      audio.playVictorySfx();
-      setTimeout(() => {
-        setGameState('VICTORY');
-      }, 1000);
-    };
+      newWorld.onShipDestroyed = () => {
+        // Silence continuous thrusters immediately and fade out track as punishment
+        audio.silenceAllContinuous();
+        audio.fadeOutAndStopTrack(0.85);
+        audio.playExplosionSfx();
+        if (rendererRef.current) {
+          rendererRef.current.emitExplosion(newWorld.ship.x, newWorld.ship.y);
+        }
+        setTimeout(() => {
+          setGameState('GAMEOVER');
+        }, 700);
+      };
 
-    worldRef.current = newWorld;
+      newWorld.onShipDamaged = (_remainingLives, _penaltySec) => {
+        audio.playDamageSfx();
+        if (rendererRef.current) {
+          rendererRef.current.emitShieldAbsorb(newWorld.ship.x, newWorld.ship.y);
+        }
+      };
 
-    // Start Track Audio
-    audio.playTrack(trackBuffer, 0);
+      newWorld.onShieldAbsorbed = () => {
+        audio.playShieldHitSfx();
+        if (rendererRef.current) {
+          rendererRef.current.emitShieldAbsorb(newWorld.ship.x, newWorld.ship.y);
+        }
+      };
 
-    setGameState('PLAYING');
-    lastTimeRef.current = performance.now();
+      newWorld.onPowerUpCollected = (type) => {
+        audio.playPowerUpSfx(type);
+        if (rendererRef.current) {
+          const colorMap: Record<PowerUpType, string> = {
+            SHIELD: '#00f0ff',
+            DAMPER: '#00ff88',
+            LOW_G: '#ffd700',
+            PULSE: '#06b6d4',
+            ETHEREAL: '#a855f7',
+            INVULNERABLE: '#ff0055',
+            CHRONO_DILATION: '#14b8a6',
+            SINGULARITY: '#c084fc'
+          };
+          rendererRef.current.emitPowerUpCollect(newWorld.ship.x, newWorld.ship.y, colorMap[type]);
+        }
+      };
+
+      newWorld.onGoalReached = () => {
+        audio.silenceAllContinuous();
+        audio.setLoopTrack(true);
+        audio.playVictorySfx();
+        setTimeout(() => {
+          setGameState('VICTORY');
+        }, 1000);
+      };
+
+      worldRef.current = newWorld;
+
+      // Start Track Audio
+      audio.playTrack(trackBuffer, 0);
+
+      setGameState('PLAYING');
+      lastTimeRef.current = performance.now();
+    } catch (err) {
+      console.error('Failed to start mission:', err);
+    } finally {
+      setIsStartingMission(false);
+    }
   };
 
   // Keep the latest handleStartMission reachable by the stable keyboard listener
@@ -693,6 +707,7 @@ export default function App() {
           onPreviewTrack={handlePreviewTrack}
           previewingTrackId={previewingTrackId}
           loadingTrackId={loadingTrackId}
+          isStartingMission={isStartingMission}
         />
       )}
 

@@ -47,6 +47,7 @@ interface TitleMenuProps {
   onPreviewTrack: (track: TrackMetadata) => void;
   previewingTrackId: string | null;
   loadingTrackId: string | null;
+  isStartingMission?: boolean;
 }
 
 export const TitleMenu: React.FC<TitleMenuProps> = ({
@@ -60,7 +61,8 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
   onStartMission,
   onPreviewTrack,
   previewingTrackId,
-  loadingTrackId
+  loadingTrackId,
+  isStartingMission = false
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isDifficultyOpen, setIsDifficultyOpen] = useState(false);
@@ -196,19 +198,122 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
         {/* Left Column: The 4 Menu Sections from Mock-up */}
         <section className="lg:col-span-6 flex flex-col gap-4.5 max-w-lg mx-auto lg:mx-0 w-full">
           
-          {/* Card 1: INICIAR (Primary Action Pill Button) */}
-          <div className="menu-gradient-card group cursor-pointer" onClick={onStartMission}>
-            <div className="rounded-[calc(1rem-1.5px)] p-1 bg-[#0a0520]">
-              <div className="relative flex items-center justify-center gap-3.5 py-3.5 sm:py-4 px-6 rounded-xl bg-gradient-to-r from-[#ff007f] via-[#ec4899] to-[#00f0ff] shadow-[0_0_25px_rgba(236,72,153,0.5)] group-hover:shadow-[0_0_35px_rgba(0,240,255,0.7)] group-hover:scale-[1.01] active:scale-[0.99] transition-all">
-                {/* Black Double Chevron Play / FastForward Icon */}
-                <div className="flex items-center text-black">
-                  <FastForward className="w-7 h-7 sm:w-8 sm:h-8 fill-black stroke-black" />
-                </div>
-                
-                {/* Single clean title: INICIAR */}
-                <span className="font-orbitron font-black text-xl sm:text-2xl text-black tracking-widest leading-none uppercase">
-                  INICIAR
-                </span>
+          {/* Card 1: INICIAR (Primary Action Pill Button with Circulating Loading Indicator) */}
+          <div
+            className={`relative rounded-2xl p-[2px] overflow-hidden transition-all duration-300 select-none ${
+              isStartingMission
+                ? 'pointer-events-none shadow-[0_0_35px_rgba(0,240,255,0.7)]'
+                : 'menu-gradient-card group cursor-pointer hover:shadow-[0_0_35px_rgba(0,240,255,0.7)]'
+            }`}
+            onClick={isStartingMission ? undefined : onStartMission}
+          >
+            {/* When loading: circulating neon laser comet via high-speed rotating conic gradient */}
+            {isStartingMission && (
+              <div
+                className="absolute inset-[-150%] bg-[conic-gradient(from_0deg,transparent_0deg,transparent_270deg,#00f0ff_315deg,#ffffff_350deg,#ff007f_360deg)] animate-[spin_1.1s_linear_infinite] pointer-events-none"
+              />
+            )}
+
+            {/* When loading: circulating razor-sharp SVG neon laser line & counter-orbiting particle dot */}
+            {isStartingMission && (
+              <svg
+                className="absolute -inset-[2px] w-[calc(100%+4px)] h-[calc(100%+4px)] pointer-events-none z-30 overflow-visible"
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+              >
+                <defs>
+                  <filter id="iniciar-laser-glow" x="-30%" y="-30%" width="160%" height="160%">
+                    <feDropShadow dx="0" dy="0" stdDeviation="2" floodColor="#00f0ff" floodOpacity="0.9" />
+                    <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#ff007f" floodOpacity="0.7" />
+                  </filter>
+                </defs>
+                {/* Subtle base track */}
+                <rect
+                  x="1.5"
+                  y="1.5"
+                  width="97"
+                  height="97"
+                  rx="14"
+                  fill="none"
+                  stroke="rgba(0, 240, 255, 0.35)"
+                  strokeWidth="1.5"
+                  vectorEffect="non-scaling-stroke"
+                />
+                {/* Primary circulating laser beam line */}
+                <rect
+                  x="1.5"
+                  y="1.5"
+                  width="97"
+                  height="97"
+                  rx="14"
+                  fill="none"
+                  stroke="#00f0ff"
+                  strokeWidth="3.5"
+                  strokeDasharray="22 78"
+                  strokeLinecap="round"
+                  pathLength="100"
+                  className="animate-laser-sweep"
+                  filter="url(#iniciar-laser-glow)"
+                  vectorEffect="non-scaling-stroke"
+                />
+                {/* Secondary reverse counter-orbiting energetic dot */}
+                <rect
+                  x="1.5"
+                  y="1.5"
+                  width="97"
+                  height="97"
+                  rx="14"
+                  fill="none"
+                  stroke="#ffffff"
+                  strokeWidth="4"
+                  strokeDasharray="3 97"
+                  strokeLinecap="round"
+                  pathLength="100"
+                  className="animate-laser-sweep-reverse"
+                  filter="url(#iniciar-laser-glow)"
+                  vectorEffect="non-scaling-stroke"
+                />
+              </svg>
+            )}
+
+            <div className="relative z-10 rounded-[calc(1rem-2px)] p-1 bg-[#0a0520]">
+              <div
+                className={`relative flex items-center justify-center gap-3.5 py-3.5 sm:py-4 px-6 rounded-xl transition-all ${
+                  isStartingMission
+                    ? 'bg-gradient-to-r from-[#ff007f] via-[#c084fc] to-[#00f0ff] shadow-[0_0_30px_rgba(0,240,255,0.8)]'
+                    : 'bg-gradient-to-r from-[#ff007f] via-[#ec4899] to-[#00f0ff] shadow-[0_0_25px_rgba(236,72,153,0.5)] group-hover:shadow-[0_0_35px_rgba(0,240,255,0.7)] group-hover:scale-[1.01] active:scale-[0.99]'
+                }`}
+              >
+                {isStartingMission ? (
+                  <>
+                    {/* Spinning Cyber Loader Icon */}
+                    <div className="flex items-center text-black">
+                      <Loader2 className="w-7 h-7 sm:w-8 sm:h-8 animate-spin stroke-[2.5]" />
+                    </div>
+
+                    {/* Dynamic Loading Label */}
+                    <div className="flex flex-col items-center">
+                      <span className="font-orbitron font-black text-lg sm:text-xl text-black tracking-widest leading-none uppercase">
+                        A CARREGAR...
+                      </span>
+                      <span className="font-rajdhani font-bold text-[10px] sm:text-xs text-black/80 tracking-wider uppercase mt-0.5">
+                        A SINCRONIZAR MP3 & TERRENO
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Black Double Chevron Play / FastForward Icon */}
+                    <div className="flex items-center text-black">
+                      <FastForward className="w-7 h-7 sm:w-8 sm:h-8 fill-black stroke-black" />
+                    </div>
+
+                    {/* Single clean title: INICIAR */}
+                    <span className="font-orbitron font-black text-xl sm:text-2xl text-black tracking-widest leading-none uppercase">
+                      INICIAR
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           </div>

@@ -60,3 +60,29 @@
   -webkit-backdrop-filter: blur(12px);
 }
 
+@keyframes laserSweep {
+  0% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -100;
+  }
+}
+
+.animate-laser-sweep {
+  animation: laserSweep 1.25s linear infinite;
+}
+
+@keyframes laserSweepReverse {
+  0% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: 100;
+  }
+}
+
+.animate-laser-sweep-reverse {
+  animation: laserSweepReverse 1.5s linear infinite;
+}
+

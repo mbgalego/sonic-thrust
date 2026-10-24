@@ -61,6 +61,7 @@ export class AudioEngine {
   private currentMusicVolume: number = 0.85;
   private lastRadarClickTime: number = 0;
   private bufferCache: Map<string, AudioBuffer> = new Map();
+  private loadingPromises: Map<string, Promise<AudioBuffer>> = new Map();
 
   constructor() {
     // Lazy init on first user interaction
@@ -299,6 +300,18 @@ export class AudioEngine {
     }
   }
 
+  public isTrackLoaded(trackId: string): boolean {
+    return this.bufferCache.has(trackId);
+  }
+
+  public async preloadTrack(track: TrackMetadata): Promise<void> {
+    try {
+      await this.loadTrack(track);
+    } catch {
+      // Silently ignore preload errors
+    }
+  }
+
   /**
    * Loads an AudioBuffer from URL or returns a synthesized procedural track
    */
@@ -315,35 +328,49 @@ export class AudioEngine {
       return this.bufferCache.get(track.id)!;
     }
 
-    // Try fetching from local file path (encodeURI handles spaces, hyphens, and brackets)
-    const trackPath = encodeURI(`/tracks/${track.filename}`);
-    try {
-      const response = await fetch(trackPath);
-      if (response.ok) {
-        const arrayBuffer = await response.arrayBuffer();
-        let decoded: AudioBuffer;
-        try {
-          decoded = await this.ctx.decodeAudioData(arrayBuffer.slice(0));
-        } catch {
-          decoded = await new Promise<AudioBuffer>((resolve, reject) => {
-            this.ctx!.decodeAudioData(arrayBuffer.slice(0), resolve, reject);
-          });
-        }
-        this.bufferCache.set(track.id, decoded);
-        return decoded;
-      }
-    } catch {
-      // File not found on disk, fallback to high-fidelity procedural synth track
+    if (this.loadingPromises.has(track.id)) {
+      return this.loadingPromises.get(track.id)!;
     }
 
-    // Procedural synthesizer track generator
-    const proceduralBuffer = this.generateProceduralTrack(
-      track.estimatedBpm || 130,
-      track.duration || 90,
-      track.id
-    );
-    this.bufferCache.set(track.id, proceduralBuffer);
-    return proceduralBuffer;
+    const loadPromise = (async () => {
+      // Try fetching from local file path (encodeURI handles spaces, hyphens, and brackets)
+      const trackPath = encodeURI(`/tracks/${track.filename}`);
+      try {
+        const response = await fetch(trackPath);
+        if (response.ok) {
+          const arrayBuffer = await response.arrayBuffer();
+          let decoded: AudioBuffer;
+          try {
+            decoded = await this.ctx!.decodeAudioData(arrayBuffer.slice(0));
+          } catch {
+            decoded = await new Promise<AudioBuffer>((resolve, reject) => {
+              this.ctx!.decodeAudioData(arrayBuffer.slice(0), resolve, reject);
+            });
+          }
+          this.bufferCache.set(track.id, decoded);
+          return decoded;
+        }
+      } catch {
+        // File not found on disk, fallback to high-fidelity procedural synth track
+      }
+
+      // Procedural synthesizer track generator
+      const proceduralBuffer = this.generateProceduralTrack(
+        track.estimatedBpm || 130,
+        track.duration || 90,
+        track.id
+      );
+      this.bufferCache.set(track.id, proceduralBuffer);
+      return proceduralBuffer;
+    })();
+
+    this.loadingPromises.set(track.id, loadPromise);
+
+    try {
+      return await loadPromise;
+    } finally {
+      this.loadingPromises.delete(track.id);
+    }
   }
 
 
