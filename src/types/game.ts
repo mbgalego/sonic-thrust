@@ -83,6 +83,11 @@ export interface ObstaclePlatform {
   warningPhase: number;       // telegraph indicator 0.0 to 1.0
   beatTriggerTimer: number;   // rhythm timer
   disabled?: boolean;         // permanently neutralized (e.g. disarmed by a Sonic Pulse)
+  // VU tower per-tower audio analysis config & adaptive normalization state
+  binStart?: number;          // raw FFT bin range start (adaptive on this tower)
+  binEnd?: number;            // raw FFT bin range end (exclusive)
+  vuAvg?: number;             // rolling moving-average baseline for this tower
+  vuPeak?: number;            // rolling peak for this tower
 }
 
 export interface LaserGate {
