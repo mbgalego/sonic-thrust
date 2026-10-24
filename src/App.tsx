@@ -381,6 +381,7 @@ export default function App() {
 
     newWorld.onGoalReached = () => {
       audio.silenceAllContinuous();
+      audio.setLoopTrack(true);
       audio.playVictorySfx();
       setTimeout(() => {
         setGameState('VICTORY');
@@ -419,11 +420,13 @@ export default function App() {
   }, [gameState]);
 
   const handleRestart = useCallback(() => {
+    audio.setLoopTrack(false);
     audio.silenceAllContinuous();
     startMissionRef.current();
   }, []);
 
   const handleExitToMenu = useCallback(() => {
+    audio.setLoopTrack(false);
     audio.silenceAllContinuous();
     audio.stopTrack();
     setPreviewingTrackId(null);
