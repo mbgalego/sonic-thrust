@@ -26,6 +26,10 @@ export class GameRenderer {
   // Persistent continuous gravitational ripple phase accumulator (monotonic, rhythm-synced)
   private ripplePhase: number = 0;
 
+  // Adaptive normalization state for bedrock equalizer waves (persists across frames)
+  private eqAvg: number[] = [0.12, 0.12, 0.10, 0.08, 0.06];
+  private eqPeak: number[] = [0.5, 0.5, 0.4, 0.35, 0.3];
+
   // Drop Flash — consumes AudioFrequencyData.energyContrast: full-arena bloom when the music
   // bursts above its own macro baseline (the classic EDM "drop hit" moment).
   private dropFlash: number = 0;              // 0..1 flash envelope (fast rise, ~0.45s decay)
@@ -257,7 +261,7 @@ export class GameRenderer {
     this.renderObstacles(world.obstacles, world.laserGates, audioFreq, world);
 
     // 6. Vector Neon Terrain (Ceiling and Floor)
-    this.renderTerrain(world, audioFreq);
+    this.renderTerrain(world, audioFreq, dt);
 
     // 7. Particles & Shockwaves (frozen while paused)
     this.renderParticlesAndShockwaves(isPaused ? 0 : dt);
@@ -450,7 +454,7 @@ export class GameRenderer {
     ctx.restore();
   }
 
-  private renderTerrain(world: PhysicsWorld, audioFreq: AudioFrequencyData): void {
+  private renderTerrain(world: PhysicsWorld, audioFreq: AudioFrequencyData, dt: number): void {
     const ctx = this.ctx;
     const points = world.terrainPoints;
     if (points.length < 2) return;
@@ -555,66 +559,91 @@ export class GameRenderer {
     const eqBands = [
       {
         name: 'SUB_BASS',
-        energy: audioFreq.subBass,
-        ceilColor: '#00f0ff',   // Electric Cyan
-        floorColor: '#ef4444',  // Laser Red
-        spatialFreq: 0.0032,    // Long rolling ocean swell
+        energy: 0, // computed from raw FFT bins
+        ceilColor: '#00f0ff',
+        floorColor: '#ef4444',
+        spatialFreq: 0.0032,
         speedMult: 0.85,
-        baseDist: 14,           // px into bedrock
+        baseDist: 14,
         maxAmp: 13,
-        phaseOffset: 0
+        phaseOffset: 0,
+        // raw bin range for adaptive normalization
+        binStart: 1, binEnd: 8
       },
       {
         name: 'BASS',
-        energy: audioFreq.bass,
-        ceilColor: '#38bdf8',   // Laser Sky Blue
-        floorColor: '#f97316',  // Neon Orange
-        spatialFreq: 0.0062,    // Punchy rhythmic wave
+        energy: 0,
+        ceilColor: '#38bdf8',
+        floorColor: '#f97316',
+        spatialFreq: 0.0062,
         speedMult: 1.05,
         baseDist: 28,
         maxAmp: 12,
-        phaseOffset: 0.80
+        phaseOffset: 0.80,
+        binStart: 8, binEnd: 20
       },
       {
         name: 'LOW_MIDS',
-        energy: audioFreq.lowMids,
-        ceilColor: '#818cf8',   // Neon Indigo
-        floorColor: '#eab308',  // Electric Gold / Amber
-        spatialFreq: 0.0105,    // Harmonic undulating roll
+        energy: 0,
+        ceilColor: '#818cf8',
+        floorColor: '#eab308',
+        spatialFreq: 0.0105,
         speedMult: 1.25,
         baseDist: 42,
         maxAmp: 11,
-        phaseOffset: 1.60
+        phaseOffset: 1.60,
+        binStart: 20, binEnd: 45
       },
       {
         name: 'HIGH_MIDS',
-        energy: audioFreq.highMids,
-        ceilColor: '#c084fc',   // Radiant Purple
-        floorColor: '#10b981',  // Vibrant Emerald
-        spatialFreq: 0.0175,    // Snappy melodic crests
+        energy: 0,
+        ceilColor: '#c084fc',
+        floorColor: '#10b981',
+        spatialFreq: 0.0175,
         speedMult: 1.50,
         baseDist: 56,
         maxAmp: 10,
-        phaseOffset: 2.40
+        phaseOffset: 2.40,
+        binStart: 45, binEnd: 90
       },
       {
         name: 'TREBLE',
-        energy: audioFreq.treble,
-        ceilColor: '#f43f5e',   // Searing Hot Pink / Crimson
-        floorColor: '#06b6d4',  // Bright Turquoise
-        spatialFreq: 0.0280,    // High-frequency jitter shimmer
+        energy: 0,
+        ceilColor: '#f43f5e',
+        floorColor: '#06b6d4',
+        spatialFreq: 0.0280,
         speedMult: 1.85,
         baseDist: 70,
         maxAmp: 9,
-        phaseOffset: 3.20
+        phaseOffset: 3.20,
+        binStart: 90, binEnd: 160
       }
     ];
 
+    // Adaptive normalization state for bedrock waves (persists across frames)
+    if (!this.eqAvg) {
+      this.eqAvg = [0.12, 0.12, 0.10, 0.08, 0.06];
+      this.eqPeak = [0.5, 0.5, 0.4, 0.35, 0.3];
+    }
+
     const beatPulseVal = audioFreq.beatPulse || (audioFreq.isBeat ? 1.0 : 0.0);
+    const fa = audioFreq.frequencyArray;
 
     for (let b = 0; b < eqBands.length; b++) {
       const band = eqBands[b];
-      const bandE = Math.max(0, Math.min(1.0, band.energy));
+
+      // 1) Raw bin average for this band's frequency range
+      let raw = 0;
+      const count = Math.max(1, band.binEnd - band.binStart);
+      for (let i = band.binStart; i < band.binEnd && i < fa.length; i++) raw += (fa[i] || 0) / 255;
+      raw /= count;
+
+      // 2) Adaptive normalization: moving avg baseline + rolling peak
+      const avgAlpha = 1.0 - Math.exp(-dt / 2.5); // ~2.5s baseline
+      this.eqAvg[b] += (raw - this.eqAvg[b]) * avgAlpha;
+      this.eqPeak[b] = Math.max(raw, this.eqPeak[b] * Math.exp(-dt / 1.8));
+      const span = Math.max(0.08, this.eqPeak[b] - this.eqAvg[b]);
+      const bandE = Math.min(1.0, Math.max(0.0, (raw - this.eqAvg[b]) / span));
 
       // Dynamic amplitude: idle breathing (2.5px) up to (2.5 + maxAmp) on heavy rhythm hits!
       const beatBoost = (b <= 1 ? beatPulseVal * 8.0 : (b === 3 ? beatPulseVal * 5.0 : 0));
