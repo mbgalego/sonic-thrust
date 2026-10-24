@@ -222,25 +222,67 @@ export default function App() {
     audio.setVolumes(options.musicVolume, options.sfxVolume);
   }, [options.musicVolume, options.sfxVolume]);
 
-  // 4. Responsive Track Preview in Menu (One-click instantaneous switch)
+  // 3. Menu Music Management: plays procedural soundtrack on menu, pauses on preview, resumes after
+  useEffect(() => {
+    if (gameState !== 'MENU') return;
+
+    audio.setOnTrackEnded(() => {
+      setPreviewingTrackId(null);
+      setLoadingTrackId(null);
+      if (!audio.isMenuMusicMuted()) {
+        audio.resumeMenuMusic();
+      }
+    });
+
+    const tryStartMenuMusic = async () => {
+      if (gameState === 'MENU' && !previewingTrackId && !audio.isTrackPlaying() && !audio.isMenuMusicMuted()) {
+        await audio.playMenuMusic();
+      }
+    };
+
+    const handleUserInteraction = (e: Event) => {
+      const target = e.target as HTMLElement | null;
+      if (target && target.closest('button[title*="escuta"], button[title*="Pré-escutar"], button[title*="Parar"]')) {
+        return;
+      }
+      tryStartMenuMusic();
+    };
+
+    window.addEventListener('pointerdown', handleUserInteraction);
+    window.addEventListener('keydown', handleUserInteraction);
+
+    tryStartMenuMusic();
+
+    return () => {
+      window.removeEventListener('pointerdown', handleUserInteraction);
+      window.removeEventListener('keydown', handleUserInteraction);
+    };
+  }, [gameState, previewingTrackId]);
+
+  // 4. Responsive Track Preview in Menu (One-click instantaneous switch with Menu Music pause)
   const handlePreviewTrack = async (track: TrackMetadata) => {
     await audio.init();
 
-    // If already playing this track, toggle it off
+    // If already playing this track, toggle it off and resume menu music if not muted
     if (previewingTrackId === track.id) {
       audio.stopTrack();
       setPreviewingTrackId(null);
       setLoadingTrackId(null);
+      if (!audio.isMenuMusicMuted()) {
+        audio.resumeMenuMusic();
+      }
       return;
     }
 
-    // Switch instantly: stop old track and load new one
+    // Switch instantly: pause menu music, stop old track, and load new one
+    audio.pauseMenuMusic();
     audio.stopTrack();
     setPreviewingTrackId(null);
     setLoadingTrackId(track.id);
 
     try {
       const buffer = await audio.loadTrack(track);
+      audio.pauseMenuMusic(); // Double ensure menu music is silent
       audio.playTrack(buffer, 0);
       setPreviewingTrackId(track.id);
       setLoadingTrackId(null);
@@ -248,17 +290,23 @@ export default function App() {
       audio.stopTrack();
       setPreviewingTrackId(null);
       setLoadingTrackId(null);
+      if (!audio.isMenuMusicMuted()) {
+        audio.resumeMenuMusic();
+      }
     }
   };
+
 
   // 5. Start Mission
   const handleStartMission = async () => {
     if (!selectedTrack) return;
     audio.playButtonSfx();
     audio.silenceAllContinuous();
+    audio.stopMenuMusic();
     audio.stopTrack();
     setPreviewingTrackId(null);
     setLoadingTrackId(null);
+
 
     await audio.init();
     const trackBuffer = await audio.loadTrack(selectedTrack);
@@ -381,6 +429,7 @@ export default function App() {
     setPreviewingTrackId(null);
     setLoadingTrackId(null);
     setGameState('MENU');
+    audio.playMenuMusic();
   }, []);
 
   // 7. Keyboard Listeners
