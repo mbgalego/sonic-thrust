@@ -42,19 +42,22 @@ export class GameRenderer {
   private cameraZoom: number = 1.0;
   private isMobileViewport: boolean = false;
 
+  // Quality setting: 'high' (full effects) or 'low' (reduced particles, lower blur)
+  public quality: 'high' | 'low' = 'high';
+
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     const context = canvas.getContext('2d', { alpha: false });
     if (!context) throw new Error('Could not get Canvas 2D context');
     this.ctx = context;
-    this.particleSystem = new ParticleSystem(450);
+    this.particleSystem = new ParticleSystem(this.quality === 'low' ? 200 : 450);
 
     this.resize();
     this.initStars();
   }
 
   public resize(): void {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = this.quality === 'low' ? 1 : Math.min(window.devicePixelRatio || 1, 2);
     const rect = this.canvas.getBoundingClientRect();
     this.width = rect.width || window.innerWidth;
     this.height = rect.height || window.innerHeight;
@@ -1125,12 +1128,14 @@ export class GameRenderer {
         const tipY = isCeil ? baseY + reach : baseY - reach;
 
         ctx.save();
-        // 1. Sleek acrylic chassis casing
+        // 1. Sleek acrylic chassis casing — tinted with this tower's band color so
+        //    cluster members are instantly distinguishable (cyan bass vs violet mids...)
         const casingTop = isCeil ? baseY : baseY - reach - 4;
         const casingHeight = reach + 6;
+        const bandColor = obs.color ?? '#10b981';
         ctx.fillStyle = '#0a0a14';
-        ctx.strokeStyle = '#38bdf8';
-        ctx.shadowColor = '#00f0ff';
+        ctx.strokeStyle = bandColor;
+        ctx.shadowColor = bandColor;
         ctx.shadowBlur = obs.active ? 16 : 6;
         ctx.lineWidth = 1.8;
         if (ctx.roundRect) {
@@ -1180,12 +1185,16 @@ export class GameRenderer {
           const peakY = isCeil ? tipY - 4 : tipY;
           ctx.fillRect(obs.x - w / 2 + 2, peakY, w - 4, 4);
 
-          // Decibel scale tick lines (-24dB, -12dB, 0dB, CLIP)
+          // Band label under the CLIP LED (SUB / BASS / MID / HI) — tinted by band color
+          const bandName =
+            (obs.binStart ?? 1) < 8 ? 'SUB' :
+            (obs.binStart ?? 8) < 20 ? 'BASS' :
+            (obs.binStart ?? 20) < 45 ? 'MID' : 'HI';
           ctx.font = 'bold 7px Orbitron';
-          ctx.fillStyle = '#00f0ff';
+          ctx.fillStyle = bandColor;
           ctx.shadowBlur = 4;
           ctx.textAlign = 'right';
-          ctx.fillText(obs.active ? 'CLIP' : 'VU', obs.x - w / 2 - 4, tipY + (isCeil ? -2 : 8));
+          ctx.fillText(obs.active ? 'CLIP' : bandName, obs.x - w / 2 - 4, tipY + (isCeil ? -2 : 8));
         }
 
         ctx.restore();

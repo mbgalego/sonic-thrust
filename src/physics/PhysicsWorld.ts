@@ -158,11 +158,6 @@ export class PhysicsWorld {
   // Persistent continuous terrain phase accumulator (monotonic, eliminates audio jitter)
   public terrainPhase: number = 0;
 
-  // Adaptive VU normalization state: rolling peak + moving-average baseline so the
-  // in-game equalizer tower always has full swing, even on low-dynamic-range tracks.
-  private vuAvg: number = 0.15;   // 3s moving average (DC baseline)
-  private vuPeak: number = 0.6;   // recent maximum (fast up, slow decay)
-
   // Stats tracking
   public stats: GameStats;
 
@@ -428,29 +423,48 @@ export class PhysicsWorld {
       const patternChoice = (i + (this.trackSeed % 3)) % 3;
 
       if (patternChoice === 0) {
-        // A) PILAR EQUALIZADOR VU (Equalizer VU Tower: coluna de barras LED retro que dispara ao ritmo dos graves)
+        // A) PILARES EQUALIZADOR VU EM GRUPO: 2-4 retro-LED columns placed close together,
+        // each one reacting to a DIFFERENT raw FFT band (kick/sub, body bass, low-mids, treble).
         const isCeil = (i + (this.trackSeed % 2)) % 2 === 0;
-        this.obstacles.push({
-          id: `vu-${i}`,
-          type: 'VU_TOWER',
-          x,
-          y: isCeil ? terrain.ceilY : terrain.floorY,
-          baseY: isCeil ? terrain.ceilY : terrain.floorY,
-          width: 58,
-          height: 36,
-          angle: 0,
-          baseAngle: 0,
-          rotSpeed: 0,
-          band: 'bass',
-          color: '#10b981', // Verde base / Âmbar / Vermelho topo
-          energyThreshold: 0.22,
-          active: false,
-          isCeiling: isCeil,
-          extension: 0.08,
-          maxExtensionHeight: Math.min(130, corridorHeight * 0.46),
-          warningPhase: 0.0,
-          beatTriggerTimer: (i * 1.5) % 3.0
-        });
+        // Vary group size 2-4 (seed-stable per track)
+        const groupSize = 2 + (this.trackSeed + i) % 3;
+        // Distinct FFT band ranges for each tower in the group
+        const bandRanges: { binStart: number; binEnd: number }[] = [
+          { binStart: 1, binEnd: 8 },     // kick / sub-bass
+          { binStart: 8, binEnd: 20 },    // body bass
+          { binStart: 20, binEnd: 45 },   // low-mids
+          { binStart: 45, binEnd: 90 }    // high-mids / presence
+        ];
+        const spacing = 28; // px between towers in the group
+        for (let g = 0; g < groupSize; g++) {
+          const gx = x + g * spacing;
+          const range = bandRanges[g % bandRanges.length];
+          this.obstacles.push({
+            id: `vu-${i}-${g}`,
+            type: 'VU_TOWER',
+            x: gx,
+            y: isCeil ? terrain.ceilY : terrain.floorY,
+            baseY: isCeil ? terrain.ceilY : terrain.floorY,
+            width: 34, // slimmer individual columns so a group reads as a cluster
+            height: 36,
+            angle: 0,
+            baseAngle: 0,
+            rotSpeed: 0,
+            band: g === 0 ? 'bass' : (g === 1 ? 'bass' : (g === 2 ? 'mids' : 'treble')),
+            color: ['#10b981', '#38bdf8', '#818cf8', '#f43f5e'][g % 4],
+            energyThreshold: 0.22,
+            active: false,
+            isCeiling: isCeil,
+            extension: 0.08,
+            maxExtensionHeight: Math.min(130, corridorHeight * 0.46),
+            warningPhase: 0.0,
+            beatTriggerTimer: (i * 1.5 + g) % 3.0,
+            binStart: range.binStart,
+            binEnd: range.binEnd,
+            vuAvg: 0.15,
+            vuPeak: 0.6
+          });
+        }
       } else if (patternChoice === 1) {
         // B) RESONANCE MINE (Mina flutuante com anéis orbitais e pulso sonoro)
         const midY = (terrain.ceilY + terrain.floorY) / 2 + (Math.sin(i * 2.2) * 35);
@@ -788,34 +802,38 @@ export class PhysicsWorld {
       const terrain = this.getTerrainAt(obs.x);
 
       if (obs.type === 'VU_TOWER') {
-        // Equalizer VU pillars: fast, rhythmic response driven by the RAW FFT bins
-        // (kick/sub region, 0–250Hz) with adaptive normalization so the meter always
-        // swings across its full range — even on loudness-limited master tracks.
+        // Equalizer VU pillars: fast, rhythmic response driven by RAW FFT bins.
+        // Each tower owns a distinct band range (binStart..binEnd) so a cluster of
+        // 2-4 towers splits the spectrum — kick, body, low-mids, presence all dance
+        // independently. Adaptive normalization keeps every tower swinging across
+        // its full range regardless of master loudness.
         obs.beatTriggerTimer += dt;
         obs.y = obs.isCeiling ? terrain.ceilY : terrain.floorY;
 
-        // 1) Raw bass bins: average the lowest ~18 bins (≈0–750Hz) for a punchy,
-        //    un-smoothed signal that follows every kick transient.
+        const binStart = obs.binStart ?? 1;
+        const binEnd = obs.binEnd ?? 18;
         const fa = audioFreq.frequencyArray;
         let bassRaw = 0;
-        const bassBins = Math.min(18, fa.length);
-        for (let i = 1; i < bassBins; i++) bassRaw += (fa[i] || 0) / 255;
-        bassRaw /= Math.max(1, bassBins - 1);
+        const count = Math.min(binEnd, fa.length) - Math.min(binStart, fa.length);
+        if (count > 0) {
+          for (let i = binStart; i < binEnd && i < fa.length; i++) bassRaw += (fa[i] || 0) / 255;
+          bassRaw /= count;
+        }
 
-        // 2) Adaptive normalization: track a slow moving average (3s) as the baseline
-        //    and a rolling peak. Normalizing against them converts absolute loudness
-        //    into RELATIVE movement — a quieter passage still makes the bars dance.
+        // Per-tower adaptive normalization
         const avgAlpha = 1.0 - Math.exp(-dt / 3.0);
-        this.vuAvg += (bassRaw - this.vuAvg) * avgAlpha;
-        this.vuPeak = Math.max(bassRaw, this.vuPeak * Math.exp(-dt / 2.2));
-        const vuSpan = Math.max(0.10, this.vuPeak - this.vuAvg);
-        const vuNorm = Math.min(1.0, Math.max(0.0, (bassRaw - this.vuAvg) / vuSpan));
+        obs.vuAvg = obs.vuAvg ?? 0.15;
+        obs.vuPeak = obs.vuPeak ?? 0.6;
+        obs.vuAvg += (bassRaw - obs.vuAvg) * avgAlpha;
+        obs.vuPeak = Math.max(bassRaw, obs.vuPeak * Math.exp(-dt / 2.2));
+        const vuSpan = Math.max(0.10, obs.vuPeak - obs.vuAvg);
+        const vuNorm = Math.min(1.0, Math.max(0.0, (bassRaw - obs.vuAvg) / vuSpan));
 
         const beatPunch = audioFreq.isBeat ? 0.38 + (audioFreq.beatPulse || 0) * 0.42 : 0;
         const targetExt = Math.min(1.0, Math.max(0.06, vuNorm * 0.90 + beatPunch));
 
         if (targetExt > obs.extension) {
-          // Fast attack when bass kick lands
+          // Fast attack when the band's kick/transient lands
           obs.extension += (targetExt - obs.extension) * Math.min(1.0, 18.0 * dt);
         } else {
           // Smooth analog VU meter ballistics release
