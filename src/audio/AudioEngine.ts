@@ -1048,6 +1048,18 @@ export class AudioEngine {
     };
   }
 
+  public setLoopTrack(loop: boolean): void {
+    if (this.currentSource) {
+      this.currentSource.loop = loop;
+    }
+  }
+
+  public getByteTimeDomainData(arr: Uint8Array): void {
+    if (this.analyser) {
+      (this.analyser as unknown as { getByteTimeDomainData: (data: Uint8Array) => void }).getByteTimeDomainData(arr);
+    }
+  }
+
   // ================= Procedural Sound Effects ================= //
 
   public playCountdownTick(): void {
