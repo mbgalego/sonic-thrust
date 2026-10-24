@@ -158,6 +158,11 @@ export class PhysicsWorld {
   // Persistent continuous terrain phase accumulator (monotonic, eliminates audio jitter)
   public terrainPhase: number = 0;
 
+  // Adaptive VU normalization state: rolling peak + moving-average baseline so the
+  // in-game equalizer tower always has full swing, even on low-dynamic-range tracks.
+  private vuAvg: number = 0.15;   // 3s moving average (DC baseline)
+  private vuPeak: number = 0.6;   // recent maximum (fast up, slow decay)
+
   // Stats tracking
   public stats: GameStats;
 
@@ -783,20 +788,38 @@ export class PhysicsWorld {
       const terrain = this.getTerrainAt(obs.x);
 
       if (obs.type === 'VU_TOWER') {
-        // Equalizer VU pillars: dynamic, smooth audio response with fast attack and natural decay
+        // Equalizer VU pillars: fast, rhythmic response driven by the RAW FFT bins
+        // (kick/sub region, 0–250Hz) with adaptive normalization so the meter always
+        // swings across its full range — even on loudness-limited master tracks.
         obs.beatTriggerTimer += dt;
         obs.y = obs.isCeiling ? terrain.ceilY : terrain.floorY;
 
-        const rawBass = Math.max(0, audioFreq.bass - 0.20) / 0.80;
+        // 1) Raw bass bins: average the lowest ~18 bins (≈0–750Hz) for a punchy,
+        //    un-smoothed signal that follows every kick transient.
+        const fa = audioFreq.frequencyArray;
+        let bassRaw = 0;
+        const bassBins = Math.min(18, fa.length);
+        for (let i = 1; i < bassBins; i++) bassRaw += (fa[i] || 0) / 255;
+        bassRaw /= Math.max(1, bassBins - 1);
+
+        // 2) Adaptive normalization: track a slow moving average (3s) as the baseline
+        //    and a rolling peak. Normalizing against them converts absolute loudness
+        //    into RELATIVE movement — a quieter passage still makes the bars dance.
+        const avgAlpha = 1.0 - Math.exp(-dt / 3.0);
+        this.vuAvg += (bassRaw - this.vuAvg) * avgAlpha;
+        this.vuPeak = Math.max(bassRaw, this.vuPeak * Math.exp(-dt / 2.2));
+        const vuSpan = Math.max(0.10, this.vuPeak - this.vuAvg);
+        const vuNorm = Math.min(1.0, Math.max(0.0, (bassRaw - this.vuAvg) / vuSpan));
+
         const beatPunch = audioFreq.isBeat ? 0.38 + (audioFreq.beatPulse || 0) * 0.42 : 0;
-        const targetExt = Math.min(1.0, Math.max(0.06, rawBass * 0.80 + beatPunch));
+        const targetExt = Math.min(1.0, Math.max(0.06, vuNorm * 0.90 + beatPunch));
 
         if (targetExt > obs.extension) {
           // Fast attack when bass kick lands
-          obs.extension += (targetExt - obs.extension) * Math.min(1.0, 16.0 * dt);
+          obs.extension += (targetExt - obs.extension) * Math.min(1.0, 18.0 * dt);
         } else {
           // Smooth analog VU meter ballistics release
-          obs.extension += (targetExt - obs.extension) * Math.min(1.0, 5.0 * dt);
+          obs.extension += (targetExt - obs.extension) * Math.min(1.0, 6.0 * dt);
         }
         obs.active = obs.extension > 0.30;
       } else if (obs.type === 'RESONANCE_MINE') {
