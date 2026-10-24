@@ -4,12 +4,11 @@
  * Features live reactive FFT mini-equalizer & inline scrollable track dropdown.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Play,
   Pause,
   Loader2,
-  Shuffle,
   Settings,
   HelpCircle,
   Maximize,
@@ -25,7 +24,8 @@ import {
   FastForward,
   ChevronLeft,
   ChevronRight,
-  ChevronDown
+  ChevronDown,
+  User
 } from 'lucide-react';
 import {
   DifficultyLevel,
@@ -127,6 +127,80 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
     }
   };
 
+  // Sliding / swiping difficulty gesture support
+  const railRef = useRef<HTMLDivElement>(null);
+  const isDraggingDiffRef = useRef(false);
+  const touchStartXRef = useRef<number | null>(null);
+
+  const updateDifficultyByPosition = (clientX: number) => {
+    if (!railRef.current) return;
+    const rect = railRef.current.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    let targetDiff: DifficultyLevel;
+    if (ratio < 0.35) {
+      targetDiff = 'NORMAL';
+    } else if (ratio < 0.68) {
+      targetDiff = 'PRO';
+    } else {
+      targetDiff = 'EXTREME';
+    }
+    if (targetDiff !== difficulty) {
+      handleSetDifficulty(targetDiff);
+    }
+  };
+
+  const handleRailPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    isDraggingDiffRef.current = true;
+    touchStartXRef.current = e.clientX;
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+    updateDifficultyByPosition(e.clientX);
+  };
+
+  const handleRailPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingDiffRef.current) return;
+    updateDifficultyByPosition(e.clientX);
+  };
+
+  const handleRailPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isDraggingDiffRef.current && touchStartXRef.current !== null) {
+      const deltaX = e.clientX - touchStartXRef.current;
+      if (Math.abs(deltaX) > 28) {
+        handleCycleDifficulty(deltaX > 0 ? 1 : -1);
+      }
+    }
+    isDraggingDiffRef.current = false;
+    touchStartXRef.current = null;
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleRailTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length > 0) {
+      isDraggingDiffRef.current = true;
+      touchStartXRef.current = e.touches[0].clientX;
+      updateDifficultyByPosition(e.touches[0].clientX);
+    }
+  };
+
+  const handleRailTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isDraggingDiffRef.current || e.touches.length === 0) return;
+    updateDifficultyByPosition(e.touches[0].clientX);
+  };
+
+  const handleRailTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (isDraggingDiffRef.current && touchStartXRef.current !== null && e.changedTouches.length > 0) {
+      const deltaX = e.changedTouches[0].clientX - touchStartXRef.current;
+      if (Math.abs(deltaX) > 28) {
+        handleCycleDifficulty(deltaX > 0 ? 1 : -1);
+      }
+    }
+    isDraggingDiffRef.current = false;
+    touchStartXRef.current = null;
+  };
+
   return (
     <div className="absolute inset-0 z-30 flex flex-col justify-between p-3 sm:p-5 md:p-8 bg-[#060216]/95 backdrop-blur-md overflow-y-auto overflow-x-hidden select-none">
       
@@ -134,56 +208,67 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
       <div className="absolute top-1/4 left-1/4 w-[450px] h-[450px] bg-cyan-500/10 rounded-full blur-[110px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-fuchsia-500/15 rounded-full blur-[130px] pointer-events-none" />
 
-      {/* Top Bar Floating Controls (Audio Mute Toggle & Fullscreen) */}
-      <div className="absolute top-3 right-3 sm:top-5 sm:right-6 z-40 flex items-center gap-2">
-        {/* Menu Audio Mute / Unmute Button */}
-        <button
-          type="button"
-          onClick={handleToggleMenuMusic}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono transition-all shadow-md cursor-pointer ${
-            isMuted
-              ? 'border-rose-500/50 bg-rose-950/60 text-rose-300 hover:border-rose-400 hover:bg-rose-900/70 shadow-[0_0_10px_rgba(244,63,94,0.2)]'
-              : 'border-cyan-500/40 bg-slate-950/80 text-cyan-300 hover:border-cyan-300 hover:bg-cyan-950/60 shadow-[0_0_12px_rgba(6,182,212,0.25)]'
-          }`}
-          title={isMuted ? 'Ativar música do menu' : 'Silenciar música do menu'}
-        >
-          {isMuted ? (
-            <>
-              <VolumeX className="w-3.5 h-3.5 text-rose-400" />
-              <span className="hidden sm:inline">Música: Mudo</span>
-            </>
-          ) : (
-            <>
-              <Volume2 className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-              <span className="hidden sm:inline">
-                {previewingTrackId ? 'Pré-Escuta' : 'Música: Ligada'}
-              </span>
-            </>
-          )}
-        </button>
+      {/* Top Bar Row: Controls located cleanly above the header so they never overlap the game title */}
+      <div className="relative z-20 flex items-center justify-between w-full max-w-6xl mx-auto px-1 sm:px-4 pt-1 sm:pt-2 pb-2 shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#00f0ff]" />
+          <span className="font-orbitron text-[10px] sm:text-xs tracking-wider text-cyan-400/90 font-bold uppercase">
+            SONIC ARCADE
+          </span>
+        </div>
 
-        <button
-          type="button"
-          onClick={toggleFullscreen}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-cyan-500/30 bg-slate-950/70 hover:bg-cyan-950/60 hover:border-cyan-400 text-cyan-300 hover:text-white text-xs font-mono transition-all shadow-md cursor-pointer"
-          title={isFullscreen ? 'Sair de Ecrã Inteiro (F11)' : 'Ativar Ecrã Inteiro (F11)'}
-        >
-          {isFullscreen ? (
-            <>
-              <Minimize className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="hidden sm:inline">Janela</span>
-            </>
-          ) : (
-            <>
-              <Maximize className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="hidden sm:inline">Ecrã Inteiro</span>
-            </>
-          )}
-        </button>
+        {/* Audio Mute & Fullscreen Controls */}
+        <div className="flex items-center gap-2">
+          {/* Menu Audio Mute / Unmute Button */}
+          <button
+            type="button"
+            onClick={handleToggleMenuMusic}
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border text-xs font-mono transition-all shadow-md cursor-pointer ${
+              isMuted
+                ? 'border-rose-500/50 bg-rose-950/60 text-rose-300 hover:border-rose-400 hover:bg-rose-900/70 shadow-[0_0_10px_rgba(244,63,94,0.2)]'
+                : 'border-cyan-500/40 bg-slate-950/80 text-cyan-300 hover:border-cyan-300 hover:bg-cyan-950/60 shadow-[0_0_12px_rgba(6,182,212,0.25)]'
+            }`}
+            title={isMuted ? 'Ativar música do menu' : 'Silenciar música do menu'}
+          >
+            {isMuted ? (
+              <>
+                <VolumeX className="w-3.5 h-3.5 text-rose-400" />
+                <span className="hidden sm:inline">Música: Mudo</span>
+              </>
+            ) : (
+              <>
+                <Volume2 className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                <span className="hidden sm:inline">
+                  {previewingTrackId ? 'Pré-Escuta' : 'Música: Ligada'}
+                </span>
+              </>
+            )}
+          </button>
+
+          {/* Fullscreen Button */}
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border border-cyan-500/30 bg-slate-950/70 hover:bg-cyan-950/60 hover:border-cyan-400 text-cyan-300 hover:text-white text-xs font-mono transition-all shadow-md cursor-pointer"
+            title={isFullscreen ? 'Sair de Ecrã Inteiro (F11)' : 'Ativar Ecrã Inteiro (F11)'}
+          >
+            {isFullscreen ? (
+              <>
+                <Minimize className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="hidden sm:inline">Janela</span>
+              </>
+            ) : (
+              <>
+                <Maximize className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="hidden sm:inline">Ecrã Inteiro</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
-      {/* Header with Sonic Thrust Neon Brand Title */}
-      <header className="relative z-10 flex flex-col items-center justify-center text-center pt-2 sm:pt-4 pb-3">
+      {/* Header with Sonic Thrust Neon Brand Title (Unobstructed at all resolutions) */}
+      <header className="relative z-10 flex flex-col items-center justify-center text-center pt-1 sm:pt-2 pb-3 shrink-0">
         <h1 className="text-4xl sm:text-5xl md:text-6xl font-black italic tracking-wider uppercase font-orbitron flex items-center justify-center gap-3">
           <span className="neon-text-cyan text-[#00f0ff]">SONIC</span>
           <span className="neon-text-magenta text-[#ff007f]">THRUST</span>
@@ -233,33 +318,36 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
             <div className="menu-gradient-card">
               <div className="menu-gradient-card-inner p-3.5 sm:p-4 flex flex-col">
                 
-                {/* Active Track Row */}
-                <div className="flex items-center justify-between gap-3">
-                  {/* Left: Track Play / Title / BPM / Live Mini Equalizer */}
-                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                    {/* Play / Preview Circle Button */}
-                    <button
-                      type="button"
-                      onClick={() => selectedTrack && onPreviewTrack(selectedTrack)}
-                      className="w-10 h-10 rounded-xl border border-cyan-400/80 bg-cyan-950/60 hover:bg-cyan-500/20 text-cyan-300 hover:text-white flex items-center justify-center shrink-0 transition-all shadow-[0_0_12px_rgba(6,182,212,0.35)] cursor-pointer"
-                      title={previewingTrackId === selectedTrack?.id ? 'Parar pré-escuta' : 'Pré-escutar faixa'}
-                    >
-                      {loadingTrackId === selectedTrack?.id ? (
-                        <Loader2 className="w-5 h-5 animate-spin text-cyan-300" />
-                      ) : previewingTrackId === selectedTrack?.id ? (
-                        <Pause className="w-4 h-4 fill-current text-cyan-300 animate-pulse" />
-                      ) : (
-                        <Play className="w-4 h-4 fill-current text-cyan-300 ml-0.5" />
-                      )}
-                    </button>
+                {/* Active Track Row (Full-width metadata & clickable dropdown toggle) */}
+                <div className="flex items-center gap-3 sm:gap-4">
+                  {/* Play / Preview Circle Button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (selectedTrack) onPreviewTrack(selectedTrack);
+                    }}
+                    className="w-11 h-11 rounded-xl border border-cyan-400/80 bg-cyan-950/60 hover:bg-cyan-500/20 text-cyan-300 hover:text-white flex items-center justify-center shrink-0 transition-all shadow-[0_0_12px_rgba(6,182,212,0.35)] cursor-pointer"
+                    title={previewingTrackId === selectedTrack?.id ? 'Parar pré-escuta' : 'Pré-escutar faixa'}
+                  >
+                    {loadingTrackId === selectedTrack?.id ? (
+                      <Loader2 className="w-5 h-5 animate-spin text-cyan-300" />
+                    ) : previewingTrackId === selectedTrack?.id ? (
+                      <Pause className="w-4 h-4 fill-current text-cyan-300 animate-pulse" />
+                    ) : (
+                      <Play className="w-4 h-4 fill-current text-cyan-300 ml-0.5" />
+                    )}
+                  </button>
 
-                    {/* Track Info & Visualizer (Click to toggle dropdown) */}
-                    <div
-                      onClick={() => setIsDropdownOpen(prev => !prev)}
-                      className="flex flex-col min-w-0 flex-1 cursor-pointer group/track"
-                      title="Clica para abrir a lista suspensa de músicas"
-                    >
-                      <div className="flex items-center gap-2">
+                  {/* Expanded Track Information & Live Equalizer (Clicking toggles dropdown) */}
+                  <div
+                    onClick={() => setIsDropdownOpen(prev => !prev)}
+                    className="flex flex-col min-w-0 flex-1 cursor-pointer group/track py-0.5"
+                    title={isDropdownOpen ? 'Fechar catálogo de músicas' : 'Clica para ver e escolher outras músicas'}
+                  >
+                    {/* Header Row: Title + Badges + Expand Chevron */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <span className="font-orbitron font-bold text-sm sm:text-base text-white group-hover/track:text-cyan-300 transition-colors tracking-wide truncate">
                           {selectedTrack?.title || 'Ayla'}
                         </span>
@@ -269,37 +357,35 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                           </span>
                         )}
                       </div>
-                      
-                      <span className="font-mono text-xs text-cyan-300/80 tracking-wider mt-0.5">
-                        {selectedTrack?.estimatedBpm || 136} BPM • {Math.floor((selectedTrack?.duration || 206) / 60)}:
-                        {String(Math.floor((selectedTrack?.duration || 206) % 60)).padStart(2, '0')}
-                      </span>
 
-                      {/* 60FPS Reactive Mini Equalizer Canvas */}
-                      <div className="w-full h-6 mt-1.5">
-                        <MiniEqualizer className="w-full h-6" />
+                      <div className="flex items-center gap-1 shrink-0 text-cyan-400 group-hover/track:text-cyan-200 transition-colors">
+                        <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180 text-fuchsia-400' : ''}`} />
                       </div>
                     </div>
-                  </div>
 
-                  {/* Vertical Divider */}
-                  <div className="w-[1px] h-14 bg-slate-700/60" />
-
-                  {/* Right: ALTERAR Dropdown Toggle Button */}
-                  <button
-                    type="button"
-                    onClick={() => setIsDropdownOpen(prev => !prev)}
-                    className="flex flex-col items-center justify-center gap-1 px-2.5 py-2 rounded-lg hover:bg-white/5 transition-all cursor-pointer group"
-                    title={isDropdownOpen ? 'Fechar menu de faixas' : 'Abrir menu suspenso de faixas'}
-                  >
-                    <div className="flex items-center gap-1 text-cyan-400 group-hover:text-fuchsia-400 transition-colors">
-                      <Shuffle className="w-4 h-4" />
-                      <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180 text-fuchsia-400' : ''}`} />
+                    {/* Metadata Row: Author / Artist + BPM + Duration */}
+                    <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 mt-0.5 text-xs">
+                      <span className="text-cyan-300/90 font-rajdhani font-semibold truncate flex items-center gap-1">
+                        <User className="w-3 h-3 text-cyan-400 shrink-0" />
+                        <span className="text-gray-400 font-normal">Artista:</span>
+                        <span className="text-cyan-300 font-medium">{selectedTrack?.artist || 'Kosmischer Wanderer'}</span>
+                      </span>
+                      <span className="text-slate-600 hidden sm:inline">•</span>
+                      <span className="font-mono text-[11px] text-cyan-400/80 tracking-wider">
+                        {selectedTrack?.estimatedBpm || 136} BPM
+                      </span>
+                      <span className="text-slate-600 hidden sm:inline">•</span>
+                      <span className="font-mono text-[11px] text-gray-300">
+                        {Math.floor((selectedTrack?.duration || 206) / 60)}:
+                        {String(Math.floor((selectedTrack?.duration || 206) % 60)).padStart(2, '0')}
+                      </span>
                     </div>
-                    <span className="font-orbitron font-bold text-[10px] sm:text-[11px] text-cyan-300 tracking-wider group-hover:text-white uppercase">
-                      ALTERAR
-                    </span>
-                  </button>
+
+                    {/* Full-width 60FPS Reactive Mini Equalizer Canvas */}
+                    <div className="w-full h-6 mt-1.5">
+                      <MiniEqualizer className="w-full h-6" />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Inline Scrollable Drop-Down List */}
@@ -395,15 +481,31 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
           {/* Section: DIFICULDADE */}
           <div className="flex flex-col gap-1.5">
-            <h2 className="text-xs sm:text-sm font-bold tracking-wider text-[#00f0ff] uppercase font-orbitron drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
-              DIFICULDADE
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs sm:text-sm font-bold tracking-wider text-[#00f0ff] uppercase font-orbitron drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
+                DIFICULDADE
+              </h2>
+              <span className="text-[10px] font-mono text-cyan-400/70 tracking-wider flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                Desliza ou clica
+              </span>
+            </div>
 
             <div className="menu-gradient-card">
               <div className="menu-gradient-card-inner p-3.5 sm:p-4">
                 
-                {/* Horizontal Stepper Rail */}
-                <div className="relative flex items-center justify-between gap-3">
+                {/* Horizontal Stepper Rail with full Touch / Pointer Sliding Support */}
+                <div
+                  ref={railRef}
+                  onPointerDown={handleRailPointerDown}
+                  onPointerMove={handleRailPointerMove}
+                  onPointerUp={handleRailPointerUp}
+                  onTouchStart={handleRailTouchStart}
+                  onTouchMove={handleRailTouchMove}
+                  onTouchEnd={handleRailTouchEnd}
+                  className="relative flex items-center justify-between gap-3 touch-pan-y cursor-ew-resize select-none py-1"
+                  title="Desliza horizontalmente com o dedo ou clica para alternar"
+                >
                   
                   {/* Glowing purple rail background line */}
                   <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-[2px] bg-gradient-to-r from-cyan-500/50 via-fuchsia-500/40 to-purple-800/40 -z-0" />
