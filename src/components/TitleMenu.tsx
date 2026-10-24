@@ -4,7 +4,7 @@
  * Features live reactive FFT mini-equalizer & inline scrollable track dropdown.
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Play,
   Pause,
@@ -22,8 +22,6 @@ import {
   VolumeX,
   CheckCircle2,
   FastForward,
-  ChevronLeft,
-  ChevronRight,
   ChevronDown,
   User
 } from 'lucide-react';
@@ -64,9 +62,10 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
   previewingTrackId,
   loadingTrackId
 }) => {
-  const [showHelp, setShowHelp] = useState(false);
-  const [showOptionsModal, setShowOptionsModal] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isDifficultyOpen, setIsDifficultyOpen] = useState(false);
+  const [isOptionsOpen, setIsOptionsOpen] = useState(false);
+  const [isControlsOpen, setIsControlsOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(audio.isMenuMusicMuted());
   const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement));
 
@@ -74,7 +73,6 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
     const newMuted = audio.toggleMenuMusicMute();
     setIsMuted(newMuted);
   };
-
 
   useEffect(() => {
     const handleFsChange = () => {
@@ -104,18 +102,6 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
   // Cycling difficulty helper
   const diffOrder: DifficultyLevel[] = ['NORMAL', 'PRO', 'EXTREME'];
-  const handleCycleDifficulty = (direction: 1 | -1) => {
-    const curIndex = diffOrder.indexOf(difficulty);
-    const nextIndex = (curIndex + direction + diffOrder.length) % diffOrder.length;
-    const nextDiff = diffOrder[nextIndex];
-    onSelectDifficulty(nextDiff);
-    const config = DIFFICULTY_PRESETS[nextDiff];
-    if (!config.allowFlightAssist) {
-      onOptionsChange({ ...options, flightAssist: false });
-    } else {
-      onOptionsChange({ ...options, flightAssist: config.defaultFlightAssist });
-    }
-  };
 
   const handleSetDifficulty = (level: DifficultyLevel) => {
     onSelectDifficulty(level);
@@ -125,80 +111,6 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
     } else {
       onOptionsChange({ ...options, flightAssist: config.defaultFlightAssist });
     }
-  };
-
-  // Sliding / swiping difficulty gesture support
-  const railRef = useRef<HTMLDivElement>(null);
-  const isDraggingDiffRef = useRef(false);
-  const touchStartXRef = useRef<number | null>(null);
-
-  const updateDifficultyByPosition = (clientX: number) => {
-    if (!railRef.current) return;
-    const rect = railRef.current.getBoundingClientRect();
-    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    let targetDiff: DifficultyLevel;
-    if (ratio < 0.35) {
-      targetDiff = 'NORMAL';
-    } else if (ratio < 0.68) {
-      targetDiff = 'PRO';
-    } else {
-      targetDiff = 'EXTREME';
-    }
-    if (targetDiff !== difficulty) {
-      handleSetDifficulty(targetDiff);
-    }
-  };
-
-  const handleRailPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    isDraggingDiffRef.current = true;
-    touchStartXRef.current = e.clientX;
-    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
-    updateDifficultyByPosition(e.clientX);
-  };
-
-  const handleRailPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDraggingDiffRef.current) return;
-    updateDifficultyByPosition(e.clientX);
-  };
-
-  const handleRailPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (isDraggingDiffRef.current && touchStartXRef.current !== null) {
-      const deltaX = e.clientX - touchStartXRef.current;
-      if (Math.abs(deltaX) > 28) {
-        handleCycleDifficulty(deltaX > 0 ? 1 : -1);
-      }
-    }
-    isDraggingDiffRef.current = false;
-    touchStartXRef.current = null;
-    try {
-      (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
-    } catch {
-      // ignore
-    }
-  };
-
-  const handleRailTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length > 0) {
-      isDraggingDiffRef.current = true;
-      touchStartXRef.current = e.touches[0].clientX;
-      updateDifficultyByPosition(e.touches[0].clientX);
-    }
-  };
-
-  const handleRailTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!isDraggingDiffRef.current || e.touches.length === 0) return;
-    updateDifficultyByPosition(e.touches[0].clientX);
-  };
-
-  const handleRailTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (isDraggingDiffRef.current && touchStartXRef.current !== null && e.changedTouches.length > 0) {
-      const deltaX = e.changedTouches[0].clientX - touchStartXRef.current;
-      if (Math.abs(deltaX) > 28) {
-        handleCycleDifficulty(deltaX > 0 ? 1 : -1);
-      }
-    }
-    isDraggingDiffRef.current = false;
-    touchStartXRef.current = null;
   };
 
   return (
@@ -479,224 +391,391 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
             </div>
           </div>
 
-          {/* Section: DIFICULDADE */}
+          {/* Section: DIFICULDADE (Inline Scrollable Dropdown) */}
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
               <h2 className="text-xs sm:text-sm font-bold tracking-wider text-[#00f0ff] uppercase font-orbitron drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
                 DIFICULDADE
               </h2>
-              <span className="text-[10px] font-mono text-cyan-400/70 tracking-wider flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                Desliza ou clica
+              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                difficulty === 'NORMAL'
+                  ? 'bg-cyan-950/80 border-cyan-500/40 text-cyan-300'
+                  : difficulty === 'PRO'
+                    ? 'bg-fuchsia-950/80 border-fuchsia-500/40 text-fuchsia-300'
+                    : 'bg-rose-950/80 border-rose-500/40 text-rose-300'
+              }`}>
+                {difficulty}
               </span>
             </div>
 
             <div className="menu-gradient-card">
-              <div className="menu-gradient-card-inner p-3.5 sm:p-4">
-                
-                {/* Horizontal Stepper Rail with full Touch / Pointer Sliding Support */}
+              <div className="menu-gradient-card-inner p-3.5 sm:p-4 flex flex-col">
+                {/* Active Difficulty Header (Click to toggle dropdown) */}
                 <div
-                  ref={railRef}
-                  onPointerDown={handleRailPointerDown}
-                  onPointerMove={handleRailPointerMove}
-                  onPointerUp={handleRailPointerUp}
-                  onTouchStart={handleRailTouchStart}
-                  onTouchMove={handleRailTouchMove}
-                  onTouchEnd={handleRailTouchEnd}
-                  className="relative flex items-center justify-between gap-3 touch-pan-y cursor-ew-resize select-none py-1"
-                  title="Desliza horizontalmente com o dedo ou clica para alternar"
+                  onClick={() => setIsDifficultyOpen(prev => !prev)}
+                  className="flex items-center justify-between gap-3 cursor-pointer group/diff select-none"
+                  title={isDifficultyOpen ? 'Fechar menu de dificuldade' : 'Clica para escolher a dificuldade'}
                 >
-                  
-                  {/* Glowing purple rail background line */}
-                  <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-[2px] bg-gradient-to-r from-cyan-500/50 via-fuchsia-500/40 to-purple-800/40 -z-0" />
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 transition-all ${
+                      difficulty === 'NORMAL'
+                        ? 'border-cyan-400/80 bg-cyan-950/60 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.35)]'
+                        : difficulty === 'PRO'
+                          ? 'border-fuchsia-400/80 bg-fuchsia-950/60 text-fuchsia-300 shadow-[0_0_12px_rgba(217,70,239,0.35)]'
+                          : 'border-rose-500/80 bg-rose-950/60 text-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.35)]'
+                    }`}>
+                      {difficulty === 'NORMAL' && <Shield className="w-5 h-5 text-cyan-400" />}
+                      {difficulty === 'PRO' && <Activity className="w-5 h-5 text-fuchsia-400" />}
+                      {difficulty === 'EXTREME' && <AlertTriangle className="w-5 h-5 text-rose-400" />}
+                    </div>
 
-                  {/* Node 1: NORMAL */}
-                  <div className="relative z-10">
-                    {difficulty === 'NORMAL' ? (
-                      <div className="flex flex-col items-center">
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-400 text-black shadow-[0_0_18px_rgba(6,182,212,0.7)] border border-cyan-300">
-                          <button
-                            type="button"
-                            onClick={() => handleCycleDifficulty(-1)}
-                            className="hover:scale-125 transition cursor-pointer text-black"
-                            title="Nível anterior"
-                          >
-                            <ChevronLeft className="w-3.5 h-3.5 stroke-[3]" />
-                          </button>
-                          <span className="font-orbitron font-extrabold text-xs uppercase tracking-wider text-black">
-                            NORMAL
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleCycleDifficulty(1)}
-                            className="hover:scale-125 transition cursor-pointer text-black"
-                            title="Próximo nível"
-                          >
-                            <ChevronRight className="w-3.5 h-3.5 stroke-[3]" />
-                          </button>
-                        </div>
-                        {/* 5-step mini meter */}
-                        <div className="flex gap-1 mt-1.5">
-                          <div className="w-3 h-1 bg-cyan-400 rounded-xs shadow-[0_0_5px_#00f0ff]" />
-                          <div className="w-3 h-1 bg-cyan-400 rounded-xs shadow-[0_0_5px_#00f0ff]" />
-                          <div className="w-3 h-1 bg-slate-800 rounded-xs" />
-                          <div className="w-3 h-1 bg-slate-800 rounded-xs" />
-                          <div className="w-3 h-1 bg-slate-800 rounded-xs" />
-                        </div>
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`font-orbitron font-extrabold text-sm sm:text-base tracking-wider ${
+                          difficulty === 'NORMAL'
+                            ? 'text-cyan-300'
+                            : difficulty === 'PRO'
+                              ? 'text-fuchsia-300'
+                              : 'text-rose-400'
+                        }`}>
+                          {difficulty}
+                        </span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-gray-300">
+                          {currentDiffConfig.initialLives} Vidas
+                        </span>
                       </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleSetDifficulty('NORMAL')}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-fuchsia-400/80 hover:text-white font-orbitron font-semibold text-xs tracking-wider transition cursor-pointer"
-                      >
-                        <div className="w-2 h-2 rounded-full border border-fuchsia-400/80 bg-[#0c0824]" />
-                        <span>NORMAL</span>
-                      </button>
-                    )}
+                      <span className="font-rajdhani text-xs text-gray-300 font-medium truncate mt-0.5">
+                        {difficulty === 'NORMAL' && 'Gravidade 70% • 1 Escudo • Flight Assist Ativo'}
+                        {difficulty === 'PRO' && 'Gravidade 100% • Sem Escudos • Dinâmico'}
+                        {difficulty === 'EXTREME' && 'Gravidade 130% • 2 Vidas • Sem Assistência'}
+                      </span>
+                    </div>
                   </div>
 
-                  {/* Node 2: PRO */}
-                  <div className="relative z-10">
-                    {difficulty === 'PRO' ? (
-                      <div className="flex flex-col items-center">
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-400 text-black shadow-[0_0_18px_rgba(6,182,212,0.7)] border border-cyan-300">
-                          <button
-                            type="button"
-                            onClick={() => handleCycleDifficulty(-1)}
-                            className="hover:scale-125 transition cursor-pointer text-black"
-                            title="Nível anterior"
-                          >
-                            <ChevronLeft className="w-3.5 h-3.5 stroke-[3]" />
-                          </button>
-                          <span className="font-orbitron font-extrabold text-xs uppercase tracking-wider text-black">
-                            PRO
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleCycleDifficulty(1)}
-                            className="hover:scale-125 transition cursor-pointer text-black"
-                            title="Próximo nível"
-                          >
-                            <ChevronRight className="w-3.5 h-3.5 stroke-[3]" />
-                          </button>
-                        </div>
-                        {/* 5-step mini meter */}
-                        <div className="flex gap-1 mt-1.5">
-                          <div className="w-3 h-1 bg-cyan-400 rounded-xs shadow-[0_0_5px_#00f0ff]" />
-                          <div className="w-3 h-1 bg-cyan-400 rounded-xs shadow-[0_0_5px_#00f0ff]" />
-                          <div className="w-3 h-1 bg-cyan-400 rounded-xs shadow-[0_0_5px_#00f0ff]" />
-                          <div className="w-3 h-1 bg-cyan-400 rounded-xs shadow-[0_0_5px_#00f0ff]" />
-                          <div className="w-3 h-1 bg-slate-800 rounded-xs" />
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleSetDifficulty('PRO')}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-fuchsia-400/80 hover:text-white font-orbitron font-semibold text-xs tracking-wider transition cursor-pointer"
-                      >
-                        <div className="w-2 h-2 rounded-full border border-fuchsia-400/80 bg-[#0c0824]" />
-                        <span>PRO</span>
-                      </button>
-                    )}
+                  <div className="flex items-center gap-1 text-cyan-400 group-hover/diff:text-white transition-colors shrink-0">
+                    <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isDifficultyOpen ? 'rotate-180 text-fuchsia-400' : ''}`} />
                   </div>
-
-                  {/* Node 3: EXTREME */}
-                  <div className="relative z-10">
-                    {difficulty === 'EXTREME' ? (
-                      <div className="flex flex-col items-center">
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-500 text-white shadow-[0_0_18px_rgba(244,63,94,0.7)] border border-rose-300">
-                          <button
-                            type="button"
-                            onClick={() => handleCycleDifficulty(-1)}
-                            className="hover:scale-125 transition cursor-pointer text-white"
-                            title="Nível anterior"
-                          >
-                            <ChevronLeft className="w-3.5 h-3.5 stroke-[3]" />
-                          </button>
-                          <span className="font-orbitron font-extrabold text-xs uppercase tracking-wider text-white">
-                            EXTREME
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleCycleDifficulty(1)}
-                            className="hover:scale-125 transition cursor-pointer text-white"
-                            title="Próximo nível"
-                          >
-                            <ChevronRight className="w-3.5 h-3.5 stroke-[3]" />
-                          </button>
-                        </div>
-                        {/* 5-step mini meter */}
-                        <div className="flex gap-1 mt-1.5">
-                          <div className="w-3 h-1 bg-rose-500 rounded-xs shadow-[0_0_5px_#f43f5e]" />
-                          <div className="w-3 h-1 bg-rose-500 rounded-xs shadow-[0_0_5px_#f43f5e]" />
-                          <div className="w-3 h-1 bg-rose-500 rounded-xs shadow-[0_0_5px_#f43f5e]" />
-                          <div className="w-3 h-1 bg-rose-500 rounded-xs shadow-[0_0_5px_#f43f5e]" />
-                          <div className="w-3 h-1 bg-rose-500 rounded-xs shadow-[0_0_5px_#f43f5e]" />
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleSetDifficulty('EXTREME')}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-fuchsia-400/80 hover:text-rose-400 font-orbitron font-semibold text-xs tracking-wider transition cursor-pointer"
-                      >
-                        <div className="w-2 h-2 rounded-full border border-fuchsia-400/80 bg-[#0c0824]" />
-                        <span>EXTREME</span>
-                      </button>
-                    )}
-                  </div>
-
                 </div>
 
+                {/* Inline Scrollable Dropdown List of Difficulties */}
+                {isDifficultyOpen && (
+                  <div className="mt-3 pt-3 border-t border-cyan-500/25 flex flex-col gap-2 max-h-56 overflow-y-auto pr-1">
+                    {diffOrder.map((diffKey) => {
+                      const config = DIFFICULTY_PRESETS[diffKey];
+                      const isSelected = difficulty === diffKey;
+
+                      return (
+                        <div
+                          key={diffKey}
+                          onClick={() => {
+                            handleSetDifficulty(diffKey);
+                            setIsDifficultyOpen(false);
+                          }}
+                          className={`p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col gap-1.5 ${
+                            isSelected
+                              ? diffKey === 'NORMAL'
+                                ? 'border-cyan-400 bg-cyan-950/70 shadow-[0_0_12px_rgba(6,182,212,0.3)]'
+                                : diffKey === 'PRO'
+                                  ? 'border-fuchsia-400 bg-fuchsia-950/70 shadow-[0_0_12px_rgba(217,70,239,0.3)]'
+                                  : 'border-rose-500 bg-rose-950/70 shadow-[0_0_12px_rgba(244,63,94,0.3)]'
+                              : 'border-white/10 bg-slate-900/60 hover:border-cyan-500/40 hover:bg-slate-900/90'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className={`font-orbitron font-bold text-xs uppercase tracking-wider ${
+                                diffKey === 'NORMAL' ? 'text-cyan-300' : diffKey === 'PRO' ? 'text-fuchsia-300' : 'text-rose-400'
+                              }`}>
+                                {diffKey}
+                              </span>
+                              <span className="text-[10px] font-mono text-gray-300">
+                                {config.initialLives} Vidas · {config.initialShields > 0 ? `${config.initialShields} Escudo` : 'Sem Escudo'}
+                              </span>
+                            </div>
+                            {isSelected && (
+                              <CheckCircle2 className={`w-4 h-4 ${
+                                diffKey === 'NORMAL' ? 'text-cyan-400' : diffKey === 'PRO' ? 'text-fuchsia-400' : 'text-rose-400'
+                              }`} />
+                            )}
+                          </div>
+
+                          <p className="text-[11px] font-rajdhani text-gray-300 leading-snug">
+                            {config.description}
+                          </p>
+
+                          <div className="flex items-center gap-2 text-[10px] font-mono pt-0.5">
+                            <span className="text-gray-400">Gravidade: <strong className="text-cyan-300">{Math.round(config.gravityMultiplier * 100)}%</strong></span>
+                            <span className="text-gray-500">•</span>
+                            <span className="text-gray-400">Flight Assist: <strong className={config.allowFlightAssist ? 'text-cyan-300' : 'text-rose-400'}>{config.allowFlightAssist ? 'Permitido' : 'Bloqueado'}</strong></span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Section: OPÇÕES (Two stacked cards: Audio/Flight Settings + Controls & Rules) */}
-          <div className="flex flex-col gap-2">
-            <h2 className="text-xs sm:text-sm font-bold tracking-wider text-[#00f0ff] uppercase font-orbitron drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
-              OPÇÕES
-            </h2>
-
-            {/* Card 4A: OPÇÕES (ÁUDIO E VOO) */}
-            <div
-              className="menu-gradient-card cursor-pointer group"
-              onClick={() => setShowOptionsModal(true)}
-            >
-              <div className="menu-gradient-card-inner p-3 sm:p-3.5 flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-cyan-950/60 border border-cyan-400/50 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(6,182,212,0.3)] group-hover:scale-105 transition-all">
-                  <Settings className="w-6 h-6 text-cyan-400 group-hover:rotate-45 transition-transform duration-300 drop-shadow-[0_0_6px_rgba(6,182,212,0.8)]" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-orbitron font-bold text-xs sm:text-sm text-white tracking-wider group-hover:text-cyan-300 transition-colors">
-                    OPÇÕES (ÁUDIO E VOO)
-                  </span>
-                  <span className="font-rajdhani text-xs text-cyan-300/70 font-medium tracking-wide">
-                    Configurações, volume e assistência
-                  </span>
-                </div>
-              </div>
+          {/* Section: OPÇÕES (ÁUDIO E VOO) (Inline Scrollable Dropdown) */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs sm:text-sm font-bold tracking-wider text-[#00f0ff] uppercase font-orbitron drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
+                OPÇÕES (ÁUDIO E VOO)
+              </h2>
+              <span className="text-[10px] font-mono text-cyan-400/80">
+                {options.flightAssist ? 'ASSIST. ATIVA' : 'MANUAL'}
+              </span>
             </div>
 
-            {/* Card 4B: CONTROLOS E REGRAS */}
-            <div
-              className="menu-gradient-card cursor-pointer group"
-              onClick={() => setShowHelp(true)}
-            >
-              <div className="menu-gradient-card-inner p-3 sm:p-3.5 flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-cyan-950/60 border border-cyan-400/50 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(6,182,212,0.3)] group-hover:scale-105 transition-all">
-                  <HelpCircle className="w-6 h-6 text-cyan-400 drop-shadow-[0_0_6px_rgba(6,182,212,0.8)]" />
+            <div className="menu-gradient-card">
+              <div className="menu-gradient-card-inner p-3.5 sm:p-4 flex flex-col">
+                {/* Header Row (Click to toggle dropdown) */}
+                <div
+                  onClick={() => setIsOptionsOpen(prev => !prev)}
+                  className="flex items-center justify-between gap-3 cursor-pointer group/opt select-none"
+                  title={isOptionsOpen ? 'Fechar opções' : 'Abrir configurações de áudio e voo'}
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-10 h-10 rounded-xl border border-cyan-400/60 bg-cyan-950/60 text-cyan-400 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(6,182,212,0.3)] group-hover/opt:scale-105 transition-all">
+                      <Settings className="w-5 h-5 text-cyan-400 group-hover/opt:rotate-45 transition-transform duration-300" />
+                    </div>
+
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="font-orbitron font-bold text-xs sm:text-sm text-white group-hover/opt:text-cyan-300 transition-colors tracking-wide truncate">
+                        CONFIGURAÇÕES DE VOO E ÁUDIO
+                      </span>
+                      <span className="font-rajdhani text-xs text-gray-300 font-medium truncate mt-0.5">
+                        {options.flightAssist ? 'Auto-Estabilização Ligada' : 'Voo Manual'} • Mús {Math.round(options.musicVolume * 100)}% • SFX {Math.round(options.sfxVolume * 100)}%
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 text-cyan-400 group-hover/opt:text-white transition-colors shrink-0">
+                    <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isOptionsOpen ? 'rotate-180 text-fuchsia-400' : ''}`} />
+                  </div>
                 </div>
-                <div className="flex flex-col">
-                  <span className="font-orbitron font-bold text-xs sm:text-sm text-white tracking-wider group-hover:text-cyan-300 transition-colors">
-                    CONTROLOS E REGRAS
-                  </span>
-                </div>
+
+                {/* Inline Scrollable Options Dropdown Panel */}
+                {isOptionsOpen && (
+                  <div className="mt-3 pt-3 border-t border-cyan-500/25 flex flex-col gap-3 max-h-64 sm:max-h-72 overflow-y-auto pr-1 text-xs font-rajdhani">
+                    {/* Flight Assist Toggle */}
+                    <div className="p-2.5 rounded-xl bg-slate-900/70 border border-white/10 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Compass className="w-4 h-4 text-cyan-400 shrink-0" />
+                        <div>
+                          <div className="font-orbitron font-semibold text-white text-xs">
+                            Flight Assist (Auto-Estabilização)
+                          </div>
+                          <div className="text-[11px] text-gray-400 leading-tight">
+                            Torque corretivo automático para nivelar a nave a 0°
+                          </div>
+                        </div>
+                      </div>
+
+                      {currentDiffConfig.allowFlightAssist ? (
+                        <button
+                          type="button"
+                          onClick={() => onOptionsChange({ ...options, flightAssist: !options.flightAssist })}
+                          className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition cursor-pointer shrink-0 ${
+                            options.flightAssist
+                              ? 'bg-cyan-500 text-black shadow-md shadow-cyan-500/30'
+                              : 'bg-white/10 text-gray-400 hover:bg-white/20'
+                          }`}
+                        >
+                          {options.flightAssist ? 'LIGADO' : 'DESLIGADO'}
+                        </button>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-950/80 border border-rose-500/40 text-rose-300 shrink-0">
+                          BLOQUEADO (EXTREME)
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Drift Compensation Toggle */}
+                    <div className="p-2.5 rounded-xl bg-slate-900/70 border border-white/10 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Activity className="w-4 h-4 text-cyan-400 shrink-0" />
+                        <div>
+                          <div className="font-orbitron font-semibold text-white text-xs">
+                            Compensação de Deriva
+                          </div>
+                          <div className="text-[11px] text-gray-400 leading-tight">
+                            A nave mantém a posição sem avanço automático à direita
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => onOptionsChange({ ...options, driftCompensation: !options.driftCompensation })}
+                        className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition cursor-pointer shrink-0 ${
+                          options.driftCompensation
+                            ? 'bg-cyan-500 text-black shadow-md shadow-cyan-500/30'
+                            : 'bg-white/10 text-gray-400 hover:bg-white/20'
+                        }`}
+                      >
+                        {options.driftCompensation ? 'LIGADO' : 'DESLIGADO'}
+                      </button>
+                    </div>
+
+                    {/* Volume Controls */}
+                    <div className="p-2.5 rounded-xl bg-slate-900/70 border border-white/10 space-y-2.5">
+                      <div className="flex items-center gap-2 text-cyan-400 font-orbitron font-semibold text-xs">
+                        <Volume2 className="w-3.5 h-3.5" />
+                        <span>NÍVEIS DE VOLUME</span>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between text-[11px] font-mono text-gray-300 mb-1">
+                          <span>VOLUME MÚSICA</span>
+                          <span className="text-cyan-400 tabular-nums">{Math.round(options.musicVolume * 100)}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.05"
+                          value={options.musicVolume}
+                          onChange={(e) => onOptionsChange({ ...options, musicVolume: parseFloat(e.target.value) })}
+                          className="w-full accent-cyan-400 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between text-[11px] font-mono text-gray-300 mb-1">
+                          <span>VOLUME SFX / MOTORES</span>
+                          <span className="text-fuchsia-400 tabular-nums">{Math.round(options.sfxVolume * 100)}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.05"
+                          value={options.sfxVolume}
+                          onChange={(e) => onOptionsChange({ ...options, sfxVolume: parseFloat(e.target.value) })}
+                          className="w-full accent-fuchsia-400 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
+          </div>
 
+          {/* Section: CONTROLOS E REGRAS (Inline Scrollable Dropdown) */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs sm:text-sm font-bold tracking-wider text-[#00f0ff] uppercase font-orbitron drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
+                CONTROLOS E REGRAS
+              </h2>
+              <span className="text-[10px] font-mono text-cyan-400/80">
+                GUIA DE VOO
+              </span>
+            </div>
+
+            <div className="menu-gradient-card">
+              <div className="menu-gradient-card-inner p-3.5 sm:p-4 flex flex-col">
+                {/* Header Row (Click to toggle dropdown) */}
+                <div
+                  onClick={() => setIsControlsOpen(prev => !prev)}
+                  className="flex items-center justify-between gap-3 cursor-pointer group/ctrl select-none"
+                  title={isControlsOpen ? 'Fechar guia de controlos' : 'Abrir guia de pilotagem e regras'}
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-10 h-10 rounded-xl border border-cyan-400/60 bg-cyan-950/60 text-cyan-400 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(6,182,212,0.3)] group-hover/ctrl:scale-105 transition-all">
+                      <HelpCircle className="w-5 h-5 text-cyan-400" />
+                    </div>
+
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="font-orbitron font-bold text-xs sm:text-sm text-white group-hover/ctrl:text-cyan-300 transition-colors tracking-wide truncate">
+                        MANUAL DO PILOTO E REGRAS
+                      </span>
+                      <span className="font-rajdhani text-xs text-gray-300 font-medium truncate mt-0.5">
+                        Dual-Thrusters, Vidas (-20s) e 8 Power-Ups
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 text-cyan-400 group-hover/ctrl:text-white transition-colors shrink-0">
+                    <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isControlsOpen ? 'rotate-180 text-fuchsia-400' : ''}`} />
+                  </div>
+                </div>
+
+                {/* Inline Scrollable Controls Panel */}
+                {isControlsOpen && (
+                  <div className="mt-3 pt-3 border-t border-cyan-500/25 flex flex-col gap-2.5 max-h-72 sm:max-h-80 overflow-y-auto pr-1 text-xs font-rajdhani">
+                    {/* Rule of Zero Contact & Lives */}
+                    <div className="p-2.5 rounded-xl bg-red-950/40 border border-red-500/40 text-red-200">
+                      <div className="flex items-center gap-2 font-orbitron font-bold text-red-400 text-xs uppercase mb-1">
+                        <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                        <span>Zero Contact & Penalização (-20s)</span>
+                      </div>
+                      <p className="text-[11px] leading-relaxed">
+                        3 vidas (2 em Extreme). Cada colisão desprotegida consome 1 vida e aplica <strong>-20 segundos</strong> de penalização. Invulnerabilidade temporária de 1.8s após impacto.
+                      </p>
+                    </div>
+
+                    {/* Dual-Thruster Controls */}
+                    <div className="p-2.5 rounded-xl bg-slate-900/70 border border-cyan-500/30 space-y-2">
+                      <div className="font-orbitron font-bold text-cyan-400 text-xs uppercase flex items-center gap-2">
+                        <Sliders className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>Propulsores Dual-Thruster</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 font-mono text-[10px]">
+                        <div className="p-2 rounded-lg bg-cyan-950/40 border border-cyan-500/30">
+                          <div className="text-cyan-300 font-bold">MOTOR ESQ.</div>
+                          <div className="text-gray-300 text-[10px]">[A] / [←] ou Toque Esq.</div>
+                        </div>
+                        <div className="p-2 rounded-lg bg-pink-950/40 border border-pink-500/30">
+                          <div className="text-pink-300 font-bold">MOTOR DIR.</div>
+                          <div className="text-gray-300 text-[10px]">[D] / [→] ou Toque Dir.</div>
+                        </div>
+                        <div className="p-2 rounded-lg bg-fuchsia-950/40 border border-fuchsia-500/30">
+                          <div className="text-fuchsia-300 font-bold">EMPUXO VERTICAL</div>
+                          <div className="text-gray-300 text-[10px]">[A+D] ou Ambos os lados</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Power-Ups */}
+                    <div className="p-2.5 rounded-xl bg-slate-900/70 border border-white/10 space-y-1.5">
+                      <div className="font-orbitron font-bold text-cyan-400 text-xs uppercase flex items-center gap-2">
+                        <Shield className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>8 Power-Ups de Ressonância</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[10px] font-mono">
+                        <div className="p-1.5 rounded-lg bg-sky-950/40 border border-sky-400/30">
+                          <span className="text-sky-300 font-bold">ESCUDO DE FASE</span>: Absorve 1 colisão.
+                        </div>
+                        <div className="p-1.5 rounded-lg bg-yellow-950/40 border border-yellow-400/30">
+                          <span className="text-yellow-300 font-bold">SURTO LOW-G</span>: Reduz 50% gravidade por 5s.
+                        </div>
+                        <div className="p-1.5 rounded-lg bg-emerald-950/40 border border-emerald-400/30">
+                          <span className="text-emerald-300 font-bold">PULSO SÓNICO</span>: Limpa obstáculos e lasers.
+                        </div>
+                        <div className="p-1.5 rounded-lg bg-purple-950/40 border border-purple-400/30">
+                          <span className="text-purple-300 font-bold">MODO FANTASMA</span>: Atravessa paredes por 4s.
+                        </div>
+                        <div className="p-1.5 rounded-lg bg-amber-950/40 border border-amber-400/30">
+                          <span className="text-amber-300 font-bold">AMORTECEDOR</span>: Absorve impactos cinéticos.
+                        </div>
+                        <div className="p-1.5 rounded-lg bg-cyan-950/40 border border-cyan-400/30">
+                          <span className="text-cyan-300 font-bold">DISTORÇÃO TEMPORAL</span>: Câmara lenta a 50%.
+                        </div>
+                        <div className="p-1.5 rounded-lg bg-indigo-950/40 border border-indigo-400/30">
+                          <span className="text-indigo-300 font-bold">SINGULARIDADE</span>: Atrai power-ups próximos.
+                        </div>
+                        <div className="p-1.5 rounded-lg bg-rose-950/40 border border-rose-400/30">
+                          <span className="text-rose-300 font-bold">IMORTALIDADE</span>: Invulnerabilidade total por 6s.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
         </section>
@@ -715,334 +794,6 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
         <span>SONIC THRUST · PROTOCOLO DUAL-THRUSTER</span>
         <span className="hidden sm:inline">ZERO CONTACT · HARMONIC FLIGHT</span>
       </footer>
-
-      {/* MODAL 1: Options (Áudio e Voo) */}
-      {showOptionsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/90 backdrop-blur-xl">
-          <div className="max-w-md w-full bg-[#0c0824] border border-cyan-500/50 rounded-2xl p-5 md:p-6 shadow-[0_0_50px_rgba(6,182,212,0.25)] flex flex-col space-y-4">
-            
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <div className="flex items-center gap-2.5">
-                <Settings className="w-5 h-5 text-cyan-400" />
-                <h3 className="text-base font-orbitron font-bold text-cyan-400 tracking-wider">
-                  OPÇÕES (ÁUDIO E VOO)
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowOptionsModal(false)}
-                className="text-gray-400 hover:text-white font-mono text-base px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 transition cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="space-y-4 text-xs font-rajdhani">
-              {/* Flight Assist */}
-              <div className="p-3 rounded-xl bg-slate-900/60 border border-white/10 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <Compass className="w-4 h-4 text-cyan-400 shrink-0" />
-                  <div>
-                    <div className="font-orbitron font-semibold text-white text-xs">
-                      Flight Assist (Auto-Estabilização)
-                    </div>
-                    <div className="text-[11px] text-gray-400">
-                      Aplica torque corretivo para nivelar a nave a 0°
-                    </div>
-                  </div>
-                </div>
-
-                {currentDiffConfig.allowFlightAssist ? (
-                  <button
-                    type="button"
-                    onClick={() => onOptionsChange({ ...options, flightAssist: !options.flightAssist })}
-                    className={`px-3 py-1 rounded text-xs font-mono font-bold transition cursor-pointer ${
-                      options.flightAssist
-                        ? 'bg-cyan-500 text-black shadow-md shadow-cyan-500/30'
-                        : 'bg-white/10 text-gray-400 hover:bg-white/20'
-                    }`}
-                  >
-                    {options.flightAssist ? 'LIGADO' : 'DESLIGADO'}
-                  </button>
-                ) : (
-                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-950/80 border border-rose-500/40 text-rose-300">
-                    BLOQUEADO
-                  </span>
-                )}
-              </div>
-
-              {/* Drift Compensation */}
-              <div className="p-3 rounded-xl bg-slate-900/60 border border-white/10 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <Activity className="w-4 h-4 text-cyan-400 shrink-0" />
-                  <div>
-                    <div className="font-orbitron font-semibold text-white text-xs">
-                      Compensação de Deriva
-                    </div>
-                    <div className="text-[11px] text-gray-400">
-                      A nave mantém a posição sem avanço automático à direita
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => onOptionsChange({ ...options, driftCompensation: !options.driftCompensation })}
-                  className={`px-3 py-1 rounded text-xs font-mono font-bold transition cursor-pointer ${
-                    options.driftCompensation
-                      ? 'bg-cyan-500 text-black shadow-md shadow-cyan-500/30'
-                      : 'bg-white/10 text-gray-400 hover:bg-white/20'
-                  }`}
-                >
-                  {options.driftCompensation ? 'LIGADO' : 'DESLIGADO'}
-                </button>
-              </div>
-
-              {/* Volumes */}
-              <div className="p-3 rounded-xl bg-slate-900/60 border border-white/10 space-y-3">
-                <div className="flex items-center gap-2 text-cyan-400 font-orbitron font-semibold text-xs">
-                  <Volume2 className="w-4 h-4" />
-                  <span>NÍVEIS DE VOLUME</span>
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-[11px] font-mono text-gray-300 mb-1">
-                    <span>MÚSICA</span>
-                    <span className="text-cyan-400 tabular-nums">{Math.round(options.musicVolume * 100)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.05"
-                    value={options.musicVolume}
-                    onChange={(e) => onOptionsChange({ ...options, musicVolume: parseFloat(e.target.value) })}
-                    className="w-full accent-cyan-400 cursor-pointer"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-[11px] font-mono text-gray-300 mb-1">
-                    <span>SFX / MOTORES</span>
-                    <span className="text-fuchsia-400 tabular-nums">{Math.round(options.sfxVolume * 100)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.05"
-                    value={options.sfxVolume}
-                    onChange={(e) => onOptionsChange({ ...options, sfxVolume: parseFloat(e.target.value) })}
-                    className="w-full accent-fuchsia-400 cursor-pointer"
-                  />
-                </div>
-              </div>
-
-            </div>
-
-            {/* Footer */}
-            <div className="pt-2 border-t border-white/10">
-              <button
-                type="button"
-                onClick={() => setShowOptionsModal(false)}
-                className="w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-orbitron font-bold text-xs uppercase tracking-wider transition cursor-pointer"
-              >
-                FECHAR CONFIGURAÇÕES
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 2: Pilot Guide & Rules */}
-      {showHelp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/90 backdrop-blur-xl">
-          <div className="max-w-3xl w-full max-h-[90vh] bg-[#0c0824] border border-cyan-500/50 rounded-2xl p-5 md:p-7 shadow-[0_0_50px_rgba(6,182,212,0.25)] flex flex-col space-y-5 overflow-hidden">
-            
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-white/10 pb-3 shrink-0">
-              <div className="flex items-center gap-3">
-                <HelpCircle className="w-6 h-6 text-cyan-400" />
-                <div>
-                  <h3 className="text-base sm:text-lg font-orbitron font-black text-cyan-400 tracking-wider">
-                    CONTROLOS E REGRAS: SONIC THRUST
-                  </h3>
-                  <p className="text-[11px] font-mono text-cyan-300/70 uppercase">
-                    Protocolos de Voo Dinâmico · Ressonância FFT & Defesas
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowHelp(false)}
-                className="text-gray-400 hover:text-white font-mono text-base px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 transition cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Modal Scrollable Body */}
-            <div className="space-y-4 overflow-y-auto pr-1.5 text-xs text-gray-300 font-rajdhani leading-relaxed">
-              
-              {/* 1. Golden Rule (Zero Contact & Vidas) */}
-              <div className="p-3.5 rounded-xl bg-red-950/40 border border-red-500/50 text-red-200 shadow-md shadow-red-950/50">
-                <div className="flex items-center gap-2 font-orbitron font-bold text-red-400 text-xs sm:text-sm uppercase mb-1">
-                  <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-                  <span>Sistema de Vidas & Penalização de Tempo (-20s)</span>
-                </div>
-                <p>
-                  A nave dispõe de 3 vidas (2 em Extreme). Quando sofres uma colisão desprotegida (sem Escudo de Fase), perdes 1 vida e sofres uma penalização imediata de <strong>-20 segundos</strong> no tempo restante da missão. A nave beneficia de 1.8s de invulnerabilidade e ressalta para o canal seguro. Se esgotares as vidas ou o cronómetro chegar a 0:00, a nave é destruída.
-                </p>
-              </div>
-
-              {/* 2. Controls & Flight Mechanics */}
-              <div className="p-3.5 rounded-xl bg-slate-900/60 border border-cyan-500/30 space-y-2">
-                <div className="font-orbitron font-bold text-cyan-400 text-xs uppercase flex items-center gap-2">
-                  <Sliders className="w-4 h-4 text-cyan-400" />
-                  Mecânica dos Propulsores Dual-Thruster
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 font-mono text-[11px]">
-                  <div className="p-2.5 rounded-lg bg-cyan-950/40 border border-cyan-500/30">
-                    <div className="text-cyan-300 font-bold mb-0.5">MOTOR ESQUERDO</div>
-                    <div className="text-gray-300 text-[10px]">Tecla [A], [←] ou Metade Esquerda do Ecrã: Impulso e rotação horária.</div>
-                  </div>
-                  <div className="p-2.5 rounded-lg bg-pink-950/40 border border-pink-500/30">
-                    <div className="text-pink-300 font-bold mb-0.5">MOTOR DIREITO</div>
-                    <div className="text-gray-300 text-[10px]">Tecla [D], [→] ou Metade Direita do Ecrã: Impulso e rotação anti-horária.</div>
-                  </div>
-                  <div className="p-2.5 rounded-lg bg-fuchsia-950/40 border border-fuchsia-500/30">
-                    <div className="text-fuchsia-300 font-bold mb-0.5">SUBIDA VERTICAL</div>
-                    <div className="text-gray-300 text-[10px]">Premir [A+D] ou ambos os lados simultaneamente: Empuxo vertical direto.</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 3. The 8 Active Power-Ups */}
-              <div className="p-3.5 rounded-xl bg-slate-900/60 border border-white/10 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div className="font-orbitron font-bold text-cyan-400 text-xs uppercase flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-cyan-400" />
-                    Os 8 Power-Ups de Ressonância
-                  </div>
-                  <span className="text-[10px] font-mono text-gray-400">Distribuição Equilibrada por Dificuldade</span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] font-mono">
-                  {/* Phase Shield */}
-                  <div className="p-2.5 rounded-lg bg-sky-950/40 border border-sky-400/40 flex items-start gap-2.5">
-                    <div className="w-3 h-3 rounded-full bg-sky-400 shadow-[0_0_8px_#38bdf8] shrink-0 mt-0.5" />
-                    <div>
-                      <div className="font-bold text-sky-300">ESCUDO DE FASE <span className="text-[9px] text-gray-400 font-normal">(Todos os Níveis)</span></div>
-                      <div className="text-[10px] text-gray-300 mt-0.5">Bólide hexagonal de proteção quântica. Absorve 1 colisão de qualquer tipo. Acumulável até 3 camadas.</div>
-                    </div>
-                  </div>
-
-                  {/* Low-G Surge */}
-                  <div className="p-2.5 rounded-lg bg-yellow-950/40 border border-yellow-400/40 flex items-start gap-2.5">
-                    <div className="w-3 h-3 rounded-full bg-yellow-400 shadow-[0_0_8px_#facc15] shrink-0 mt-0.5" />
-                    <div>
-                      <div className="font-bold text-yellow-300">SURTO LOW-G <span className="text-[9px] text-gray-400 font-normal">(Todos os Níveis)</span></div>
-                      <div className="text-[10px] text-gray-300 mt-0.5">Giroscópio anti-gravítico que reduz a gravidade em 50% por 5 segundos, facilitando a ascensão vertical.</div>
-                    </div>
-                  </div>
-
-                  {/* Sonic Pulse */}
-                  <div className="p-2.5 rounded-lg bg-cyan-950/40 border border-cyan-400/40 flex items-start gap-2.5">
-                    <div className="w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_8px_#00f0ff] shrink-0 mt-0.5" />
-                    <div>
-                      <div className="font-bold text-cyan-300">PULSO SÓNICO <span className="text-[9px] text-gray-400 font-normal">(Todos os Níveis)</span></div>
-                      <div className="text-[10px] text-gray-300 mt-0.5">Onda de choque acústica omnidirecional instantânea que desativa minas de ressonância e feixes laser na proximidade.</div>
-                    </div>
-                  </div>
-
-                  {/* Ethereal Ghost Mode */}
-                  <div className="p-2.5 rounded-lg bg-cyan-950/40 border border-cyan-400/40 flex items-start gap-2.5">
-                    <div className="w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_8px_#00f0ff] shrink-0 mt-0.5" />
-                    <div>
-                      <div className="font-bold text-cyan-300">MODO FANTASMA <span className="text-[9px] text-gray-400 font-normal">(Todos os Níveis)</span></div>
-                      <div className="text-[10px] text-gray-300 mt-0.5">Envolve a nave numa borda pulsante de néon ciano com opacidade translúcida. Permite atravessar obstáculos físicos sem sofrer danos por 5s mantendo a silhueta perfeitamente visível.</div>
-                    </div>
-                  </div>
-
-                  {/* Sonic Damper */}
-                  <div className="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-400/40 flex items-start gap-2.5">
-                    <div className="w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_8px_#22c55e] shrink-0 mt-0.5" />
-                    <div>
-                      <div className="font-bold text-emerald-300">AMORTECEDOR SÓNICO <span className="text-[9px] text-emerald-400 font-normal">(Pro & Extreme)</span></div>
-                      <div className="text-[10px] text-gray-300 mt-0.5">Acalma as ondas sísmicas de áudio no leito rochoso e absorve impactos de raspão nas paredes por 6s.</div>
-                    </div>
-                  </div>
-
-                  {/* Chrono Dilation */}
-                  <div className="p-2.5 rounded-lg bg-teal-950/40 border border-teal-400/40 flex items-start gap-2.5">
-                    <div className="w-3 h-3 rounded-full bg-teal-400 shadow-[0_0_8px_#14b8a6] shrink-0 mt-0.5" />
-                    <div>
-                      <div className="font-bold text-teal-300">DISTORÇÃO TEMPORAL <span className="text-[9px] text-teal-400 font-normal">(Pro & Extreme)</span></div>
-                      <div className="text-[10px] text-gray-300 mt-0.5">Matriz de tempo em câmara lenta (50% de velocidade durante 4s), permitindo esquivas cirúrgicas em secções críticas.</div>
-                    </div>
-                  </div>
-
-                  {/* Sonic Immortality */}
-                  <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-500/50 flex items-start gap-2.5">
-                    <div className="w-3 h-3 rounded-full bg-rose-500 shadow-[0_0_8px_#ff0055] shrink-0 mt-0.5" />
-                    <div>
-                      <div className="font-bold text-rose-300">IMORTALIDADE SÓNICA <span className="text-[9px] text-rose-400 font-bold uppercase">(Apenas Extreme)</span></div>
-                      <div className="text-[10px] text-gray-300 mt-0.5">Invulnerabilidade total e contínua durante 6s, protegendo contra qualquer colisão física ou feixe laser.</div>
-                    </div>
-                  </div>
-
-                  {/* Resonance Singularity */}
-                  <div className="p-2.5 rounded-lg bg-purple-950/40 border border-purple-400/40 flex items-start gap-2.5">
-                    <div className="w-3 h-3 rounded-full bg-purple-400 shadow-[0_0_8px_#c084fc] shrink-0 mt-0.5" />
-                    <div>
-                      <div className="font-bold text-purple-300">SINGULARIDADE DE RESSONÂNCIA <span className="text-[9px] text-gray-400 font-normal">(Todos os Níveis)</span></div>
-                      <div className="text-[10px] text-gray-300 mt-0.5">Vórtice gravitacional cósmico que suga e desintegra todos os perigos no ecrã e reduz o avanço descontrolado da nave.</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 4. Hazards & Obstacles Guide */}
-              <div className="p-3.5 rounded-xl bg-slate-900/60 border border-white/10 space-y-2">
-                <div className="font-orbitron font-bold text-cyan-400 text-xs uppercase flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-cyan-400" />
-                  Perigos Sonoros do Túnel
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 font-mono text-[11px]">
-                  <div className="p-2 rounded bg-slate-950 border border-white/10">
-                    <span className="text-emerald-400 font-bold">PILAR DE EQUALIZADOR VU:</span> Torres retro-LED segmentadas (verde $\rightarrow$ âmbar $\rightarrow$ vermelho) com balística áudio suave e ataque dinâmico sincronizado com os graves.
-                  </div>
-                  <div className="p-2 rounded bg-slate-950 border border-white/10">
-                    <span className="text-rose-400 font-bold">LÂMINAS GIRATÓRIAS NÉON:</span> Cruzetas cinéticas de rotação sónica aceleradas pelas frequências médias.
-                  </div>
-                  <div className="p-2 rounded bg-slate-950 border border-white/10">
-                    <span className="text-orange-400 font-bold">MINAS DE RESSONÂNCIA:</span> Minas espaciais com satélites orbitais que expandem com a pulsação musical.
-                  </div>
-                  <div className="p-2 rounded bg-slate-950 border border-white/10">
-                    <span className="text-amber-300 font-bold">FEIXES E CORTINAS LASER:</span> Feixes de plasma verticais oscilantes através do túnel.
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Modal Footer CTA */}
-            <div className="pt-2 border-t border-white/10 shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowHelp(false)}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-black font-orbitron font-black text-xs md:text-sm tracking-wider uppercase cursor-pointer hover:opacity-95 transition shadow-lg shadow-cyan-500/30"
-              >
-                ENTENDIDO · REGRESSAR AO MENU
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
 
     </div>
   );
