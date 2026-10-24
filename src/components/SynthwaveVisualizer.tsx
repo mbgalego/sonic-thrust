@@ -14,13 +14,9 @@ interface SynthwaveVisualizerProps {
 interface Star {
   x: number; // 0..1
   y: number; // 0..1
-  r: number;
   baseAlpha: number;
   twinkleSpeed: number;
   phase: number;
-  colorType: number; // 0: cyan, 1: magenta, 2: warm yellow, 3: white
-  hasFlare: boolean;
-  driftSpeed: number;
 }
 
 export const SynthwaveVisualizer: React.FC<SynthwaveVisualizerProps> = ({
@@ -42,10 +38,10 @@ export const SynthwaveVisualizer: React.FC<SynthwaveVisualizerProps> = ({
     const numBars = 46;
     const lerpedHeights = new Float32Array(numBars).fill(0.15);
 
-    // Generate 130 persistent, well-distributed stars with varying depths & glows
+    // Generate 65 discreet 1-pixel white stars in upper sky background
     const stars: Star[] = [];
-    const numStars = 130;
-    let seed = 1337;
+    const numStars = 65;
+    let seed = 42;
     const rnd = () => {
       seed = (seed * 16807) % 2147483647;
       return (seed - 1) / 2147483646;
@@ -54,15 +50,11 @@ export const SynthwaveVisualizer: React.FC<SynthwaveVisualizerProps> = ({
     for (let i = 0; i < numStars; i++) {
       stars.push({
         x: rnd(),
-        // Spread stars across the entire sky and behind the mountain horizon (0 to 0.85)
-        y: Math.pow(rnd(), 1.15) * 0.82,
-        r: rnd() < 0.15 ? 1.8 + rnd() * 0.8 : 0.75 + rnd() * 0.85,
-        baseAlpha: 0.25 + rnd() * 0.55,
-        twinkleSpeed: 1.2 + rnd() * 2.8,
-        phase: rnd() * Math.PI * 2,
-        colorType: Math.floor(rnd() * 4),
-        hasFlare: rnd() < 0.14,
-        driftSpeed: (rnd() - 0.5) * 0.003
+        // Upper/mid sky area so stars sit quietly in background behind mountain and grid
+        y: rnd() * 0.70,
+        baseAlpha: 0.2 + rnd() * 0.35,
+        twinkleSpeed: 1.0 + rnd() * 2.0,
+        phase: rnd() * Math.PI * 2
       });
     }
 
@@ -111,58 +103,27 @@ export const SynthwaveVisualizer: React.FC<SynthwaveVisualizerProps> = ({
 
       ctx.clearRect(0, 0, w, h);
 
-      // 1. Draw Starfield with rich twinkling, diffraction spikes and audio reactive pulse
+      // 1. Draw Starfield in background: discreet 1-pixel white stars with varying intensity
       ctx.save();
-      const bassGlow = isAnyPlaying ? freqData.subBass * 0.4 : 0;
+      ctx.shadowBlur = 0; // Pure crisp 1px stars without blurry halo
 
       for (let s = 0; s < stars.length; s++) {
         const star = stars[s];
-        // Gentle cosmic drift with wrap-around
-        const sx = ((star.x + time * star.driftSpeed) % 1 + 1) % 1 * w;
+        const sx = star.x * w;
         const sy = star.y * h;
 
-        // Twinkling alpha with audio energy response
+        // Smooth varying white intensity
         const twinkle = Math.sin(time * star.twinkleSpeed + star.phase);
-        const alpha = Math.min(1, Math.max(0.15, star.baseAlpha + twinkle * 0.35 + bassGlow));
+        const alpha = Math.min(0.85, Math.max(0.12, star.baseAlpha + twinkle * 0.35));
 
-        let color = `rgba(255, 255, 255, ${alpha})`;
-        let glowColor = 'rgba(255, 255, 255, 0.8)';
-        if (star.colorType === 0) {
-          color = `rgba(6, 182, 212, ${alpha})`;
-          glowColor = 'rgba(6, 182, 212, 0.8)';
-        } else if (star.colorType === 1) {
-          color = `rgba(236, 72, 153, ${alpha})`;
-          glowColor = 'rgba(236, 72, 153, 0.8)';
-        } else if (star.colorType === 2) {
-          color = `rgba(250, 204, 21, ${alpha * 0.9})`;
-          glowColor = 'rgba(250, 204, 21, 0.7)';
-        }
-
-        ctx.fillStyle = color;
-        ctx.shadowColor = glowColor;
-        ctx.shadowBlur = star.hasFlare ? 8 : 3;
-
-        ctx.beginPath();
-        ctx.arc(sx, sy, star.r, 0, Math.PI * 2);
-        ctx.fill();
-
-        // 4-point cross diffraction spikes on bright stars
-        if (star.hasFlare && alpha > 0.45) {
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 0.8;
-          ctx.shadowBlur = 6;
-          const flareLen = star.r * (3 + bassGlow * 2.5);
-          ctx.beginPath();
-          ctx.moveTo(sx - flareLen, sy);
-          ctx.lineTo(sx + flareLen, sy);
-          ctx.moveTo(sx, sy - flareLen);
-          ctx.lineTo(sx, sy + flareLen);
-          ctx.stroke();
-        }
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+        // Exactly 1 pixel:
+        ctx.fillRect(Math.floor(sx), Math.floor(sy), 1, 1);
       }
       ctx.restore();
 
-      // 2. Draw 3D Perspective Synthwave Grid at Bottom
+      // 2. Draw 3D Perspective Synthwave Grid at Bottom (Renders ON TOP of background stars)
+
       ctx.save();
       const horizonY = h * 0.55;
       const vpX = w * 0.82; // Vanishing point skewed towards right as in reference mock-up
