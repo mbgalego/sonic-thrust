@@ -24,6 +24,15 @@ export class AudioEngine {
   private isPaused: boolean = false;
   private trackDuration: number = 0;
 
+  // Dedicated Menu Music state & buffer
+  private menuMusicSource: AudioBufferSourceNode | null = null;
+  private menuMusicBuffer: AudioBuffer | null = null;
+  private isMenuMusicPlaying: boolean = false;
+  private isMenuMusicMutedState: boolean = false;
+  private menuMusicStartTime: number = 0;
+  private menuMusicPauseOffset: number = 0;
+  private onTrackEndedCallback: (() => void) | null = null;
+
   // Real-time FFT analysis cache & Envelope Followers
   private freqByteData: Uint8Array = new Uint8Array(512);
   private lerpedBass: number = 0;
@@ -508,6 +517,9 @@ export class AudioEngine {
   public playTrack(buffer: AudioBuffer, startOffset: number = 0): void {
     if (!this.ctx || !this.musicGain) return;
 
+    // CRITICAL: Stop and pause menu music immediately to guarantee they NEVER overlap!
+    this.stopMenuMusicSource();
+    this.isMenuMusicPlaying = false;
     this.stopTrack();
 
     this.currentBuffer = buffer;
@@ -523,15 +535,27 @@ export class AudioEngine {
       this.currentSource.connect(this.musicGain);
     }
 
+    this.currentSource.onended = () => {
+      if (this.isPlaying) {
+        this.isPlaying = false;
+        this.onTrackEndedCallback?.();
+      }
+    };
+
     this.playbackStartTime = this.ctx.currentTime - startOffset;
     this.currentSource.start(0, startOffset);
     this.isPlaying = true;
     this.isPaused = false;
   }
 
+  public setOnTrackEnded(callback: (() => void) | null): void {
+    this.onTrackEndedCallback = callback;
+  }
+
   public pauseTrack(): void {
     if (!this.ctx || !this.isPlaying || this.isPaused || !this.currentSource) return;
     this.pauseOffset = this.ctx.currentTime - this.playbackStartTime;
+    this.currentSource.onended = null;
     this.currentSource.stop();
     this.currentSource.disconnect();
     this.currentSource = null;
@@ -548,6 +572,7 @@ export class AudioEngine {
   public stopTrack(): void {
     if (this.currentSource) {
       try {
+        this.currentSource.onended = null;
         this.currentSource.stop();
         this.currentSource.disconnect();
       } catch {
@@ -558,6 +583,253 @@ export class AudioEngine {
     this.isPlaying = false;
     this.isPaused = false;
     this.pauseOffset = 0;
+  }
+
+  /**
+   * Menu Background Music Management
+   * Plays a synthesized dreamwave soundtrack during title menu,
+   * cleanly pausing when the user previews any track and resuming when preview stops.
+   */
+  public async playMenuMusic(): Promise<void> {
+    await this.init();
+    if (!this.ctx || !this.musicPreGain) return;
+
+    // Strict guard: Do not start if already playing, or if muted, or if track is playing!
+    if (this.isMenuMusicPlaying || this.isPlaying || this.isMenuMusicMutedState) {
+      return;
+    }
+
+    if (!this.menuMusicBuffer) {
+      this.menuMusicBuffer = this.generateMenuMusicBuffer();
+    }
+
+    try {
+      this.stopMenuMusicSource();
+
+      const source = this.ctx.createBufferSource();
+      source.buffer = this.menuMusicBuffer;
+      source.loop = true;
+      source.connect(this.musicPreGain);
+
+      const offset = this.menuMusicPauseOffset % this.menuMusicBuffer.duration;
+      source.start(0, offset);
+      this.menuMusicStartTime = this.ctx.currentTime - offset;
+      this.menuMusicSource = source;
+      this.isMenuMusicPlaying = true;
+    } catch (e) {
+      console.warn('Failed to start menu music:', e);
+    }
+  }
+
+  public pauseMenuMusic(): void {
+    if (!this.ctx || !this.isMenuMusicPlaying || !this.menuMusicSource) {
+      this.isMenuMusicPlaying = false;
+      return;
+    }
+    this.menuMusicPauseOffset = Math.max(0, (this.ctx.currentTime - this.menuMusicStartTime) % (this.menuMusicBuffer?.duration || 1));
+    this.stopMenuMusicSource();
+    this.isMenuMusicPlaying = false;
+  }
+
+  public resumeMenuMusic(): void {
+    if (!this.isMenuMusicPlaying && !this.isPlaying && !this.isMenuMusicMutedState) {
+      this.playMenuMusic();
+    }
+  }
+
+  public stopMenuMusic(): void {
+    this.stopMenuMusicSource();
+    this.isMenuMusicPlaying = false;
+    this.menuMusicPauseOffset = 0;
+  }
+
+  public toggleMenuMusicMute(): boolean {
+    this.isMenuMusicMutedState = !this.isMenuMusicMutedState;
+    if (this.isMenuMusicMutedState) {
+      this.pauseMenuMusic();
+    } else {
+      if (!this.isPlaying) {
+        this.playMenuMusic();
+      }
+    }
+    return this.isMenuMusicMutedState;
+  }
+
+  public isMenuMusicMuted(): boolean {
+    return this.isMenuMusicMutedState;
+  }
+
+  public setMenuMusicMuted(muted: boolean): void {
+    this.isMenuMusicMutedState = muted;
+    if (muted) {
+      this.pauseMenuMusic();
+    } else if (!this.isPlaying) {
+      this.playMenuMusic();
+    }
+  }
+
+  public isAnyMusicPlaying(): boolean {
+    return this.isPlaying || this.isMenuMusicPlaying;
+  }
+
+  public getIsMenuMusicPlaying(): boolean {
+    return this.isMenuMusicPlaying;
+  }
+
+
+  private stopMenuMusicSource(): void {
+    if (this.menuMusicSource) {
+      try {
+        this.menuMusicSource.stop();
+        this.menuMusicSource.disconnect();
+      } catch {
+        // Safe ignore
+      }
+      this.menuMusicSource = null;
+    }
+  }
+
+  /**
+   * Generates a lush, evocative Cyber-Synthwave menu music buffer procedurally.
+   * 16 bars @ 115 BPM, Key of D minor / F major, with analog chord pads,
+   * running 16th arpeggio, rolling bassline, and subtle 80s drums.
+   */
+  public generateMenuMusicBuffer(): AudioBuffer {
+    if (!this.ctx) throw new Error('AudioContext required');
+    const bpm = 115;
+    const sampleRate = this.ctx.sampleRate;
+    const secondsPerBeat = 60 / bpm;
+    const totalBars = 16;
+    const totalBeats = totalBars * 4;
+    const durationSeconds = totalBeats * secondsPerBeat; // ~33.39 seconds
+    const totalSamples = Math.floor(sampleRate * durationSeconds);
+    const buffer = this.ctx.createBuffer(2, totalSamples, sampleRate);
+    const left = buffer.getChannelData(0);
+    const right = buffer.getChannelData(1);
+
+    // Chords definition (4 bars each):
+    // 0..3: Dm9 (root D2=73.42, pad: F3=174.61, A3=220, C4=261.63, E4=329.63, arp: D4, F4, A4, C5, E5)
+    // 4..7: Bbmaj7 (root Bb1=58.27, pad: D3=146.83, F3=174.61, A3=220, D4=293.66, arp: D4, F4, A4, D5)
+    // 8..11: Gm7 (root G1=49.00, pad: Bb2=116.54, D3=146.83, F3=174.61, Bb3=233.08, arp: G4, Bb4, D5, F5)
+    // 12..15: C/E -> Am7 (root A1=55.00, pad: C3=130.81, E3=164.81, G3=196, C4=261.63, arp: E4, G4, A4, C5)
+    const chords = [
+      { bass: 73.42, pad: [174.61, 220.0, 261.63, 329.63], arp: [293.66, 349.23, 440.0, 523.25, 659.25, 523.25, 440.0, 349.23] },
+      { bass: 58.27, pad: [146.83, 174.61, 220.0, 293.66], arp: [293.66, 349.23, 440.0, 587.33, 440.0, 349.23, 293.66, 220.0] },
+      { bass: 49.00, pad: [116.54, 146.83, 174.61, 233.08], arp: [392.00, 466.16, 587.33, 698.46, 587.33, 466.16, 392.00, 349.23] },
+      { bass: 55.00, pad: [130.81, 164.81, 196.00, 261.63], arp: [329.63, 392.00, 440.0, 523.25, 440.0, 392.00, 329.63, 261.63] },
+    ];
+
+    let phaseBass = 0;
+    let phaseArp = 0;
+    const padPhases = [0, 0, 0, 0];
+
+    const sixteenthDuration = secondsPerBeat / 4;
+
+    for (let i = 0; i < totalSamples; i++) {
+      const t = i / sampleRate;
+      const currentBeat = (t / secondsPerBeat) % totalBeats;
+      const currentBar = Math.floor(currentBeat / 4);
+      const chordIndex = Math.min(3, Math.floor(currentBar / 4));
+      const chord = chords[chordIndex];
+
+      const beatInBar = currentBeat % 4;
+      const sixteenthInBeat = Math.floor((t % secondsPerBeat) / sixteenthDuration);
+      const sixteenthFraction = (t % sixteenthDuration) / sixteenthDuration;
+
+      let sL = 0;
+      let sR = 0;
+
+      // 1. Kick on beat 0 and 2 (soft deep analog kick)
+      const beatFraction = currentBeat % 1;
+      if (Math.floor(beatInBar) === 0 || Math.floor(beatInBar) === 2) {
+        if (beatFraction < 0.28) {
+          const kickEnv = Math.pow(1 - beatFraction / 0.28, 2.2);
+          const kickFreq = 110 * Math.exp(-beatFraction * 20) + 40;
+          const kick = Math.sin(2 * Math.PI * kickFreq * beatFraction * secondsPerBeat) * kickEnv * 0.45;
+          sL += kick;
+          sR += kick;
+        }
+      }
+
+      // 2. Soft 80s Snare / Clap on beat 1 and 3
+      if (Math.floor(beatInBar) === 1 || Math.floor(beatInBar) === 3) {
+        if (beatFraction < 0.25) {
+          const snareEnv = Math.pow(1 - beatFraction / 0.25, 2.5);
+          const white = (Math.random() * 2 - 1) * snareEnv * 0.18;
+          const tone = Math.sin(2 * Math.PI * 185 * beatFraction) * snareEnv * 0.12;
+          sL += white + tone;
+          sR += white + tone;
+        }
+      }
+
+      // 3. Hi-Hat ticking on every 16th (accent on offbeats)
+      if (sixteenthFraction < 0.12) {
+        const hatEnv = Math.pow(1 - sixteenthFraction / 0.12, 3);
+        const hatVol = (sixteenthInBeat % 2 === 1 ? 0.08 : 0.04) * hatEnv;
+        const hatNoise = (Math.random() * 2 - 1) * hatVol;
+        sL += hatNoise * 0.8;
+        sR += hatNoise * 1.2;
+      }
+
+      // 4. Bassline: Rolling 16th notes with octave jumps
+      const noteInBar = Math.floor((currentBeat % 4) * 4);
+      const bassOctave = (noteInBar === 3 || noteInBar === 7 || noteInBar === 11 || noteInBar === 14) ? 2 : 1;
+      const bassFreq = chord.bass * bassOctave;
+      phaseBass += (2 * Math.PI * bassFreq) / sampleRate;
+      const bassEnv = Math.pow(1 - sixteenthFraction, 1.4);
+      const bassWave = Math.sin(phaseBass) + 0.45 * Math.sin(phaseBass * 2) + 0.2 * Math.sin(phaseBass * 3);
+      const sidechain = (Math.floor(beatInBar) === 0 || Math.floor(beatInBar) === 2) && beatFraction < 0.2
+        ? Math.min(1, beatFraction / 0.2)
+        : 1.0;
+      const bassOut = bassWave * bassEnv * 0.28 * sidechain;
+      sL += bassOut;
+      sR += bassOut;
+
+      // 5. Lush Synth Pad (Warm detuned saws with slow filter sweep)
+      const padLfo = 0.5 + 0.5 * Math.sin(t * 0.35);
+      const padFilter = 0.7 + 0.3 * padLfo;
+      for (let p = 0; p < chord.pad.length; p++) {
+        const f = chord.pad[p];
+        padPhases[p] += (2 * Math.PI * f) / sampleRate;
+        const saw1 = Math.sin(padPhases[p]);
+        const saw2 = Math.sin(padPhases[p] * 1.004);
+        const saw3 = Math.sin(padPhases[p] * 0.996);
+        const padVoice = (saw1 * 0.5 + saw2 * 0.25 + saw3 * 0.25) * 0.045 * padFilter;
+        const pan = (p / (chord.pad.length - 1)) * 0.6 + 0.2;
+        sL += padVoice * (1 - pan);
+        sR += padVoice * pan;
+      }
+
+      // 6. Twinkling Arpeggio (16th notes with ping-pong stereo delay)
+      const arpIndex = Math.floor(currentBeat * 4) % chord.arp.length;
+      const arpeggioFreq = chord.arp[arpIndex];
+      phaseArp += (2 * Math.PI * arpeggioFreq) / sampleRate;
+      const arpEnv = Math.pow(1 - sixteenthFraction, 2.0);
+      const arpTone = (Math.sin(phaseArp) + 0.25 * Math.sin(phaseArp * 2)) * arpEnv * 0.12;
+      const arpPan = (Math.floor(currentBeat * 4) % 2 === 0) ? 0.25 : 0.75;
+      sL += arpTone * (1 - arpPan);
+      sR += arpTone * arpPan;
+
+      // Soft limiting
+      left[i] = Math.max(-0.95, Math.min(0.95, sL));
+      right[i] = Math.max(-0.95, Math.min(0.95, sR));
+    }
+
+    // 7. Seamless Loop Crossfade
+    const crossfadeSamples = Math.floor(sampleRate * 0.25);
+    for (let c = 0; c < crossfadeSamples; c++) {
+      const alpha = c / crossfadeSamples;
+      const endIdx = totalSamples - crossfadeSamples + c;
+      const startIdx = c;
+      
+      const mixedL = left[startIdx] * alpha + left[endIdx] * (1 - alpha);
+      const mixedR = right[startIdx] * alpha + right[endIdx] * (1 - alpha);
+      
+      left[startIdx] = mixedL;
+      right[startIdx] = mixedR;
+    }
+
+    return buffer;
   }
 
   public getCurrentTime(): number {
@@ -587,7 +859,8 @@ export class AudioEngine {
   public getFrequencyData(lerpFactor: number = 0.22, dt: number = 0.016): AudioFrequencyData {
     const safeDt = Math.min(0.05, Math.max(0.001, dt));
 
-    if (!this.analyser || !this.isPlaying) {
+    if (!this.analyser || (!this.isPlaying && !this.isMenuMusicPlaying)) {
+
       // Gentle musical exponential decay when stopped
       const decayFast = Math.exp(-safeDt / 0.12);
       const decaySlow = Math.exp(-safeDt / 0.25);
