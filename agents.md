@@ -41,7 +41,9 @@
   - Renders a rotating cyan magnetic shield ring with dashed pulses and a floating `ANTI-G [Xs]` indicator above the ship while `launchGraceTimer > 0`.
 - **Dynamic Entities**:
   - **Power-Ups**: Holographic celestial beacons with orbital satellites and pulsing colors (Cyan Shield, Emerald Damper, Solar Gold Low-G).
-  - **Obstacles**: Pneumatic Ejector Blocks with hazard chevrons, crystalline Sonic Spikes bursting to bass drops, floating Resonance Mines, and spinning hazard blades.
+- **Hypersonic Atmospheric Entry & Dissipating Wake Trails**:
+  - *Front Atmospheric Bow Shock & Vapor Streamlines*: At speeds starting strictly at 500 (threshold `500+` px/s, scaling to 780+ px/s), a curved supersonic bow shock wave envelope forms ahead of the nose and wraps around the ship's wings, featuring an aerodynamic stagnation compression heat cushion, Prandtl-Glauert vapor shockwaves, and aerodynamic Mach streamlines.
+  - *Smoothly Dissipating Fiery Wake Tracks*: Behind the ship, dual incandescent temporal tire/plasma tracks are laid into the wake from the twin thruster pods. As they age, they smoothly and organically dissipate into the vacuum over ~1.6 seconds without sudden cutoffs, shedding drifting fiery embers and sparks.
 
 ### C. Audio Engine (`/src/audio/AudioEngine.ts`)
 - Web Audio API pipeline with master, pre-fader music bus, and sfx routing.
@@ -76,6 +78,10 @@
 ---
 
 ## 3. Changelog & Recent Fixes
+- **v1.15.0 (Hypersonic Atmospheric Entry & Dissipating Wake Trails)**:
+  1. *500+ Speed Activation Threshold*: The visual high-speed effects now activate strictly at speeds starting at **500** (`HIGH_SPEED_MIN = 500`, scaling to 780+), ensuring normal cruise speeds (200-400) remain clean without constant activation.
+  2. *Atmospheric Bow Shock Envelope & Mach Streamlines*: Replaced electric lightning bolts and synthetic sounds with an authentic hypersonic atmospheric re-entry effect: a curved supersonic bow shock wave wrapping around the nose and wings, aerodynamic air stagnation compression plasma heating on the nosecone, Prandtl-Glauert vapor shock waves, and high-velocity Mach air streamlines.
+  3. *Twin Fiery Dissipating Wake Tracks*: Retained the burning twin fire/plasma wake tracks from the twin thruster pods that smoothly and organically dissipate into the vacuum over ~1.6 seconds without sudden cutoffs.
 - **v1.14.0 (Preloading & Circulating Laser Loading Indicator on INICIAR)**:
   1. *Perimeter Laser & Orbiting Comet Indicator*: When clicking "INICIAR" and the audio track is loading or decoding, an electric cyan neon laser beam travels around the rounded button perimeter (`animate-laser-sweep`), paired with a counter-orbiting white/magenta particle dot and a high-speed rotating conic gradient comet tail.
   2. *Interactive Button Feedback*: The button switches to `pointer-events-none` with an animated spinning cyber `Loader2` icon and dynamic labels ("A CARREGAR...", "A SINCRONIZAR MP3 & TERRENO"), eliminating confusion or dead freezes while decoding audio.

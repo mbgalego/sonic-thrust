@@ -434,12 +434,18 @@ export default function App() {
   }, [gameState]);
 
   const handleRestart = useCallback(() => {
+    if (rendererRef.current) {
+      rendererRef.current.reset();
+    }
     audio.setLoopTrack(false);
     audio.silenceAllContinuous();
     startMissionRef.current();
   }, []);
 
   const handleExitToMenu = useCallback(() => {
+    if (rendererRef.current) {
+      rendererRef.current.reset();
+    }
     audio.setLoopTrack(false);
     audio.silenceAllContinuous();
     audio.stopTrack();

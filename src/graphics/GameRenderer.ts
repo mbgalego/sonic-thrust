@@ -8,6 +8,16 @@ import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { AudioFrequencyData, PowerUpItem, ObstaclePlatform, LaserGate } from '../types/game';
 import { ParticleSystem } from './ParticleSystem';
 
+export interface TemporalTrailSegment {
+  lx: number;
+  ly: number;
+  rx: number;
+  ry: number;
+  age: number;
+  maxAge: number;
+  speedRatio: number;
+}
+
 export class GameRenderer {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
@@ -22,6 +32,12 @@ export class GameRenderer {
   // Dedicated Particle & VFX System
   public particleSystem: ParticleSystem;
   private backgroundStars: { x: number; y: number; speed: number; size: number; alpha: number }[] = [];
+
+  // DeLorean 88 MPH High-Speed Temporal Effects
+  private temporalTrail: TemporalTrailSegment[] = [];
+  private lastTrailX: number = 0;
+  private lastTrailY: number = 0;
+  private currentSpeedRatio: number = 0;
 
   // Persistent continuous gravitational ripple phase accumulator (monotonic, rhythm-synced)
   private ripplePhase: number = 0;
@@ -86,6 +102,14 @@ export class GameRenderer {
 
   public triggerScreenShake(intensity: number = 12): void {
     this.screenShake = Math.max(this.screenShake, intensity);
+  }
+
+  public reset(): void {
+    this.temporalTrail = [];
+    this.currentSpeedRatio = 0;
+    this.lastTrailX = 0;
+    this.lastTrailY = 0;
+    this.particleSystem.reset();
   }
 
   public emitWallScrape(
@@ -243,6 +267,14 @@ export class GameRenderer {
     }
     this.dropFlash *= Math.exp(-(isPaused ? 0 : dt) / 0.45);
 
+    // High-Speed Atmospheric & Temporal Trail Calculation (starts strictly at 500)
+    const shipSpeed = Math.hypot(world.ship.vx, world.ship.vy);
+    const HIGH_SPEED_MIN = 500;
+    const HIGH_SPEED_MAX = 780;
+    const targetSpeedRatio = Math.max(0, Math.min(1.0, (shipSpeed - HIGH_SPEED_MIN) / (HIGH_SPEED_MAX - HIGH_SPEED_MIN)));
+    this.currentSpeedRatio += (targetSpeedRatio - this.currentSpeedRatio) * (isPaused ? 0 : 0.22);
+    this.updateTemporalTrail(world, isPaused ? 0 : dt);
+
     // Save for world translation with dynamic camera zoom
     ctx.save();
     ctx.scale(zoom, zoom);
@@ -268,6 +300,9 @@ export class GameRenderer {
 
     // 7. Particles & Shockwaves (frozen while paused)
     this.renderParticlesAndShockwaves(isPaused ? 0 : dt);
+
+    // 7.5. DeLorean High-Speed Fiery Temporal Trail (smoothly dissipating wake)
+    this.renderTemporalTrails();
 
     // 8. Player Ship & Jet Exhausts
     if (!world.ship.isDestroyed) {
@@ -1693,6 +1728,255 @@ export class GameRenderer {
       ctx.fill();
       ctx.restore();
     }
+
+    // 5. Hypersonic Atmospheric Bow Shock Wave & Compression Plasma (speeds > 500)
+    if (this.currentSpeedRatio > 0.04) {
+      this.renderAtmosphericFrontEffect(ship, this.currentSpeedRatio);
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Updates and emits twin temporal trails behind the craft at high speed
+   */
+  private updateTemporalTrail(world: PhysicsWorld, dt: number): void {
+    const ship = world.ship;
+
+    // Age existing trail segments
+    if (dt > 0) {
+      for (let i = this.temporalTrail.length - 1; i >= 0; i--) {
+        this.temporalTrail[i].age += dt;
+        if (this.temporalTrail[i].age >= this.temporalTrail[i].maxAge) {
+          this.temporalTrail.splice(i, 1);
+        }
+      }
+    }
+
+    if (this.currentSpeedRatio < 0.04 || ship.isDestroyed) {
+      return;
+    }
+
+    // Emit new twin track coordinates when moving at high speeds
+    const distSq = (ship.x - this.lastTrailX) ** 2 + (ship.y - this.lastTrailY) ** 2;
+    if (distSq >= 6 * 6) {
+      const cos = Math.cos(ship.angle);
+      const sin = Math.sin(ship.angle);
+      const podDist = ship.width * 0.35;
+      const podY = ship.height * 0.36;
+
+      const lx = ship.x + (-podDist * cos - podY * sin);
+      const ly = ship.y + (-podDist * sin + podY * cos);
+      const rx = ship.x + (podDist * cos - podY * sin);
+      const ry = ship.y + (podDist * sin + podY * cos);
+
+      this.temporalTrail.push({
+        lx,
+        ly,
+        rx,
+        ry,
+        age: 0,
+        maxAge: 1.35 + this.currentSpeedRatio * 0.55,
+        speedRatio: this.currentSpeedRatio
+      });
+
+      this.lastTrailX = ship.x;
+      this.lastTrailY = ship.y;
+
+      // Keep array memory bounded
+      if (this.temporalTrail.length > 250) {
+        this.temporalTrail.shift();
+      }
+
+      // Shed glowing incandescent embers into particle system along the wake
+      if (this.currentSpeedRatio > 0.3 && Math.random() < 0.42) {
+        const emberColor = Math.random() > 0.4 ? '#facc15' : (Math.random() > 0.5 ? '#ff3300' : '#00f0ff');
+        const driftVx = -ship.vx * 0.22 + (Math.random() - 0.5) * 45;
+        const driftVy = (Math.random() - 0.5) * 45;
+        this.particleSystem.emitTemporalSpark(
+          Math.random() > 0.5 ? lx : rx,
+          Math.random() > 0.5 ? ly : ry,
+          driftVx,
+          driftVy,
+          emberColor,
+          1.8 + Math.random() * 2.2,
+          0.3 + Math.random() * 0.4
+        );
+      }
+    }
+  }
+
+  /**
+   * Renders the iconic DeLorean twin burning fiery tire / plasma tracks that smoothly dissipate
+   */
+  private renderTemporalTrails(): void {
+    if (this.temporalTrail.length < 2) return;
+    const ctx = this.ctx;
+
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    for (let i = 1; i < this.temporalTrail.length; i++) {
+      const p0 = this.temporalTrail[i - 1];
+      const p1 = this.temporalTrail[i];
+
+      // Guard against teleport / world wrap gaps
+      const segDist = Math.hypot(p1.lx - p0.lx, p1.ly - p0.ly);
+      if (segDist > 80) continue;
+
+      const avgAge = (p0.age + p1.age) * 0.5;
+      const avgMaxAge = (p0.maxAge + p1.maxAge) * 0.5;
+      const progress = Math.min(1.0, avgAge / avgMaxAge);
+      // Smooth exponential dissipation curve — seamless fading with no abrupt cuts
+      const fade = Math.pow(1.0 - progress, 1.35);
+      const intensity = (p0.speedRatio + p1.speedRatio) * 0.5;
+      const alpha = fade * (0.25 + 0.75 * intensity);
+
+      if (alpha <= 0.015) continue;
+
+      const baseWidth = 2.8 + intensity * 2.2;
+
+      // Pass 1: Wide fiery plasma dissipation aura (diffuses outward as it ages)
+      ctx.strokeStyle = `rgba(255, 65, 0, ${alpha * 0.42})`;
+      ctx.lineWidth = baseWidth * 3.4;
+      ctx.shadowBlur = 14 + intensity * 8;
+      ctx.shadowColor = progress < 0.45 ? '#ff4400' : '#ec4899';
+      ctx.beginPath();
+      ctx.moveTo(p0.lx, p0.ly);
+      ctx.lineTo(p1.lx, p1.ly);
+      ctx.moveTo(p0.rx, p0.ry);
+      ctx.lineTo(p1.rx, p1.ry);
+      ctx.stroke();
+
+      // Pass 2: Hot electric amber / incandescent body
+      ctx.strokeStyle = `rgba(255, 175, 20, ${alpha * 0.85})`;
+      ctx.lineWidth = baseWidth * 1.8;
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = '#facc15';
+      ctx.beginPath();
+      ctx.moveTo(p0.lx, p0.ly);
+      ctx.lineTo(p1.lx, p1.ly);
+      ctx.moveTo(p0.rx, p0.ry);
+      ctx.lineTo(p1.rx, p1.ry);
+      ctx.stroke();
+
+      // Pass 3: Searing white-hot temporal core
+      ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.95})`;
+      ctx.lineWidth = Math.max(1.0, baseWidth * 0.7);
+      ctx.shadowBlur = 4;
+      ctx.shadowColor = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(p0.lx, p0.ly);
+      ctx.lineTo(p1.lx, p1.ly);
+      ctx.moveTo(p0.rx, p0.ry);
+      ctx.lineTo(p1.rx, p1.ry);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Renders the Hypersonic Atmospheric Bow Shock Wave & Compression Plasma Cushion
+   * Simulates atmospheric entry / supersonic compression cone ahead of the craft at speeds > 500
+   */
+  private renderAtmosphericFrontEffect(ship: PhysicsWorld['ship'], speedRatio: number): void {
+    const ctx = this.ctx;
+    const w = ship.width;
+    const h = ship.height;
+    const noseY = -h * 0.65;
+    const time = Date.now() * 0.001;
+
+    ctx.save();
+
+    // 1. Aerodynamic Stagnation Compression Cushion (Glowing thermal plasma on the nosecone)
+    const cushionRadius = (7 + Math.sin(time * 18) * 1.5) * (0.8 + speedRatio * 0.6);
+    const cushionGrad = ctx.createRadialGradient(0, noseY + 2, 0, 0, noseY + 2, cushionRadius * 2.2);
+    cushionGrad.addColorStop(0, `rgba(255, 255, 255, ${Math.min(1.0, 0.95 * speedRatio)})`);
+    cushionGrad.addColorStop(0.3, `rgba(0, 240, 255, ${Math.min(1.0, 0.85 * speedRatio)})`);
+    cushionGrad.addColorStop(0.65, `rgba(56, 189, 248, ${0.4 * speedRatio})`);
+    cushionGrad.addColorStop(1, 'rgba(0, 240, 255, 0)');
+
+    ctx.fillStyle = cushionGrad;
+    ctx.beginPath();
+    ctx.arc(0, noseY + 2, cushionRadius * 2.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. Primary Hypersonic Bow Shock Wave (Curved aerodynamic compression envelope wrapping the prow)
+    const bowStandOff = 8 + speedRatio * 14 + Math.sin(time * 24) * 1.2;
+    const wingSweepY = noseY + h * 0.75;
+    const wingSweepX = w * 0.85 + speedRatio * 6;
+
+    // Outer vapor envelope (cyan atmospheric glow)
+    ctx.save();
+    ctx.strokeStyle = `rgba(0, 240, 255, ${Math.min(0.9, 0.45 + speedRatio * 0.45)})`;
+    ctx.shadowColor = '#00f0ff';
+    ctx.shadowBlur = 12 + speedRatio * 12;
+    ctx.lineWidth = 3.2 + speedRatio * 2.0;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-wingSweepX, wingSweepY);
+    ctx.quadraticCurveTo(0, noseY - bowStandOff, wingSweepX, wingSweepY);
+    ctx.stroke();
+
+    // Inner searing sonic barrier crest (white-hot leading compression line)
+    ctx.strokeStyle = `rgba(255, 255, 255, ${Math.min(1.0, 0.85 + speedRatio * 0.15)})`;
+    ctx.shadowBlur = 5;
+    ctx.shadowColor = '#ffffff';
+    ctx.lineWidth = 1.4 + speedRatio * 0.8;
+    ctx.beginPath();
+    ctx.moveTo(-wingSweepX * 0.92, wingSweepY - 4);
+    ctx.quadraticCurveTo(0, noseY - bowStandOff + 1.5, wingSweepX * 0.92, wingSweepY - 4);
+    ctx.stroke();
+    ctx.restore();
+
+    // 3. Secondary Outer Prandtl-Glauert Vapor Condensation Waves (Expanding compression pulses)
+    const shockPulseCount = 2;
+    for (let sp = 0; sp < shockPulseCount; sp++) {
+      const pulsePhase = ((Date.now() * 0.06 + sp * 24) % 48);
+      const pulseT = pulsePhase / 48; // 0..1
+      const pulseAlpha = Math.pow(1 - pulseT, 1.4) * speedRatio * 0.55;
+      if (pulseAlpha <= 0.02) continue;
+
+      const pStandOff = bowStandOff + pulsePhase * 0.7;
+      const pSpreadX = wingSweepX + pulsePhase * 0.9;
+      const pSpreadY = wingSweepY + pulsePhase * 0.4;
+
+      ctx.save();
+      ctx.strokeStyle = `rgba(56, 189, 248, ${pulseAlpha})`;
+      ctx.shadowColor = '#00f0ff';
+      ctx.shadowBlur = 8;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-pSpreadX, pSpreadY);
+      ctx.quadraticCurveTo(0, noseY - pStandOff, pSpreadX, pSpreadY);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 4. Aerodynamic Mach Vapor Streamlines (High-speed air streamlines along the flanks)
+    const streamlineCount = Math.floor(4 + speedRatio * 4);
+    ctx.save();
+    ctx.lineCap = 'round';
+    for (let sl = 0; sl < streamlineCount; sl++) {
+      const side = sl % 2 === 0 ? -1 : 1;
+      const t = (sl / streamlineCount);
+      const startX = side * (w * 0.15 + t * w * 0.45);
+      const startY = noseY + 4 + t * (h * 0.4);
+      const streamLen = (18 + Math.random() * 22) + speedRatio * 32;
+      const streamAlpha = (0.25 + 0.65 * speedRatio) * (0.6 + Math.random() * 0.4);
+
+      ctx.strokeStyle = sl % 3 === 0 ? `rgba(255, 255, 255, ${streamAlpha})` : `rgba(0, 240, 255, ${streamAlpha * 0.8})`;
+      ctx.lineWidth = 1.0 + Math.random() * 1.2;
+      ctx.shadowBlur = 4;
+      ctx.shadowColor = '#00f0ff';
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.lineTo(startX + side * (3 + t * 4), startY + streamLen);
+      ctx.stroke();
+    }
+    ctx.restore();
 
     ctx.restore();
   }
