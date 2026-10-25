@@ -209,6 +209,34 @@ export class ParticleSystem {
   }
 
   /**
+   * Emits temporal ionization sparks and incandescent wake embers (DeLorean High-Speed VFX)
+   */
+  public emitTemporalSpark(
+    x: number,
+    y: number,
+    vx: number,
+    vy: number,
+    color: string = '#00f0ff',
+    size: number = 2.0,
+    life: number = 0.35
+  ): void {
+    if (this.particles.length >= this.maxParticles) return;
+    this.particles.push({
+      x,
+      y,
+      vx,
+      vy,
+      life: 0,
+      maxLife: life,
+      size,
+      color,
+      type: 'SPARK',
+      drag: 0.94,
+      gravity: (Math.random() - 0.5) * 30
+    });
+  }
+
+  /**
    * Emits power-up collection spark burst
    */
   public emitPowerUpCollect(x: number, y: number, color: string): void {
