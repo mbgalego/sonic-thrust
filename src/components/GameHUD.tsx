@@ -355,17 +355,6 @@ export const GameHUD: React.FC<GameHUDProps> = ({
               </div>
             </div>
           </div>
-
-          {/* Optional Phase Shield badge if ship currently has shields */}
-          {ship.shields > 0 && (
-            <>
-              <div className="w-px self-stretch bg-white/10" />
-              <div className="flex items-center gap-1.5 shrink-0 px-2 py-0.5 rounded bg-sky-950/70 border border-sky-400/40 text-sky-300">
-                <Shield className="w-3.5 h-3.5 text-sky-400 animate-pulse" />
-                <span className="font-orbitron font-bold text-xs">{ship.shields}x ESCUDO</span>
-              </div>
-            </>
-          )}
         </div>
       </footer>
     </div>
