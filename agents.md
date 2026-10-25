@@ -78,6 +78,17 @@
 ---
 
 ## 3. Changelog & Recent Fixes
+- **v1.20.0 (Main Menu Overhaul, Visual Touch Controls & In-Game Power-Up Graphics)**:
+  1. *Section Header Streamlining*: Removed right-side badge/counter text from all main menu section headers (`SELECIONAR FAIXA`, `DIFICULDADE`, `OPÇÕES`, `INFORMAÇÕES`), leaving clean and uncluttered titles.
+  2. *Global Typography & Font-Scale Boost*: Enlarged all sub-12px texts across all menu cards, dropdown selectors, badges, and controls to `text-xs` (12px), `text-sm` (14px), and `text-base` (16px), ensuring great readability on smartphones and small displays.
+  3. *Rebuilt "INFORMAÇÕES" Guide*:
+     - Renamed from "Manual e Regras" to **"INFORMAÇÕES"** and removed the redundant Zero-Contact card.
+     - **Visual Flight Controls (Touchscreen & Keyboard)**: Added an interactive cockpit schematic mapping touch zones (left half = left motor, right half = right motor, simultaneous dual-touch = straight vertical ascent) and keyboard keys (`[A]/[←]`, `[D]/[→]`).
+     - **In-Game Power-Up Vector Graphics**: Rendered pixel-faithful vector representations (`PowerUpGraphic`) of all 8 power-ups matching their in-game appearance (phase shield crystals with satellites, damper sine resonators, low-G gyroscopes, sonic pulse waves, ethereal dashed phantom rings, crimson hexagonal shields, chrono clocks, and singularity spiral vortexes) alongside succinct, clear explanations.
+- **v1.19.0 (High-Speed Threshold Calibration, HUD Shield Cleanup & Title Typography)**:
+  1. *High-Speed Effect Threshold Raised by +100 km/h*: The activation velocity for the hypersonic atmospheric bow shock and twin burning wake trails was raised by +100 km/h from 350 km/h (500 px/s) to 450 km/h (643 px/s), preserving clean visual flight during normal cruise speeds.
+  2. *Removed In-Game Shield HUD Badge*: Removed the `{ship.shields}x ESCUDO` badge from the bottom telemetry cluster; shield presence is now conveyed organically by the rotating cyan vector forcefield sphere rendered around the ship in the flight arena.
+  3. *Enlarged Title & Subtitle Typography*: Upgraded the main menu game title to `text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black` with neon cyan/magenta drop-glow, and the descriptive subtitle to `text-sm sm:text-base md:text-lg lg:text-xl font-semibold`.
 - **v1.18.0 (Main Menu Footer Attribution & High-Legibility Power-Up Subtitles)**:
   1. *Main Menu Footer Attribution*: Updated footer in `TitleMenu.tsx` to display `v1.18.0 · 25/10/2026` on the left and author credit `Por Miguel Galego` on the right, cleanly formatted and visible on all mobile and desktop screens.
   2. *High-Legibility Power-Up Subtitle Explanations*: Significantly enlarged the power-up notification explanation subtitle in `GameHUD.tsx` from `text-xs sm:text-sm` to `text-base sm:text-xl md:text-2xl font-bold` with dual high-contrast drop-shadows and expanded power-up icons (`w-7 h-7 sm:w-8 sm:h-8`), ensuring effortless readability on small smartphone screens during flight.

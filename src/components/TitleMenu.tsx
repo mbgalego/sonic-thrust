@@ -10,10 +10,9 @@ import {
   Pause,
   Loader2,
   Settings,
-  HelpCircle,
+  Info,
   Maximize,
   Minimize,
-  Sliders,
   Compass,
   Activity,
   AlertTriangle,
@@ -23,17 +22,112 @@ import {
   CheckCircle2,
   FastForward,
   ChevronDown,
-  User
+  User,
+  Smartphone,
+  Touchpad
 } from 'lucide-react';
 import {
   DifficultyLevel,
   TrackMetadata,
-  GameOptions
+  GameOptions,
+  PowerUpType
 } from '../types/game';
 import { DIFFICULTY_PRESETS } from '../physics/PhysicsWorld';
 import { SynthwaveVisualizer } from './SynthwaveVisualizer';
 import { MiniEqualizer } from './MiniEqualizer';
 import { audio } from '../audio/AudioEngine';
+
+/**
+ * Pixel-accurate vector representation of each in-game power-up beacon
+ */
+const PowerUpGraphic: React.FC<{ type: PowerUpType; size?: number }> = ({ type, size = 44 }) => {
+  switch (type) {
+    case 'SHIELD':
+      return (
+        <svg width={size} height={size} viewBox="-24 -24 48 48" className="shrink-0 drop-shadow-[0_0_10px_rgba(0,240,255,0.7)]">
+          <polygon points="0,-16 13.85,-8 13.85,8 0,16 -13.85,8 -13.85,-8" fill="rgba(0,240,255,0.22)" stroke="#00f0ff" strokeWidth="2.2" />
+          <circle cx="0" cy="0" r="3.5" fill="#ffffff" />
+          <circle cx="0" cy="-21" r="2.5" fill="#ffffff" />
+          <circle cx="18.1" cy="10.5" r="2.5" fill="#ffffff" />
+          <circle cx="-18.1" cy="10.5" r="2.5" fill="#ffffff" />
+        </svg>
+      );
+    case 'DAMPER':
+      return (
+        <svg width={size} height={size} viewBox="-24 -24 48 48" className="shrink-0 drop-shadow-[0_0_10px_rgba(0,255,136,0.7)]">
+          <circle cx="0" cy="0" r="18" fill="none" stroke="#00ff88" strokeWidth="2.2" />
+          <circle cx="0" cy="0" r="11" fill="none" stroke="#00ff88" strokeWidth="1.5" strokeOpacity="0.7" />
+          <path d="M-11,0 Q-5.5,-7 0,0 T11,0" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
+          <circle cx="0" cy="0" r="2.5" fill="#00ff88" />
+        </svg>
+      );
+    case 'LOW_G':
+      return (
+        <svg width={size} height={size} viewBox="-24 -24 48 48" className="shrink-0 drop-shadow-[0_0_10px_rgba(255,215,0,0.7)]">
+          <ellipse cx="0" cy="0" rx="18" ry="7" fill="none" stroke="#ffd700" strokeWidth="2.2" transform="rotate(-25)" />
+          <ellipse cx="0" cy="0" rx="14" ry="5.5" fill="none" stroke="#ffd700" strokeWidth="1.5" strokeOpacity="0.8" transform="rotate(35)" />
+          <circle cx="0" cy="0" r="4.5" fill="#ffffff" />
+        </svg>
+      );
+    case 'PULSE':
+      return (
+        <svg width={size} height={size} viewBox="-24 -24 48 48" className="shrink-0 drop-shadow-[0_0_10px_rgba(6,182,212,0.7)]">
+          <circle cx="0" cy="0" r="19" fill="none" stroke="#06b6d4" strokeWidth="1.5" strokeOpacity="0.5" strokeDasharray="3 2" />
+          <circle cx="0" cy="0" r="14" fill="none" stroke="#06b6d4" strokeWidth="2" />
+          <circle cx="0" cy="0" r="8" fill="none" stroke="#06b6d4" strokeWidth="1.5" />
+          {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
+            <line key={deg} x1="0" y1="-14" x2="0" y2="-18" stroke="#06b6d4" strokeWidth="1.5" transform={`rotate(${deg})`} />
+          ))}
+          <circle cx="0" cy="0" r="3.5" fill="#ffffff" />
+        </svg>
+      );
+    case 'ETHEREAL':
+      return (
+        <svg width={size} height={size} viewBox="-24 -24 48 48" className="shrink-0 drop-shadow-[0_0_10px_rgba(168,85,247,0.7)]">
+          <circle cx="0" cy="0" r="17" fill="rgba(168,85,247,0.22)" stroke="#a855f7" strokeWidth="2.2" strokeDasharray="4 3" />
+          <path d="M-10,0 Q-5,-5 0,0 T10,0" fill="none" stroke="#e9d5ff" strokeWidth="2" strokeLinecap="round" />
+          <circle cx="0" cy="-21" r="2.5" fill="#c084fc" />
+          <circle cx="18" cy="10" r="2.5" fill="#c084fc" />
+          <circle cx="-18" cy="10" r="2.5" fill="#c084fc" />
+          <circle cx="0" cy="0" r="4" fill="#faf5ff" />
+        </svg>
+      );
+    case 'INVULNERABLE':
+      return (
+        <svg width={size} height={size} viewBox="-24 -24 48 48" className="shrink-0 drop-shadow-[0_0_12px_rgba(255,0,85,0.8)]">
+          <polygon points="0,-17 14.7,-8.5 14.7,8.5 0,17 -14.7,8.5 -14.7,-8.5" fill="rgba(255,0,85,0.25)" stroke="#ff0055" strokeWidth="2.5" />
+          <circle cx="0" cy="0" r="8" fill="none" stroke="#ff0055" strokeWidth="1.5" />
+          <circle cx="0" cy="-12" r="2" fill="#ffffff" />
+          <circle cx="12" cy="0" r="2" fill="#ffffff" />
+          <circle cx="0" cy="12" r="2" fill="#ffffff" />
+          <circle cx="-12" cy="0" r="2" fill="#ffffff" />
+          <circle cx="0" cy="0" r="4" fill="#ffffff" />
+        </svg>
+      );
+    case 'CHRONO_DILATION':
+      return (
+        <svg width={size} height={size} viewBox="-24 -24 48 48" className="shrink-0 drop-shadow-[0_0_10px_rgba(20,184,166,0.7)]">
+          <circle cx="0" cy="0" r="16" fill="rgba(20,184,166,0.15)" stroke="#14b8a6" strokeWidth="2" />
+          {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg) => (
+            <line key={deg} x1="0" y1="-12" x2="0" y2="-15" stroke="#14b8a6" strokeWidth={deg % 90 === 0 ? 2 : 1} transform={`rotate(${deg})`} />
+          ))}
+          <line x1="0" y1="0" x2="0" y2="-8" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
+          <line x1="0" y1="0" x2="6" y2="3" stroke="#2dd4bf" strokeWidth="1.5" strokeLinecap="round" />
+          <circle cx="0" cy="0" r="2.5" fill="#ffffff" />
+        </svg>
+      );
+    case 'SINGULARITY':
+      return (
+        <svg width={size} height={size} viewBox="-24 -24 48 48" className="shrink-0 drop-shadow-[0_0_12px_rgba(192,132,252,0.8)]">
+          <path d="M0,0 C6,-6 14,-4 16,0 C18,6 12,14 6,16 C-2,18 -12,12 -16,4 C-19,-4 -12,-15 -2,-17 C8,-19 18,-11 19,-2" fill="none" stroke="#c084fc" strokeWidth="2" strokeLinecap="round" />
+          <circle cx="0" cy="0" r="7" fill="#090514" stroke="#ffffff" strokeWidth="1.5" />
+          <circle cx="0" cy="0" r="2.5" fill="#c084fc" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+};
 
 interface TitleMenuProps {
   tracks: TrackMetadata[];
@@ -120,8 +214,8 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
       {/* Top Bar Row: Controls located cleanly above the header so they never overlap the game title */}
       <div className="relative z-20 flex items-center justify-between w-full max-w-6xl mx-auto px-1 sm:px-4 pt-1 sm:pt-2 pb-2 shrink-0">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#00f0ff]" />
-          <span className="font-orbitron text-[10px] sm:text-xs tracking-wider text-cyan-400/90 font-bold uppercase">
+          <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#00f0ff]" />
+          <span className="font-orbitron text-xs sm:text-sm tracking-wider text-cyan-400 font-bold uppercase">
             SONIC ARCADE
           </span>
         </div>
@@ -132,7 +226,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
           <button
             type="button"
             onClick={handleToggleMenuMusic}
-            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border text-xs font-mono transition-all shadow-md cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs sm:text-sm font-mono transition-all shadow-md cursor-pointer ${
               isMuted
                 ? 'border-rose-500/50 bg-rose-950/60 text-rose-300 hover:border-rose-400 hover:bg-rose-900/70 shadow-[0_0_10px_rgba(244,63,94,0.2)]'
                 : 'border-cyan-500/40 bg-slate-950/80 text-cyan-300 hover:border-cyan-300 hover:bg-cyan-950/60 shadow-[0_0_12px_rgba(6,182,212,0.25)]'
@@ -141,12 +235,12 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
           >
             {isMuted ? (
               <>
-                <VolumeX className="w-3.5 h-3.5 text-rose-400" />
+                <VolumeX className="w-4 h-4 text-rose-400" />
                 <span className="hidden sm:inline">Música: Mudo</span>
               </>
             ) : (
               <>
-                <Volume2 className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                <Volume2 className="w-4 h-4 text-cyan-400 animate-pulse" />
                 <span className="hidden sm:inline">
                   {previewingTrackId ? 'Pré-Escuta' : 'Música: Ligada'}
                 </span>
@@ -158,17 +252,17 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
           <button
             type="button"
             onClick={toggleFullscreen}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border border-cyan-500/30 bg-slate-950/70 hover:bg-cyan-950/60 hover:border-cyan-400 text-cyan-300 hover:text-white text-xs font-mono transition-all shadow-md cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-cyan-500/30 bg-slate-950/70 hover:bg-cyan-950/60 hover:border-cyan-400 text-cyan-300 hover:text-white text-xs sm:text-sm font-mono transition-all shadow-md cursor-pointer"
             title={isFullscreen ? 'Sair de Ecrã Inteiro (F11)' : 'Ativar Ecrã Inteiro (F11)'}
           >
             {isFullscreen ? (
               <>
-                <Minimize className="w-3.5 h-3.5 text-cyan-400" />
+                <Minimize className="w-4 h-4 text-cyan-400" />
                 <span className="hidden sm:inline">Janela</span>
               </>
             ) : (
               <>
-                <Maximize className="w-3.5 h-3.5 text-cyan-400" />
+                <Maximize className="w-4 h-4 text-cyan-400" />
                 <span className="hidden sm:inline">Ecrã Inteiro</span>
               </>
             )}
@@ -177,12 +271,12 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
       </div>
 
       {/* Header with Sonic Thrust Neon Brand Title (Unobstructed at all resolutions) */}
-      <header className="relative z-10 flex flex-col items-center justify-center text-center pt-1 sm:pt-2 pb-3 shrink-0">
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-black italic tracking-wider uppercase font-orbitron flex items-center justify-center gap-3">
+      <header className="relative z-10 flex flex-col items-center justify-center text-center pt-1 sm:pt-2 pb-2 sm:pb-3 shrink-0">
+        <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black italic tracking-wider uppercase font-orbitron flex items-center justify-center gap-3 sm:gap-4 drop-shadow-[0_0_24px_rgba(0,240,255,0.4)]">
           <span className="neon-text-cyan text-[#00f0ff]">SONIC</span>
           <span className="neon-text-magenta text-[#ff007f]">THRUST</span>
         </h1>
-        <p className="text-[#38bdf8] text-xs sm:text-sm md:text-base font-rajdhani font-medium max-w-xl mt-1.5 tracking-wide leading-relaxed px-4">
+        <p className="text-[#38bdf8] text-sm sm:text-base md:text-lg lg:text-xl font-rajdhani font-semibold max-w-2xl mt-1.5 sm:mt-2 tracking-wide leading-relaxed px-4 drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]">
           Navega por desfiladeiros de néon que vibram com as frequências sonoras e testa os teus reflexos.
         </p>
       </header>
@@ -291,7 +385,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                       <span className="font-orbitron font-black text-lg sm:text-xl text-black tracking-widest leading-none uppercase">
                         A CARREGAR...
                       </span>
-                      <span className="font-rajdhani font-bold text-[10px] sm:text-xs text-black/80 tracking-wider uppercase mt-0.5">
+                      <span className="font-rajdhani font-bold text-xs sm:text-sm text-black/90 tracking-wider uppercase mt-0.5">
                         A SINCRONIZAR MP3 & TERRENO
                       </span>
                     </div>
@@ -315,16 +409,10 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
           {/* Section 2: SELECIONAR FAIXA with Inline Scrollable Dropdown */}
           <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xs sm:text-sm font-bold tracking-wider text-[#00f0ff] uppercase font-orbitron drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
+            <div>
+              <h2 className="text-sm sm:text-base font-bold tracking-wider text-[#00f0ff] uppercase font-orbitron drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
                 SELECIONAR FAIXA
               </h2>
-
-              {isDropdownOpen && (
-                <span className="text-[10px] font-mono text-cyan-400/80">
-                  {tracks.length} FAIXAS NO CATÁLOGO
-                </span>
-              )}
             </div>
 
             <div className="menu-gradient-card">
@@ -339,7 +427,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                       e.stopPropagation();
                       if (selectedTrack) onPreviewTrack(selectedTrack);
                     }}
-                    className="w-11 h-11 rounded-xl border border-cyan-400/80 bg-cyan-950/60 hover:bg-cyan-500/20 text-cyan-300 hover:text-white flex items-center justify-center shrink-0 transition-all shadow-[0_0_12px_rgba(6,182,212,0.35)] cursor-pointer"
+                    className="w-12 h-12 rounded-xl border border-cyan-400/80 bg-cyan-950/60 hover:bg-cyan-500/20 text-cyan-300 hover:text-white flex items-center justify-center shrink-0 transition-all shadow-[0_0_12px_rgba(6,182,212,0.35)] cursor-pointer"
                     title={previewingTrackId === selectedTrack?.id ? 'Parar pré-escuta' : 'Pré-escutar faixa'}
                   >
                     {loadingTrackId === selectedTrack?.id ? (
@@ -360,11 +448,11 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                     {/* Header Row: Title + Badges + Expand Chevron */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-orbitron font-bold text-sm sm:text-base text-white group-hover/track:text-cyan-300 transition-colors tracking-wide truncate">
+                        <span className="font-orbitron font-bold text-base sm:text-lg text-white group-hover/track:text-cyan-300 transition-colors tracking-wide truncate">
                           {selectedTrack?.title || 'Ayla'}
                         </span>
                         {selectedTrack?.isProcedural && (
-                          <span className="text-[9px] uppercase font-mono px-1.5 py-0.2 rounded bg-fuchsia-950/80 border border-fuchsia-500/40 text-fuchsia-300 shrink-0">
+                          <span className="text-xs uppercase font-mono font-semibold px-2 py-0.5 rounded bg-fuchsia-950/80 border border-fuchsia-500/40 text-fuchsia-300 shrink-0">
                             Synth
                           </span>
                         )}
@@ -376,18 +464,18 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                     </div>
 
                     {/* Metadata Row: Author / Artist + BPM + Duration */}
-                    <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 mt-0.5 text-xs">
-                      <span className="text-cyan-300/90 font-rajdhani font-semibold truncate flex items-center gap-1">
-                        <User className="w-3 h-3 text-cyan-400 shrink-0" />
+                    <div className="flex items-center flex-wrap gap-x-2.5 gap-y-1 mt-1 text-sm">
+                      <span className="text-cyan-300 font-rajdhani font-semibold truncate flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                         <span className="text-gray-400 font-normal">Artista:</span>
                         <span className="text-cyan-300 font-medium">{selectedTrack?.artist || 'Kosmischer Wanderer'}</span>
                       </span>
                       <span className="text-slate-600 hidden sm:inline">•</span>
-                      <span className="font-mono text-[11px] text-cyan-400/80 tracking-wider">
+                      <span className="font-mono text-xs sm:text-sm text-cyan-300 font-medium tracking-wider">
                         {selectedTrack?.estimatedBpm || 136} BPM
                       </span>
                       <span className="text-slate-600 hidden sm:inline">•</span>
-                      <span className="font-mono text-[11px] text-gray-300">
+                      <span className="font-mono text-xs sm:text-sm text-gray-200 font-medium">
                         {Math.floor((selectedTrack?.duration || 206) / 60)}:
                         {String(Math.floor((selectedTrack?.duration || 206) % 60)).padStart(2, '0')}
                       </span>
@@ -406,9 +494,9 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                 {/* Inline Scrollable Drop-Down List */}
                 {isDropdownOpen && (
                   <div className="mt-3 pt-3 border-t border-cyan-500/25 flex flex-col gap-1.5">
-                    <div className="flex items-center justify-between text-[11px] font-orbitron font-semibold text-cyan-300/90 px-1 pb-1">
+                    <div className="flex items-center justify-between text-xs sm:text-sm font-orbitron font-bold text-cyan-300/90 px-1 pb-1">
                       <span>CATÁLOGO DE MÚSICAS ({tracks.length})</span>
-                      <span className="text-[10px] font-mono text-gray-400">Escolhe ou pré-escuta</span>
+                      <span className="text-xs font-mono text-gray-400">Escolhe ou pré-escuta</span>
                     </div>
 
                     <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto pr-1">
@@ -424,13 +512,13 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                               onSelectTrack(track);
                               setIsDropdownOpen(false);
                             }}
-                            className={`p-2 rounded-lg border transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+                            className={`p-2.5 rounded-lg border transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                               isSelected
                                 ? 'border-cyan-400 bg-cyan-950/70 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
                                 : 'border-white/10 bg-slate-900/60 hover:border-cyan-500/40 hover:bg-slate-900/90'
                             }`}
                           >
-                            <div className="flex items-center gap-2 min-w-0">
+                            <div className="flex items-center gap-2.5 min-w-0">
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -439,7 +527,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                                   onPreviewTrack(track);
                                 }}
                                 disabled={isLoadingThis}
-                                className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition cursor-pointer ${
+                                className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition cursor-pointer ${
                                   isPlayingThis
                                     ? 'bg-cyan-400 text-black shadow-md shadow-cyan-400/50'
                                     : isSelected
@@ -449,35 +537,35 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                                 title={isPlayingThis ? 'Parar pré-escuta' : 'Pré-escutar faixa'}
                               >
                                 {isLoadingThis ? (
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-300" />
+                                  <Loader2 className="w-4 h-4 animate-spin text-cyan-300" />
                                 ) : isPlayingThis ? (
-                                  <Pause className="w-3.5 h-3.5 fill-current text-black animate-pulse" />
+                                  <Pause className="w-4 h-4 fill-current text-black animate-pulse" />
                                 ) : (
-                                  <Play className="w-3.5 h-3.5 ml-0.5" />
+                                  <Play className="w-4 h-4 fill-current text-cyan-300 ml-0.5" />
                                 )}
                               </button>
 
                               <div className="truncate">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="font-orbitron font-semibold text-xs text-white truncate">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-orbitron font-bold text-sm sm:text-base text-white truncate">
                                     {track.title}
                                   </span>
                                   {track.isProcedural && (
-                                    <span className="text-[9px] uppercase font-mono px-1 py-0.2 rounded bg-fuchsia-950/80 border border-fuchsia-500/40 text-fuchsia-300">
+                                    <span className="text-xs uppercase font-mono font-semibold px-1.5 py-0.5 rounded bg-fuchsia-950/80 border border-fuchsia-500/40 text-fuchsia-300">
                                       Synth
                                     </span>
                                   )}
                                 </div>
-                                <div className="text-[11px] text-gray-400 font-rajdhani truncate">
+                                <div className="text-xs sm:text-sm text-gray-300 font-rajdhani font-medium truncate mt-0.5">
                                   {track.artist}
                                 </div>
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-2 shrink-0 font-mono text-[10px]">
-                              <span className="text-cyan-400 tabular-nums">{track.estimatedBpm || 128} BPM</span>
+                            <div className="flex items-center gap-2 shrink-0 font-mono text-xs sm:text-sm">
+                              <span className="text-cyan-400 font-semibold tabular-nums">{track.estimatedBpm || 128} BPM</span>
                               <span className="text-gray-400">·</span>
-                              <span className="text-gray-300 tabular-nums">
+                              <span className="text-gray-200 tabular-nums">
                                 {Math.floor((track.duration || 90) / 60)}:
                                 {String(Math.floor((track.duration || 90) % 60)).padStart(2, '0')}
                               </span>
@@ -496,19 +584,10 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
           {/* Section: DIFICULDADE (Inline Scrollable Dropdown) */}
           <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xs sm:text-sm font-bold tracking-wider text-[#00f0ff] uppercase font-orbitron drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
+            <div>
+              <h2 className="text-sm sm:text-base font-bold tracking-wider text-[#00f0ff] uppercase font-orbitron drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
                 DIFICULDADE
               </h2>
-              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
-                difficulty === 'NORMAL'
-                  ? 'bg-cyan-950/80 border-cyan-500/40 text-cyan-300'
-                  : difficulty === 'PRO'
-                    ? 'bg-fuchsia-950/80 border-fuchsia-500/40 text-fuchsia-300'
-                    : 'bg-rose-950/80 border-rose-500/40 text-rose-300'
-              }`}>
-                {difficulty}
-              </span>
             </div>
 
             <div className="menu-gradient-card">
@@ -520,21 +599,21 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                   title={isDifficultyOpen ? 'Fechar menu de dificuldade' : 'Clica para escolher a dificuldade'}
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 transition-all ${
+                    <div className={`w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 transition-all ${
                       difficulty === 'NORMAL'
                         ? 'border-cyan-400/80 bg-cyan-950/60 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.35)]'
                         : difficulty === 'PRO'
                           ? 'border-fuchsia-400/80 bg-fuchsia-950/60 text-fuchsia-300 shadow-[0_0_12px_rgba(217,70,239,0.35)]'
                           : 'border-rose-500/80 bg-rose-950/60 text-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.35)]'
                     }`}>
-                      {difficulty === 'NORMAL' && <Shield className="w-5 h-5 text-cyan-400" />}
-                      {difficulty === 'PRO' && <Activity className="w-5 h-5 text-fuchsia-400" />}
-                      {difficulty === 'EXTREME' && <AlertTriangle className="w-5 h-5 text-rose-400" />}
+                      {difficulty === 'NORMAL' && <Shield className="w-6 h-6 text-cyan-400" />}
+                      {difficulty === 'PRO' && <Activity className="w-6 h-6 text-fuchsia-400" />}
+                      {difficulty === 'EXTREME' && <AlertTriangle className="w-6 h-6 text-rose-400" />}
                     </div>
 
                     <div className="flex flex-col min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className={`font-orbitron font-extrabold text-sm sm:text-base tracking-wider ${
+                        <span className={`font-orbitron font-black text-base sm:text-lg tracking-wider ${
                           difficulty === 'NORMAL'
                             ? 'text-cyan-300'
                             : difficulty === 'PRO'
@@ -543,14 +622,14 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                         }`}>
                           {difficulty}
                         </span>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-gray-300">
+                        <span className="text-xs sm:text-sm font-mono font-bold px-2.5 py-0.5 rounded-full bg-white/10 border border-white/15 text-gray-200">
                           {currentDiffConfig.initialLives} Vidas
                         </span>
                       </div>
-                      <span className="font-rajdhani text-xs text-gray-300 font-medium truncate mt-0.5">
-                        {difficulty === 'NORMAL' && 'Gravidade 70% • 1 Escudo • Flight Assist Ativo'}
+                      <span className="font-rajdhani text-sm text-gray-200 font-medium truncate mt-0.5">
+                        {difficulty === 'NORMAL' && 'Gravidade 70% • 1 Escudo • Voo Manual'}
                         {difficulty === 'PRO' && 'Gravidade 100% • Sem Escudos • Dinâmico'}
-                        {difficulty === 'EXTREME' && 'Gravidade 130% • 2 Vidas • Sem Assistência'}
+                        {difficulty === 'EXTREME' && 'Gravidade 130% • 2 Vidas • Sem Escudos'}
                       </span>
                     </div>
                   </div>
@@ -574,7 +653,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                             handleSetDifficulty(diffKey);
                             setIsDifficultyOpen(false);
                           }}
-                          className={`p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col gap-1.5 ${
+                          className={`p-3 rounded-xl border transition-all cursor-pointer flex flex-col gap-1.5 ${
                             isSelected
                               ? diffKey === 'NORMAL'
                                 ? 'border-cyan-400 bg-cyan-950/70 shadow-[0_0_12px_rgba(6,182,212,0.3)]'
@@ -586,30 +665,30 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <span className={`font-orbitron font-bold text-xs uppercase tracking-wider ${
+                              <span className={`font-orbitron font-bold text-sm sm:text-base uppercase tracking-wider ${
                                 diffKey === 'NORMAL' ? 'text-cyan-300' : diffKey === 'PRO' ? 'text-fuchsia-300' : 'text-rose-400'
                               }`}>
                                 {diffKey}
                               </span>
-                              <span className="text-[10px] font-mono text-gray-300">
+                              <span className="text-xs sm:text-sm font-mono text-gray-200 font-medium">
                                 {config.initialLives} Vidas · {config.initialShields > 0 ? `${config.initialShields} Escudo` : 'Sem Escudo'}
                               </span>
                             </div>
                             {isSelected && (
-                              <CheckCircle2 className={`w-4 h-4 ${
+                              <CheckCircle2 className={`w-5 h-5 ${
                                 diffKey === 'NORMAL' ? 'text-cyan-400' : diffKey === 'PRO' ? 'text-fuchsia-400' : 'text-rose-400'
                               }`} />
                             )}
                           </div>
 
-                          <p className="text-[11px] font-rajdhani text-gray-300 leading-snug">
+                          <p className="text-xs sm:text-sm font-rajdhani text-gray-200 leading-relaxed">
                             {config.description}
                           </p>
 
-                          <div className="flex items-center gap-2 text-[10px] font-mono pt-0.5">
-                            <span className="text-gray-400">Gravidade: <strong className="text-cyan-300">{Math.round(config.gravityMultiplier * 100)}%</strong></span>
+                          <div className="flex items-center gap-2.5 text-xs font-mono pt-0.5">
+                            <span className="text-gray-300">Gravidade: <strong className="text-cyan-300 font-bold">{Math.round(config.gravityMultiplier * 100)}%</strong></span>
                             <span className="text-gray-500">•</span>
-                            <span className="text-gray-400">Flight Assist: <strong className={config.allowFlightAssist ? 'text-cyan-300' : 'text-rose-400'}>{config.allowFlightAssist ? 'Permitido' : 'Bloqueado'}</strong></span>
+                            <span className="text-gray-300">Voo: <strong className="text-fuchsia-300 font-bold">100% Manual</strong></span>
                           </div>
                         </div>
                       );
@@ -622,13 +701,10 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
           {/* Section: OPÇÕES (ÁUDIO E VOO) (Inline Scrollable Dropdown) */}
           <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xs sm:text-sm font-bold tracking-wider text-[#00f0ff] uppercase font-orbitron drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
+            <div>
+              <h2 className="text-sm sm:text-base font-bold tracking-wider text-[#00f0ff] uppercase font-orbitron drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
                 OPÇÕES (ÁUDIO E VOO)
               </h2>
-              <span className="text-[10px] font-mono text-cyan-400/80">
-                VOO MANUAL
-              </span>
             </div>
 
             <div className="menu-gradient-card">
@@ -640,15 +716,15 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                   title={isOptionsOpen ? 'Fechar opções' : 'Abrir configurações de áudio e voo'}
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-10 h-10 rounded-xl border border-cyan-400/60 bg-cyan-950/60 text-cyan-400 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(6,182,212,0.3)] group-hover/opt:scale-105 transition-all">
-                      <Settings className="w-5 h-5 text-cyan-400 group-hover/opt:rotate-45 transition-transform duration-300" />
+                    <div className="w-11 h-11 rounded-xl border border-cyan-400/60 bg-cyan-950/60 text-cyan-400 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(6,182,212,0.3)] group-hover/opt:scale-105 transition-all">
+                      <Settings className="w-6 h-6 text-cyan-400 group-hover/opt:rotate-45 transition-transform duration-300" />
                     </div>
 
                     <div className="flex flex-col min-w-0 flex-1">
-                      <span className="font-orbitron font-bold text-xs sm:text-sm text-white group-hover/opt:text-cyan-300 transition-colors tracking-wide truncate">
+                      <span className="font-orbitron font-bold text-sm sm:text-base text-white group-hover/opt:text-cyan-300 transition-colors tracking-wide truncate">
                         CONFIGURAÇÕES DE VOO E ÁUDIO
                       </span>
-                      <span className="font-rajdhani text-xs text-gray-300 font-medium truncate mt-0.5">
+                      <span className="font-rajdhani text-sm text-gray-200 font-medium truncate mt-0.5">
                         Voo Manual (100% Reflexos) • Mús {Math.round(options.musicVolume * 100)}% • SFX {Math.round(options.sfxVolume * 100)}%
                       </span>
                     </div>
@@ -663,33 +739,33 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                 {isOptionsOpen && (
                   <div className="mt-3 pt-3 border-t border-cyan-500/25 flex flex-col gap-3 max-h-64 sm:max-h-72 overflow-y-auto pr-1 text-xs font-rajdhani">
                     {/* Flight Assist (Always Deactivated) */}
-                    <div className="p-2.5 rounded-xl bg-slate-900/70 border border-white/10 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <Compass className="w-4 h-4 text-cyan-400 shrink-0" />
+                    <div className="p-3 rounded-xl bg-slate-900/70 border border-white/10 flex items-center justify-between gap-2.5">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Compass className="w-5 h-5 text-cyan-400 shrink-0" />
                         <div>
-                          <div className="font-orbitron font-semibold text-white text-xs">
+                          <div className="font-orbitron font-bold text-white text-sm">
                             Flight Assist (Auto-Estabilização)
                           </div>
-                          <div className="text-[11px] text-gray-400 leading-tight">
+                          <div className="text-xs sm:text-sm text-gray-300 leading-snug mt-0.5">
                             Desativado permanentemente — Voo 100% manual e reflexos puros
                           </div>
                         </div>
                       </div>
 
-                      <span className="px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold bg-white/10 text-gray-400 shrink-0">
+                      <span className="px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-white/10 text-gray-400 shrink-0">
                         DESATIVADO
                       </span>
                     </div>
 
                     {/* Drift Compensation Toggle */}
-                    <div className="p-2.5 rounded-xl bg-slate-900/70 border border-white/10 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <Activity className="w-4 h-4 text-cyan-400 shrink-0" />
+                    <div className="p-3 rounded-xl bg-slate-900/70 border border-white/10 flex items-center justify-between gap-2.5">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Activity className="w-5 h-5 text-cyan-400 shrink-0" />
                         <div>
-                          <div className="font-orbitron font-semibold text-white text-xs">
+                          <div className="font-orbitron font-bold text-white text-sm">
                             Compensação de Deriva
                           </div>
-                          <div className="text-[11px] text-gray-400 leading-tight">
+                          <div className="text-xs sm:text-sm text-gray-300 leading-snug mt-0.5">
                             A nave mantém a posição sem avanço automático à direita
                           </div>
                         </div>
@@ -698,10 +774,10 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                       <button
                         type="button"
                         onClick={() => onOptionsChange({ ...options, driftCompensation: !options.driftCompensation })}
-                        className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition cursor-pointer shrink-0 ${
+                        className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-mono font-bold transition cursor-pointer shrink-0 ${
                           options.driftCompensation
                             ? 'bg-cyan-500 text-black shadow-md shadow-cyan-500/30'
-                            : 'bg-white/10 text-gray-400 hover:bg-white/20'
+                            : 'bg-white/10 text-gray-300 hover:bg-white/20'
                         }`}
                       >
                         {options.driftCompensation ? 'LIGADO' : 'DESLIGADO'}
@@ -709,14 +785,14 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                     </div>
 
                     {/* Volume Controls */}
-                    <div className="p-2.5 rounded-xl bg-slate-900/70 border border-white/10 space-y-2.5">
-                      <div className="flex items-center gap-2 text-cyan-400 font-orbitron font-semibold text-xs">
-                        <Volume2 className="w-3.5 h-3.5" />
+                    <div className="p-3 rounded-xl bg-slate-900/70 border border-white/10 space-y-3">
+                      <div className="flex items-center gap-2 text-cyan-400 font-orbitron font-bold text-sm">
+                        <Volume2 className="w-4 h-4" />
                         <span>NÍVEIS DE VOLUME</span>
                       </div>
 
                       <div>
-                        <div className="flex justify-between text-[11px] font-mono text-gray-300 mb-1">
+                        <div className="flex justify-between text-xs sm:text-sm font-mono font-semibold text-gray-200 mb-1.5">
                           <span>VOLUME MÚSICA</span>
                           <span className="text-cyan-400 tabular-nums">{Math.round(options.musicVolume * 100)}%</span>
                         </div>
@@ -727,12 +803,12 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                           step="0.05"
                           value={options.musicVolume}
                           onChange={(e) => onOptionsChange({ ...options, musicVolume: parseFloat(e.target.value) })}
-                          className="w-full accent-cyan-400 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
+                          className="w-full accent-cyan-400 cursor-pointer h-2 bg-slate-800 rounded-lg"
                         />
                       </div>
 
                       <div>
-                        <div className="flex justify-between text-[11px] font-mono text-gray-300 mb-1">
+                        <div className="flex justify-between text-xs sm:text-sm font-mono font-semibold text-gray-200 mb-1.5">
                           <span>VOLUME SFX / MOTORES</span>
                           <span className="text-fuchsia-400 tabular-nums">{Math.round(options.sfxVolume * 100)}%</span>
                         </div>
@@ -743,7 +819,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                           step="0.05"
                           value={options.sfxVolume}
                           onChange={(e) => onOptionsChange({ ...options, sfxVolume: parseFloat(e.target.value) })}
-                          className="w-full accent-fuchsia-400 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
+                          className="w-full accent-fuchsia-400 cursor-pointer h-2 bg-slate-800 rounded-lg"
                         />
                       </div>
                     </div>
@@ -753,15 +829,12 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
             </div>
           </div>
 
-          {/* Section: CONTROLOS E REGRAS (Inline Scrollable Dropdown) */}
+          {/* Section: INFORMAÇÕES (Inline Scrollable Dropdown) */}
           <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xs sm:text-sm font-bold tracking-wider text-[#00f0ff] uppercase font-orbitron drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
-                CONTROLOS E REGRAS
+            <div>
+              <h2 className="text-sm sm:text-base font-bold tracking-wider text-[#00f0ff] uppercase font-orbitron drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
+                INFORMAÇÕES
               </h2>
-              <span className="text-[10px] font-mono text-cyan-400/80">
-                GUIA DE VOO
-              </span>
             </div>
 
             <div className="menu-gradient-card">
@@ -770,19 +843,19 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                 <div
                   onClick={() => setIsControlsOpen(prev => !prev)}
                   className="flex items-center justify-between gap-3 cursor-pointer group/ctrl select-none"
-                  title={isControlsOpen ? 'Fechar guia de controlos' : 'Abrir guia de pilotagem e regras'}
+                  title={isControlsOpen ? 'Fechar informações' : 'Abrir informações e guia'}
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-10 h-10 rounded-xl border border-cyan-400/60 bg-cyan-950/60 text-cyan-400 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(6,182,212,0.3)] group-hover/ctrl:scale-105 transition-all">
-                      <HelpCircle className="w-5 h-5 text-cyan-400" />
+                    <div className="w-11 h-11 rounded-xl border border-cyan-400/60 bg-cyan-950/60 text-cyan-400 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(6,182,212,0.3)] group-hover/ctrl:scale-105 transition-all">
+                      <Info className="w-6 h-6 text-cyan-400" />
                     </div>
 
                     <div className="flex flex-col min-w-0 flex-1">
-                      <span className="font-orbitron font-bold text-xs sm:text-sm text-white group-hover/ctrl:text-cyan-300 transition-colors tracking-wide truncate">
-                        MANUAL DO PILOTO E REGRAS
+                      <span className="font-orbitron font-bold text-sm sm:text-base text-white group-hover/ctrl:text-cyan-300 transition-colors tracking-wide truncate">
+                        INFORMAÇÕES & GUIA DO PILOTO
                       </span>
-                      <span className="font-rajdhani text-xs text-gray-300 font-medium truncate mt-0.5">
-                        Dual-Thrusters, Vidas (-20s) e 8 Power-Ups
+                      <span className="font-rajdhani text-sm text-gray-200 font-medium truncate mt-0.5">
+                        Controlos (Ecrã Tátil & Teclado) e os 8 Power-Ups
                       </span>
                     </div>
                   </div>
@@ -792,71 +865,182 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                   </div>
                 </div>
 
-                {/* Inline Scrollable Controls Panel */}
+                {/* Inline Scrollable Information Panel */}
                 {isControlsOpen && (
-                  <div className="mt-3 pt-3 border-t border-cyan-500/25 flex flex-col gap-2.5 max-h-72 sm:max-h-80 overflow-y-auto pr-1 text-xs font-rajdhani">
-                    {/* Rule of Zero Contact & Lives */}
-                    <div className="p-2.5 rounded-xl bg-red-950/40 border border-red-500/40 text-red-200">
-                      <div className="flex items-center gap-2 font-orbitron font-bold text-red-400 text-xs uppercase mb-1">
-                        <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-                        <span>Zero Contact & Penalização (-20s)</span>
+                  <div className="mt-3.5 pt-3.5 border-t border-cyan-500/25 flex flex-col gap-3.5 max-h-80 sm:max-h-96 overflow-y-auto pr-1">
+                    
+                    {/* Visual Flight Controls for Touchscreen and Keyboard */}
+                    <div className="p-3.5 rounded-xl bg-slate-900/85 border border-cyan-500/35 flex flex-col gap-3 shadow-lg">
+                      <div className="flex items-center gap-2 font-orbitron font-bold text-cyan-300 text-sm uppercase">
+                        <Smartphone className="w-4 h-4 text-cyan-400 shrink-0" />
+                        <span>CONTROLOS DE VOO (ECRÃ TÁTIL & TECLADO)</span>
                       </div>
-                      <p className="text-[11px] leading-relaxed">
-                        3 vidas (2 em Extreme). Cada colisão desprotegida consome 1 vida e aplica <strong>-20 segundos</strong> de penalização. Invulnerabilidade temporária de 1.8s após impacto.
-                      </p>
+
+                      {/* Visual Interactive Cockpit / Screen Schematic */}
+                      <div className="relative rounded-xl border border-cyan-500/40 bg-gradient-to-b from-[#090b16] to-[#05060d] p-3 flex flex-col gap-2.5 overflow-hidden shadow-inner">
+                        <div className="grid grid-cols-2 gap-3 relative z-10">
+                          
+                          {/* Left Touch Zone */}
+                          <div className="p-3 rounded-lg border border-cyan-400/50 bg-cyan-950/40 flex flex-col items-center text-center gap-2 shadow-[0_0_12px_rgba(6,182,212,0.18)]">
+                            <div className="flex items-center justify-center gap-1.5 text-cyan-400">
+                              <Touchpad className="w-5 h-5 animate-pulse" />
+                              <span className="font-orbitron font-black text-xs sm:text-sm text-cyan-300">METADE ESQUERDA</span>
+                            </div>
+                            <div className="px-2.5 py-1 rounded bg-cyan-900/60 border border-cyan-400/50 font-mono font-bold text-xs sm:text-sm text-white">
+                              [A] ou [←]
+                            </div>
+                            <span className="font-orbitron font-bold text-xs sm:text-sm text-cyan-200 uppercase">MOTOR ESQUERDO</span>
+                            <p className="text-xs sm:text-sm font-rajdhani text-gray-200 leading-snug">
+                              Toque contínuo ativa o motor esquerdo, inclinando a nave e rodando para a direita.
+                            </p>
+                          </div>
+
+                          {/* Right Touch Zone */}
+                          <div className="p-3 rounded-lg border border-fuchsia-400/50 bg-fuchsia-950/40 flex flex-col items-center text-center gap-2 shadow-[0_0_12px_rgba(217,70,239,0.18)]">
+                            <div className="flex items-center justify-center gap-1.5 text-fuchsia-400">
+                              <Touchpad className="w-5 h-5 animate-pulse" />
+                              <span className="font-orbitron font-black text-xs sm:text-sm text-fuchsia-300">METADE DIREITA</span>
+                            </div>
+                            <div className="px-2.5 py-1 rounded bg-fuchsia-900/60 border border-fuchsia-400/50 font-mono font-bold text-xs sm:text-sm text-white">
+                              [D] ou [→]
+                            </div>
+                            <span className="font-orbitron font-bold text-xs sm:text-sm text-fuchsia-200 uppercase">MOTOR DIREITO</span>
+                            <p className="text-xs sm:text-sm font-rajdhani text-gray-200 leading-snug">
+                              Toque contínuo ativa o motor direito, inclinando a nave e rodando para a esquerda.
+                            </p>
+                          </div>
+
+                        </div>
+
+                        {/* Simultaneous Dual-Touch / Both Keys: Straight Vertical Ascent */}
+                        <div className="p-2.5 rounded-lg border border-cyan-400/30 bg-cyan-950/30 flex items-center justify-center gap-2 text-center">
+                          <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping shrink-0" />
+                          <span className="font-orbitron font-bold text-xs sm:text-sm text-white uppercase tracking-wide">
+                            AMBOS OS LADOS SIMULTÂNEOS:
+                          </span>
+                          <span className="font-rajdhani font-semibold text-xs sm:text-sm text-cyan-300">
+                            Subida vertical a direito com propulsão equilibrada máxima
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Dual-Thruster Controls */}
-                    <div className="p-2.5 rounded-xl bg-slate-900/70 border border-cyan-500/30 space-y-2">
-                      <div className="font-orbitron font-bold text-cyan-400 text-xs uppercase flex items-center gap-2">
-                        <Sliders className="w-3.5 h-3.5 text-cyan-400" />
-                        <span>Propulsores Dual-Thruster</span>
+                    {/* All 8 Power-Ups with in-game Vector Graphics & Succinct Explanations */}
+                    <div className="p-3.5 rounded-xl bg-slate-900/85 border border-white/15 flex flex-col gap-3 shadow-lg">
+                      <div className="flex items-center gap-2 font-orbitron font-bold text-cyan-300 text-sm uppercase">
+                        <Shield className="w-4 h-4 text-cyan-400 shrink-0" />
+                        <span>OS 8 POWER-UPS DE RESSONÂNCIA</span>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 font-mono text-[10px]">
-                        <div className="p-2 rounded-lg bg-cyan-950/40 border border-cyan-500/30">
-                          <div className="text-cyan-300 font-bold">MOTOR ESQ.</div>
-                          <div className="text-gray-300 text-[10px]">[A] / [←] ou Toque Esq.</div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        
+                        {/* 1. SHIELD */}
+                        <div className="p-3 rounded-xl border border-cyan-400/40 bg-cyan-950/35 flex items-center gap-3">
+                          <PowerUpGraphic type="SHIELD" size={48} />
+                          <div className="flex flex-col min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-orbitron font-bold text-sm text-cyan-300">ESCUDO DE FASE</span>
+                            </div>
+                            <p className="font-rajdhani text-xs sm:text-sm text-gray-200 leading-snug mt-0.5">
+                              Absorve 1 colisão contra o túnel ou obstáculos com repulsão segura.
+                            </p>
+                          </div>
                         </div>
-                        <div className="p-2 rounded-lg bg-pink-950/40 border border-pink-500/30">
-                          <div className="text-pink-300 font-bold">MOTOR DIR.</div>
-                          <div className="text-gray-300 text-[10px]">[D] / [→] ou Toque Dir.</div>
+
+                        {/* 2. DAMPER */}
+                        <div className="p-3 rounded-xl border border-emerald-400/40 bg-emerald-950/35 flex items-center gap-3">
+                          <PowerUpGraphic type="DAMPER" size={48} />
+                          <div className="flex flex-col min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-orbitron font-bold text-sm text-emerald-300">AMORTECEDOR INERCIAL</span>
+                            </div>
+                            <p className="font-rajdhani text-xs sm:text-sm text-gray-200 leading-snug mt-0.5">
+                              Amortece impactos violentos e estabiliza instantaneamente a trajetória e rotação.
+                            </p>
+                          </div>
                         </div>
+
+                        {/* 3. LOW_G */}
+                        <div className="p-3 rounded-xl border border-yellow-400/40 bg-yellow-950/35 flex items-center gap-3">
+                          <PowerUpGraphic type="LOW_G" size={48} />
+                          <div className="flex flex-col min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-orbitron font-bold text-sm text-yellow-300">GRAVIDADE REDUZIDA</span>
+                            </div>
+                            <p className="font-rajdhani text-xs sm:text-sm text-gray-200 leading-snug mt-0.5">
+                              Surto de microgravidade com 50% menos gravidade durante 5s de voo ultra-leve.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* 4. PULSE */}
+                        <div className="p-3 rounded-xl border border-cyan-400/40 bg-cyan-950/35 flex items-center gap-3">
+                          <PowerUpGraphic type="PULSE" size={48} />
+                          <div className="flex flex-col min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-orbitron font-bold text-sm text-cyan-300">PULSO SÓNICO</span>
+                            </div>
+                            <p className="font-rajdhani text-xs sm:text-sm text-gray-200 leading-snug mt-0.5">
+                              Onda de choque que desativa lasers de energia e destrói minas de ressonância.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* 5. ETHEREAL */}
+                        <div className="p-3 rounded-xl border border-purple-400/40 bg-purple-950/35 flex items-center gap-3">
+                          <PowerUpGraphic type="ETHEREAL" size={48} />
+                          <div className="flex flex-col min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-orbitron font-bold text-sm text-purple-300">MODO FANTASMA</span>
+                            </div>
+                            <p className="font-rajdhani text-xs sm:text-sm text-gray-200 leading-snug mt-0.5">
+                              Transforma a nave em fantasma durante 6s, atravessando todos os obstáculos.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* 6. INVULNERABLE */}
+                        <div className="p-3 rounded-xl border border-rose-400/40 bg-rose-950/35 flex items-center gap-3">
+                          <PowerUpGraphic type="INVULNERABLE" size={48} />
+                          <div className="flex flex-col min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-orbitron font-bold text-sm text-rose-300">INVULNERABILIDADE</span>
+                            </div>
+                            <p className="font-rajdhani text-xs sm:text-sm text-gray-200 leading-snug mt-0.5">
+                              Imunidade total contra todos os danos e obstáculos durante 3.5 segundos.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* 7. CHRONO_DILATION */}
+                        <div className="p-3 rounded-xl border border-teal-400/40 bg-teal-950/35 flex items-center gap-3">
+                          <PowerUpGraphic type="CHRONO_DILATION" size={48} />
+                          <div className="flex flex-col min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-orbitron font-bold text-sm text-teal-300">DISTORÇÃO TEMPORAL</span>
+                            </div>
+                            <p className="font-rajdhani text-xs sm:text-sm text-gray-200 leading-snug mt-0.5">
+                              Câmara lenta a 50% por 5 segundos com reflexos hiper-acelerados.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* 8. SINGULARITY */}
+                        <div className="p-3 rounded-xl border border-fuchsia-400/40 bg-fuchsia-950/35 flex items-center gap-3">
+                          <PowerUpGraphic type="SINGULARITY" size={48} />
+                          <div className="flex flex-col min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-orbitron font-bold text-sm text-fuchsia-300">SINGULARIDADE</span>
+                            </div>
+                            <p className="font-rajdhani text-xs sm:text-sm text-gray-200 leading-snug mt-0.5">
+                              Vórtice cósmico que atrai e absorve automaticamente orbes de ressonância.
+                            </p>
+                          </div>
+                        </div>
+
                       </div>
                     </div>
 
-                    {/* Power-Ups */}
-                    <div className="p-2.5 rounded-xl bg-slate-900/70 border border-white/10 space-y-1.5">
-                      <div className="font-orbitron font-bold text-cyan-400 text-xs uppercase flex items-center gap-2">
-                        <Shield className="w-3.5 h-3.5 text-cyan-400" />
-                        <span>8 Power-Ups de Ressonância</span>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[10px] font-mono">
-                        <div className="p-1.5 rounded-lg bg-sky-950/40 border border-sky-400/30">
-                          <span className="text-sky-300 font-bold">ESCUDO DE FASE</span>: Absorve 1 colisão.
-                        </div>
-                        <div className="p-1.5 rounded-lg bg-yellow-950/40 border border-yellow-400/30">
-                          <span className="text-yellow-300 font-bold">SURTO LOW-G</span>: Reduz 50% gravidade por 5s.
-                        </div>
-                        <div className="p-1.5 rounded-lg bg-emerald-950/40 border border-emerald-400/30">
-                          <span className="text-emerald-300 font-bold">PULSO SÓNICO</span>: Limpa obstáculos e lasers.
-                        </div>
-                        <div className="p-1.5 rounded-lg bg-purple-950/40 border border-purple-400/30">
-                          <span className="text-purple-300 font-bold">MODO FANTASMA</span>: Atravessa obstáculos por 6s.
-                        </div>
-                        <div className="p-1.5 rounded-lg bg-amber-950/40 border border-amber-400/30">
-                          <span className="text-amber-300 font-bold">AMORTECEDOR</span>: Absorve impactos cinéticos.
-                        </div>
-                        <div className="p-1.5 rounded-lg bg-cyan-950/40 border border-cyan-400/30">
-                          <span className="text-cyan-300 font-bold">DISTORÇÃO TEMPORAL</span>: Câmara lenta a 50%.
-                        </div>
-                        <div className="p-1.5 rounded-lg bg-indigo-950/40 border border-indigo-400/30">
-                          <span className="text-indigo-300 font-bold">SINGULARIDADE</span>: Atrai power-ups próximos.
-                        </div>
-                        <div className="p-1.5 rounded-lg bg-rose-950/40 border border-rose-400/30">
-                          <span className="text-rose-300 font-bold">IMORTALIDADE</span>: Invulnerabilidade total por 6s.
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 )}
               </div>
@@ -876,7 +1060,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
       {/* Footer: Version and Last Update Date on left, Author on right */}
       <footer className="relative z-10 flex items-center justify-between text-xs sm:text-sm font-mono text-cyan-400/90 pt-3 pb-2 border-t border-white/10 max-w-6xl w-full mx-auto px-2">
-        <span className="tracking-wide">v1.18.0 · 25/10/2026</span>
+        <span className="tracking-wide">v1.20.0 · 25/10/2026</span>
         <span className="tracking-wide font-semibold text-gray-200">Por Miguel Galego</span>
       </footer>
 

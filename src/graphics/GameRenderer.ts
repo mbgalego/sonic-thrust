@@ -271,10 +271,12 @@ export class GameRenderer {
     }
     this.dropFlash *= Math.exp(-(isPaused ? 0 : dt) / 0.45);
 
-    // High-Speed Atmospheric & Temporal Trail Calculation (starts strictly at 500)
+    // High-Speed Atmospheric & Temporal Trail Calculation:
+    // Velocity is displayed in HUD as: Math.round(shipSpeed * 0.7) km/h.
+    // Threshold increased by +100 km/h: from 350 km/h (500 px/s) to 450 km/h (643 px/s).
     const shipSpeed = Math.hypot(world.ship.vx, world.ship.vy);
-    const HIGH_SPEED_MIN = 500;
-    const HIGH_SPEED_MAX = 780;
+    const HIGH_SPEED_MIN = 643; // 450 km/h (added +100 km/h to former 350 km/h)
+    const HIGH_SPEED_MAX = 928; // ~650 km/h
     const targetSpeedRatio = Math.max(0, Math.min(1.0, (shipSpeed - HIGH_SPEED_MIN) / (HIGH_SPEED_MAX - HIGH_SPEED_MIN)));
     this.currentSpeedRatio += (targetSpeedRatio - this.currentSpeedRatio) * (isPaused ? 0 : 0.22);
     this.updateTemporalTrail(world, isPaused ? 0 : dt);
