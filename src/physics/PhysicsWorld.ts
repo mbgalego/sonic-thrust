@@ -24,8 +24,8 @@ export const DIFFICULTY_PRESETS: Record<DifficultyLevel, DifficultyConfig> = {
     gravityMultiplier: 0.70,
     initialShields: 1,
     initialLives: 3,
-    allowFlightAssist: true,
-    defaultFlightAssist: true,
+    allowFlightAssist: false,
+    defaultFlightAssist: false,
     laserDensity: 0.55,          // ~half the beams, far less frequent
     laserGateThreshold: 0.42,    // beam needs strong treble to fire
     description: 'Canal muito largo, gravidade 70%, 3 vidas e 1 escudo inicial. Equipado com Escudo de Fase, Low-G, Pulso Sónico, Modo Fantasma e Singularidade.'
@@ -38,7 +38,7 @@ export const DIFFICULTY_PRESETS: Record<DifficultyLevel, DifficultyConfig> = {
     gravityMultiplier: 1.00,
     initialShields: 0,
     initialLives: 3,
-    allowFlightAssist: true,
+    allowFlightAssist: false,
     defaultFlightAssist: false,
     laserDensity: 1.0,
     laserGateThreshold: 0.28,
@@ -181,14 +181,14 @@ export class PhysicsWorld {
 
   constructor(
     difficultyLevel: DifficultyLevel,
-    flightAssist: boolean,
+    _flightAssist: boolean,
     trackDuration: number = 90,
     trackId: string = 'kosmonova-take-me-away',
     trackBpm: number = 135,
     driftCompensation: boolean = true
   ) {
     this.difficulty = DIFFICULTY_PRESETS[difficultyLevel];
-    this.flightAssistEnabled = this.difficulty.allowFlightAssist && flightAssist;
+    this.flightAssistEnabled = false; // Always deactivated
     this.driftCompensationEnabled = driftCompensation;
     this.trackDuration = Math.max(30, trackDuration);
     this.trackId = trackId;
@@ -640,14 +640,14 @@ export class PhysicsWorld {
     // 0.5 Sonic Pulse shockwave propagation (disarms beams & mines)
     this.updateSonicPulse(safeDt);
 
-    // Time Dilation scale: slows terrain & obstacles down to 55% during Chrono Dilation
-    const timeScale = this.ship.chronoDilationTimer > 0 ? 0.55 : 1.0;
+    // Time Dilation scale: slows time, terrain & craft physics down to 50% during Chrono Dilation
+    const timeScale = this.ship.chronoDilationTimer > 0 ? 0.50 : 1.0;
 
     // 1. Audio-Reactive Terrain Update (FFT with smooth phase accumulation)
     this.updateAudioTerrain(audioFreq, safeDt * timeScale);
 
-    // 2. Flight Dynamics & Dual-Thruster Physics
-    this.applyThrusterForces(leftPressed, rightPressed, safeDt, audioFreq);
+    // 2. Flight Dynamics & Dual-Thruster Physics (synchronized with timeScale in bullet-time)
+    this.applyThrusterForces(leftPressed, rightPressed, safeDt * timeScale, audioFreq);
 
     // 3. Update Obstacles & Laser Gates
     this.updateObstacles(audioFreq, safeDt * timeScale);
@@ -1017,7 +1017,7 @@ export class PhysicsWorld {
         } else if (p.type === 'INVULNERABLE') {
           this.ship.invulnerableTime = 3.5; // 3.5 seconds invulnerability
         } else if (p.type === 'ETHEREAL') {
-          this.ship.etherealActiveTimer = 5.0; // 5 seconds ghost mode
+          this.ship.etherealActiveTimer = 6.0; // 6 seconds ghost mode
         } else if (p.type === 'PULSE') {
           this.sonicPulseWave = { x: this.ship.x, y: this.ship.y, r: 26, speed: 620, maxR: 520 };
           this.ship.sonicPulseNotifyTimer = 3.0;
@@ -1220,10 +1220,8 @@ export class PhysicsWorld {
     this.ship.angularVelocity = (Math.random() - 0.5) * 3.5;
   }
 
-  public setFlightAssist(enabled: boolean): void {
-    if (this.difficulty.allowFlightAssist) {
-      this.flightAssistEnabled = enabled;
-    }
+  public setFlightAssist(_enabled: boolean): void {
+    this.flightAssistEnabled = false; // Always deactivated
   }
 
   public setDriftCompensation(enabled: boolean): void {

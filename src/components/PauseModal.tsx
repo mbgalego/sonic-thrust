@@ -21,7 +21,7 @@ export const PauseModal: React.FC<PauseModalProps> = ({
   onExitToMenu,
   options,
   onOptionsChange,
-  allowFlightAssist
+  allowFlightAssist: _allowFlightAssist
 }) => {
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
@@ -39,19 +39,9 @@ export const PauseModal: React.FC<PauseModalProps> = ({
         <div className="p-3 rounded-xl bg-slate-900/60 border border-white/10 space-y-3">
           <div className="flex items-center justify-between text-xs font-mono">
             <span className="text-gray-300">Flight Assist</span>
-            {allowFlightAssist ? (
-              <button
-                type="button"
-                onClick={() => onOptionsChange({ ...options, flightAssist: !options.flightAssist })}
-                className={`px-3 py-1 rounded text-xs font-mono font-bold cursor-pointer transition ${
-                  options.flightAssist ? 'bg-cyan-500 text-black' : 'bg-white/10 text-gray-400'
-                }`}
-              >
-                {options.flightAssist ? 'LIGADO' : 'DESLIGADO'}
-              </button>
-            ) : (
-              <span className="text-[10px] text-rose-400">DESATIVADO (EXTREME)</span>
-            )}
+            <span className="text-[11px] font-bold text-gray-400 bg-white/10 px-2 py-0.5 rounded">
+              DESATIVADO
+            </span>
           </div>
 
           <div className="flex items-center justify-between text-xs font-mono">

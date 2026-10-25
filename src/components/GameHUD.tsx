@@ -16,9 +16,11 @@ import {
   Clock,
   Radio,
   Heart,
-  AlertTriangle
+  AlertTriangle,
+  Ghost,
+  Sparkles
 } from 'lucide-react';
-import { GameStats, DifficultyLevel } from '../types/game';
+import { GameStats, DifficultyLevel, PowerUpAnnouncement, PowerUpType } from '../types/game';
 import { ShipState } from '../physics/PhysicsWorld';
 
 interface GameHUDProps {
@@ -28,6 +30,7 @@ interface GameHUDProps {
   trackTitle: string;
   onPause: () => void;
   launchGraceTimer?: number;
+  announcement?: PowerUpAnnouncement | null;
 }
 
 export const GameHUD: React.FC<GameHUDProps> = ({
@@ -36,7 +39,8 @@ export const GameHUD: React.FC<GameHUDProps> = ({
   difficulty,
   trackTitle,
   onPause,
-  launchGraceTimer = 0
+  launchGraceTimer = 0,
+  announcement = null
 }) => {
   const [isFullscreen, setIsFullscreen] = React.useState(Boolean(document.fullscreenElement));
 
@@ -73,6 +77,29 @@ export const GameHUD: React.FC<GameHUDProps> = ({
   const isCountCritical = remainingSec <= 25;
 
   const speedKmh = Math.round(Math.sqrt(ship.vx * ship.vx + ship.vy * ship.vy) * 0.7);
+
+  const getAnnouncementIcon = (type: PowerUpType) => {
+    switch (type) {
+      case 'ETHEREAL':
+        return <Ghost className="w-7 h-7 sm:w-8 sm:h-8 text-fuchsia-300 animate-pulse shrink-0 drop-shadow-[0_0_14px_rgba(217,70,239,0.9)]" />;
+      case 'SHIELD':
+        return <Shield className="w-7 h-7 sm:w-8 sm:h-8 text-cyan-300 animate-spin shrink-0 drop-shadow-[0_0_14px_rgba(0,240,255,0.9)]" />;
+      case 'DAMPER':
+        return <Zap className="w-7 h-7 sm:w-8 sm:h-8 text-emerald-300 animate-pulse shrink-0 drop-shadow-[0_0_14px_rgba(34,197,94,0.9)]" />;
+      case 'LOW_G':
+        return <Activity className="w-7 h-7 sm:w-8 sm:h-8 text-yellow-300 animate-pulse shrink-0 drop-shadow-[0_0_14px_rgba(250,204,21,0.9)]" />;
+      case 'PULSE':
+        return <Radio className="w-7 h-7 sm:w-8 sm:h-8 text-cyan-300 animate-ping shrink-0 drop-shadow-[0_0_14px_rgba(6,182,212,0.9)]" />;
+      case 'INVULNERABLE':
+        return <Shield className="w-7 h-7 sm:w-8 sm:h-8 text-rose-300 animate-bounce shrink-0 drop-shadow-[0_0_14px_rgba(244,63,94,0.9)]" />;
+      case 'CHRONO_DILATION':
+        return <Clock className="w-7 h-7 sm:w-8 sm:h-8 text-teal-300 animate-spin shrink-0 drop-shadow-[0_0_14px_rgba(20,184,166,0.9)]" />;
+      case 'SINGULARITY':
+        return <Sparkles className="w-7 h-7 sm:w-8 sm:h-8 text-purple-300 animate-spin shrink-0 drop-shadow-[0_0_14px_rgba(168,85,247,0.9)]" />;
+      default:
+        return <Zap className="w-7 h-7 sm:w-8 sm:h-8 text-white shrink-0" />;
+    }
+  };
 
   return (
     <div className="absolute inset-0 z-20 pointer-events-none flex flex-col justify-between p-2 sm:p-3 md:p-6 select-none">
@@ -146,6 +173,26 @@ export const GameHUD: React.FC<GameHUDProps> = ({
           {String(remainingMin).padStart(2, '0')}:{remainingSecPadded}
         </span>
       </div>
+
+      {/* Power-up Announcement — Pure text without any box/frame, positioned right below countdown */}
+      {announcement && (
+        <div
+          key={announcement.id}
+          className="mt-1 flex flex-col items-center text-center pointer-events-none select-none animate-in fade-in zoom-in-95 duration-200 px-2"
+        >
+          <div className="flex items-center justify-center gap-2 sm:gap-3">
+            {getAnnouncementIcon(announcement.type)}
+            <span
+              className={`font-orbitron font-black text-2xl sm:text-3xl md:text-4xl tracking-wider uppercase ${announcement.color} drop-shadow-[0_0_20px_${announcement.glowColor}] drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] leading-tight`}
+            >
+              {announcement.title}
+            </span>
+          </div>
+          <span className="font-rajdhani font-bold text-base sm:text-xl md:text-2xl text-white drop-shadow-[0_2px_5px_rgba(0,0,0,1)] drop-shadow-[0_0_16px_rgba(0,0,0,1)] tracking-wide mt-1.5 max-w-2xl text-center leading-snug">
+            {announcement.subtitle}
+          </span>
+        </div>
+      )}
 
       {/* Power-up Notifications — right below the countdown timer */}
       <div className="mt-1 flex flex-col items-center gap-2 z-10 pointer-events-none">

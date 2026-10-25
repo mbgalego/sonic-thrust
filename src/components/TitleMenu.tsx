@@ -107,12 +107,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
   const handleSetDifficulty = (level: DifficultyLevel) => {
     onSelectDifficulty(level);
-    const config = DIFFICULTY_PRESETS[level];
-    if (!config.allowFlightAssist) {
-      onOptionsChange({ ...options, flightAssist: false });
-    } else {
-      onOptionsChange({ ...options, flightAssist: config.defaultFlightAssist });
-    }
+    onOptionsChange({ ...options, flightAssist: false });
   };
 
   return (
@@ -398,9 +393,12 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                       </span>
                     </div>
 
-                    {/* Full-width 60FPS Reactive Mini Equalizer Canvas */}
+                    {/* Full-width 60FPS Reactive Mini Equalizer Canvas - Only reacts when track preview is active */}
                     <div className="w-full h-6 mt-1.5">
-                      <MiniEqualizer className="w-full h-6" />
+                      <MiniEqualizer
+                        className="w-full h-6"
+                        active={Boolean(previewingTrackId && previewingTrackId === selectedTrack?.id)}
+                      />
                     </div>
                   </div>
                 </div>
@@ -629,7 +627,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                 OPÇÕES (ÁUDIO E VOO)
               </h2>
               <span className="text-[10px] font-mono text-cyan-400/80">
-                {options.flightAssist ? 'ASSIST. ATIVA' : 'MANUAL'}
+                VOO MANUAL
               </span>
             </div>
 
@@ -651,7 +649,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                         CONFIGURAÇÕES DE VOO E ÁUDIO
                       </span>
                       <span className="font-rajdhani text-xs text-gray-300 font-medium truncate mt-0.5">
-                        {options.flightAssist ? 'Auto-Estabilização Ligada' : 'Voo Manual'} • Mús {Math.round(options.musicVolume * 100)}% • SFX {Math.round(options.sfxVolume * 100)}%
+                        Voo Manual (100% Reflexos) • Mús {Math.round(options.musicVolume * 100)}% • SFX {Math.round(options.sfxVolume * 100)}%
                       </span>
                     </div>
                   </div>
@@ -664,7 +662,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                 {/* Inline Scrollable Options Dropdown Panel */}
                 {isOptionsOpen && (
                   <div className="mt-3 pt-3 border-t border-cyan-500/25 flex flex-col gap-3 max-h-64 sm:max-h-72 overflow-y-auto pr-1 text-xs font-rajdhani">
-                    {/* Flight Assist Toggle */}
+                    {/* Flight Assist (Always Deactivated) */}
                     <div className="p-2.5 rounded-xl bg-slate-900/70 border border-white/10 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <Compass className="w-4 h-4 text-cyan-400 shrink-0" />
@@ -673,28 +671,14 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                             Flight Assist (Auto-Estabilização)
                           </div>
                           <div className="text-[11px] text-gray-400 leading-tight">
-                            Torque corretivo automático para nivelar a nave a 0°
+                            Desativado permanentemente — Voo 100% manual e reflexos puros
                           </div>
                         </div>
                       </div>
 
-                      {currentDiffConfig.allowFlightAssist ? (
-                        <button
-                          type="button"
-                          onClick={() => onOptionsChange({ ...options, flightAssist: !options.flightAssist })}
-                          className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition cursor-pointer shrink-0 ${
-                            options.flightAssist
-                              ? 'bg-cyan-500 text-black shadow-md shadow-cyan-500/30'
-                              : 'bg-white/10 text-gray-400 hover:bg-white/20'
-                          }`}
-                        >
-                          {options.flightAssist ? 'LIGADO' : 'DESLIGADO'}
-                        </button>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-950/80 border border-rose-500/40 text-rose-300 shrink-0">
-                          BLOQUEADO (EXTREME)
-                        </span>
-                      )}
+                      <span className="px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold bg-white/10 text-gray-400 shrink-0">
+                        DESATIVADO
+                      </span>
                     </div>
 
                     {/* Drift Compensation Toggle */}
@@ -828,7 +812,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                         <Sliders className="w-3.5 h-3.5 text-cyan-400" />
                         <span>Propulsores Dual-Thruster</span>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 font-mono text-[10px]">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 font-mono text-[10px]">
                         <div className="p-2 rounded-lg bg-cyan-950/40 border border-cyan-500/30">
                           <div className="text-cyan-300 font-bold">MOTOR ESQ.</div>
                           <div className="text-gray-300 text-[10px]">[A] / [←] ou Toque Esq.</div>
@@ -836,10 +820,6 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                         <div className="p-2 rounded-lg bg-pink-950/40 border border-pink-500/30">
                           <div className="text-pink-300 font-bold">MOTOR DIR.</div>
                           <div className="text-gray-300 text-[10px]">[D] / [→] ou Toque Dir.</div>
-                        </div>
-                        <div className="p-2 rounded-lg bg-fuchsia-950/40 border border-fuchsia-500/30">
-                          <div className="text-fuchsia-300 font-bold">EMPUXO VERTICAL</div>
-                          <div className="text-gray-300 text-[10px]">[A+D] ou Ambos os lados</div>
                         </div>
                       </div>
                     </div>
@@ -861,7 +841,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                           <span className="text-emerald-300 font-bold">PULSO SÓNICO</span>: Limpa obstáculos e lasers.
                         </div>
                         <div className="p-1.5 rounded-lg bg-purple-950/40 border border-purple-400/30">
-                          <span className="text-purple-300 font-bold">MODO FANTASMA</span>: Atravessa paredes por 4s.
+                          <span className="text-purple-300 font-bold">MODO FANTASMA</span>: Atravessa obstáculos por 6s.
                         </div>
                         <div className="p-1.5 rounded-lg bg-amber-950/40 border border-amber-400/30">
                           <span className="text-amber-300 font-bold">AMORTECEDOR</span>: Absorve impactos cinéticos.
@@ -894,10 +874,10 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
       </main>
 
-      {/* Subtle Footer Note */}
-      <footer className="relative z-10 flex items-center justify-between text-[11px] font-mono text-cyan-500/60 pt-2 border-t border-white/5 max-w-6xl w-full mx-auto">
-        <span>SONIC THRUST · PROTOCOLO DUAL-THRUSTER</span>
-        <span className="hidden sm:inline">ZERO CONTACT · HARMONIC FLIGHT</span>
+      {/* Footer: Version and Last Update Date on left, Author on right */}
+      <footer className="relative z-10 flex items-center justify-between text-xs sm:text-sm font-mono text-cyan-400/90 pt-3 pb-2 border-t border-white/10 max-w-6xl w-full mx-auto px-2">
+        <span className="tracking-wide">v1.18.0 · 25/10/2026</span>
+        <span className="tracking-wide font-semibold text-gray-200">Por Miguel Galego</span>
       </footer>
 
     </div>

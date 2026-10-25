@@ -13,7 +13,8 @@ import {
   TrackMetadata,
   GameOptions,
   GameStats,
-  PowerUpType
+  PowerUpType,
+  PowerUpAnnouncement
 } from './types/game';
 import { TitleMenu } from './components/TitleMenu';
 import { GameHUD } from './components/GameHUD';
@@ -21,6 +22,56 @@ import { PauseModal } from './components/PauseModal';
 import { EndGameModal } from './components/EndGameModal';
 
 const DEFAULT_TRACKS: TrackMetadata[] = [
+  {
+    "id": "classical-cybernetic",
+    "title": "Classical Cybernetic",
+    "artist": "miguelius",
+    "filename": "Classical Cybernetic.m4a",
+    "estimatedBpm": 130,
+    "duration": 245,
+    "description": "Fusão eletrizante entre música clássica barroca e synthwave cibernético de alta voltagem.",
+    "isProcedural": false
+  },
+  {
+    "id": "cuig-noimead-eile",
+    "title": "Cúig Nóiméad Eile",
+    "artist": "miguelius",
+    "filename": "Cúig Nóiméad Eile.mp3",
+    "estimatedBpm": 128,
+    "duration": 265,
+    "description": "Viagem rítmica envolvente com influências celtas futuristas e batida pulsante.",
+    "isProcedural": false
+  },
+  {
+    "id": "high-tech-cello",
+    "title": "High Tech Cello",
+    "artist": "miguelius",
+    "filename": "High Tech Cello.mp3",
+    "estimatedBpm": 132,
+    "duration": 239,
+    "description": "Violoncelo futurista hiper-processado sobre graves analógicos e ritmo cortante.",
+    "isProcedural": false
+  },
+  {
+    "id": "no-fear-no-ending",
+    "title": "No Fear, No Ending",
+    "artist": "miguelius",
+    "filename": "No Fear, No Ending.mp3",
+    "estimatedBpm": 135,
+    "duration": 245,
+    "description": "Hino épico acelerado com guitarras sintetizadas e percussão enérgica para corridas de alta velocidade.",
+    "isProcedural": false
+  },
+  {
+    "id": "o-compasso-da-saudade",
+    "title": "O Compasso da Saudade",
+    "artist": "miguelius",
+    "filename": "O Compasso da Saudade.mp3",
+    "estimatedBpm": 120,
+    "duration": 230,
+    "description": "Melodia emotiva e nostálgica pontuada por batidas espaciais e atmosferas etéreas.",
+    "isProcedural": false
+  },
   {
     "id": "kosmonova-ayla",
     "title": "Ayla",
@@ -82,6 +133,16 @@ const DEFAULT_TRACKS: TrackMetadata[] = [
     "isProcedural": false
   },
   {
+    "id": "redux-abyssum",
+    "title": "Redux Abyssum",
+    "artist": "Abyss Project",
+    "filename": "Redux Abyssum.mp3",
+    "estimatedBpm": 128,
+    "duration": 300,
+    "description": "Faixa synthwave abissal com graves profundos e pulsos rítmicos que criam uma atmosfera imersiva.",
+    "isProcedural": false
+  },
+  {
     "id": "cyber-overdrive",
     "title": "Cyber Overdrive (Procedural Synth)",
     "artist": "Sonic Thrust Labs",
@@ -110,18 +171,67 @@ const DEFAULT_TRACKS: TrackMetadata[] = [
     "duration": 84,
     "description": "Ondas subsónicas profundas com fortes oscilações no teto e chão.",
     "isProcedural": true
-  },
-  {
-    "id": "redux-abyssum",
-    "title": "Redux Abyssum",
-    "artist": "Abyss Project",
-    "filename": "Redux Abyssum.mp3",
-    "estimatedBpm": 128,
-    "duration": 300,
-    "description": "Faixa synthwave abissal com graves profundos e pulsos rítmicos que criam uma atmosfera imersiva.",
-    "isProcedural": false
   }
 ];
+
+const POWER_UP_ANNOUNCEMENTS: Record<PowerUpType, { title: string; subtitle: string; color: string; borderColor: string; glowColor: string }> = {
+  ETHEREAL: {
+    title: 'Tu és um fantasma!',
+    subtitle: 'Atravessa todos os obstáculos por 6 segundos',
+    color: 'text-fuchsia-300',
+    borderColor: 'border-fuchsia-400',
+    glowColor: 'rgba(217, 70, 239, 0.9)'
+  },
+  SHIELD: {
+    title: 'Escudo de Fase Ativado!',
+    subtitle: 'Proteção impenetrável contra a próxima colisão',
+    color: 'text-cyan-300',
+    borderColor: 'border-cyan-400',
+    glowColor: 'rgba(0, 240, 255, 0.9)'
+  },
+  DAMPER: {
+    title: 'Amortecedor Inercial Ativado!',
+    subtitle: 'Absorção de impacto cinético e estabilidade aumentada',
+    color: 'text-emerald-300',
+    borderColor: 'border-emerald-400',
+    glowColor: 'rgba(34, 197, 94, 0.9)'
+  },
+  LOW_G: {
+    title: 'Gravidade Reduzida!',
+    subtitle: 'Surto de microgravidade — voo ultra-leve por 5 segundos',
+    color: 'text-yellow-300',
+    borderColor: 'border-yellow-400',
+    glowColor: 'rgba(250, 204, 21, 0.9)'
+  },
+  PULSE: {
+    title: 'Pulso Sónico Disparado!',
+    subtitle: 'Onda de choque que desativa lasers e minas de ressonância',
+    color: 'text-cyan-300',
+    borderColor: 'border-cyan-400',
+    glowColor: 'rgba(6, 182, 212, 0.9)'
+  },
+  INVULNERABLE: {
+    title: 'Invulnerabilidade Total!',
+    subtitle: 'Imunidade completa contra todos os danos por 3.5 segundos',
+    color: 'text-rose-300',
+    borderColor: 'border-rose-500',
+    glowColor: 'rgba(244, 63, 94, 0.9)'
+  },
+  CHRONO_DILATION: {
+    title: 'Distorção Temporal Ativada!',
+    subtitle: 'Câmara lenta a 50% — reflexos hiper-acelerados por 5 segundos',
+    color: 'text-teal-300',
+    borderColor: 'border-teal-400',
+    glowColor: 'rgba(20, 184, 166, 0.9)'
+  },
+  SINGULARITY: {
+    title: 'Singularidade Gravitacional!',
+    subtitle: 'Vórtice atrai todos os orbes e cristais de ressonância',
+    color: 'text-purple-300',
+    borderColor: 'border-purple-400',
+    glowColor: 'rgba(168, 85, 247, 0.9)'
+  }
+};
 
 export default function App() {
   const [gameState, setGameState] = useState<GameState>('MENU');
@@ -129,11 +239,13 @@ export default function App() {
   const [selectedTrack, setSelectedTrack] = useState<TrackMetadata | null>(DEFAULT_TRACKS[0]);
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('NORMAL');
   const [options, setOptions] = useState<GameOptions>({
-    flightAssist: true,
+    flightAssist: false, // Permanently deactivated
     driftCompensation: true,
     musicVolume: 0.85,
     sfxVolume: 0.8
   });
+  const [activeAnnouncement, setActiveAnnouncement] = useState<PowerUpAnnouncement | null>(null);
+  const announcementTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [previewingTrackId, setPreviewingTrackId] = useState<string | null>(null);
   const [loadingTrackId, setLoadingTrackId] = useState<string | null>(null);
 
@@ -193,6 +305,7 @@ export default function App() {
   // 1. Fetch available tracks from /tracks/tracks.json on mount
   useEffect(() => {
     let isMounted = true;
+    audio.preloadMenuMusic().catch(() => {});
     const fetchManifest = async () => {
       try {
         const response = await fetch('/tracks/tracks.json');
@@ -373,6 +486,20 @@ export default function App() {
 
       newWorld.onPowerUpCollected = (type) => {
         audio.playPowerUpSfx(type);
+        if (announcementTimerRef.current) {
+          clearTimeout(announcementTimerRef.current);
+        }
+        const announcementData = POWER_UP_ANNOUNCEMENTS[type];
+        if (announcementData) {
+          setActiveAnnouncement({
+            ...announcementData,
+            type,
+            id: Date.now()
+          });
+          announcementTimerRef.current = setTimeout(() => {
+            setActiveAnnouncement(null);
+          }, 3000);
+        }
         if (rendererRef.current) {
           const colorMap: Record<PowerUpType, string> = {
             SHIELD: '#00f0ff',
@@ -690,6 +817,7 @@ export default function App() {
           trackTitle={selectedTrack?.title || 'Sonic Orbit'}
           onPause={handlePause}
           launchGraceTimer={worldRef.current.launchGraceTimer}
+          announcement={activeAnnouncement}
         />
       )}
 

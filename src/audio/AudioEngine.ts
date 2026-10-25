@@ -27,6 +27,7 @@ export class AudioEngine {
   // Dedicated Menu Music state & buffer
   private menuMusicSource: AudioBufferSourceNode | null = null;
   private menuMusicBuffer: AudioBuffer | null = null;
+  private menuMusicLoadingPromise: Promise<AudioBuffer> | null = null;
   private isMenuMusicPlaying: boolean = false;
   private isMenuMusicMutedState: boolean = false;
   private menuMusicStartTime: number = 0;
@@ -613,9 +614,53 @@ export class AudioEngine {
   }
 
   /**
+   * Preload the dedicated Menu Theme ("Sonic Thrust - Main Menu Theme.mp3") in the background.
+   */
+  public async preloadMenuMusic(): Promise<void> {
+    if (this.menuMusicBuffer || this.menuMusicLoadingPromise) return;
+    try {
+      await this.init();
+      if (!this.ctx) return;
+      this.menuMusicLoadingPromise = this.fetchAndDecodeMenuTheme();
+      this.menuMusicBuffer = await this.menuMusicLoadingPromise;
+    } catch (e) {
+      console.warn('Preload menu music error:', e);
+    } finally {
+      this.menuMusicLoadingPromise = null;
+    }
+  }
+
+  /**
+   * Fetches and decodes the audio track for "Sonic Thrust - Main Menu Theme.mp3"
+   */
+  private async fetchAndDecodeMenuTheme(): Promise<AudioBuffer> {
+    if (!this.ctx) throw new Error('AudioContext required');
+    try {
+      const themeUrl = encodeURI('/tracks/Sonic Thrust - Main Menu Theme.mp3');
+      const response = await fetch(themeUrl);
+      if (response.ok) {
+        const arrayBuffer = await response.arrayBuffer();
+        let decoded: AudioBuffer;
+        try {
+          decoded = await this.ctx.decodeAudioData(arrayBuffer.slice(0));
+        } catch {
+          decoded = await new Promise<AudioBuffer>((resolve, reject) => {
+            this.ctx!.decodeAudioData(arrayBuffer.slice(0), resolve, reject);
+          });
+        }
+        return decoded;
+      }
+    } catch (err) {
+      console.warn('Could not load Sonic Thrust - Main Menu Theme.mp3, falling back to procedural:', err);
+    }
+    return this.generateMenuMusicBuffer();
+  }
+
+  /**
    * Menu Background Music Management
-   * Plays a synthesized dreamwave soundtrack during title menu,
+   * Plays the official soundtrack "Sonic Thrust - Main Menu Theme.mp3" during the title menu,
    * cleanly pausing when the user previews any track and resuming when preview stops.
+   * If the file is unavailable or fails to decode, smoothly falls back to procedural synthwave.
    */
   public async playMenuMusic(): Promise<void> {
     await this.init();
@@ -627,7 +672,19 @@ export class AudioEngine {
     }
 
     if (!this.menuMusicBuffer) {
-      this.menuMusicBuffer = this.generateMenuMusicBuffer();
+      if (!this.menuMusicLoadingPromise) {
+        this.menuMusicLoadingPromise = this.fetchAndDecodeMenuTheme();
+      }
+      try {
+        this.menuMusicBuffer = await this.menuMusicLoadingPromise;
+      } finally {
+        this.menuMusicLoadingPromise = null;
+      }
+    }
+
+    // Re-verify guards after async decoding in case state changed
+    if (this.isMenuMusicPlaying || this.isPlaying || this.isMenuMusicMutedState || !this.ctx || !this.musicPreGain) {
+      return;
     }
 
     try {
