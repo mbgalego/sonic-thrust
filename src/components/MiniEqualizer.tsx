@@ -1,6 +1,8 @@
 /**
  * Sonic Thrust - Mini Live Equalizer Canvas
- * 60FPS Reactive Audio Spectrum Bars for Track Card
+ * 60FPS Reactive Audio Spectrum Bars for Track Card.
+ * Only bounces and reacts when a track preview is actively playing.
+ * Sits quietly in a dimmed resting state during menu music playback.
  */
 
 import React, { useEffect, useRef } from 'react';
@@ -9,13 +11,20 @@ import { audio } from '../audio/AudioEngine';
 interface MiniEqualizerProps {
   className?: string;
   barCount?: number;
+  active?: boolean;
 }
 
 export const MiniEqualizer: React.FC<MiniEqualizerProps> = ({
   className = '',
-  barCount = 25
+  barCount = 25,
+  active = false
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const activeRef = useRef(active);
+
+  useEffect(() => {
+    activeRef.current = active;
+  }, [active]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -55,8 +64,10 @@ export const MiniEqualizer: React.FC<MiniEqualizerProps> = ({
 
       ctx.clearRect(0, 0, w, h);
 
-      const freqData = audio.getFrequencyData(0.25, dt);
-      const isPlaying = audio.isAnyMusicPlaying();
+      // Only animate actively when explicitly enabled AND a track (preview) is playing.
+      // Ignores menu background music so players are not misled into thinking the track is playing.
+      const isReactive = activeRef.current && audio.isTrackPlaying();
+      const freqData = isReactive ? audio.getFrequencyData(0.25, dt) : null;
 
       const totalGap = 2; // px between bars
       const barWidth = Math.max(2, (w - (barCount - 1) * totalGap) / barCount);
@@ -66,7 +77,7 @@ export const MiniEqualizer: React.FC<MiniEqualizerProps> = ({
         const baseline = baselineHeights[i % baselineHeights.length] || 4;
 
         let targetH = baseline;
-        if (isPlaying && freqData.frequencyArray) {
+        if (isReactive && freqData?.frequencyArray) {
           // Logarithmic bin distribution favoring bass and low-mids
           const binIndex = Math.min(
             freqData.frequencyArray.length - 1,
@@ -76,8 +87,8 @@ export const MiniEqualizer: React.FC<MiniEqualizerProps> = ({
           // Scale to canvas height
           targetH = Math.max(2.5, rawEnergy * (h - 2) + baseline * 0.15);
         } else {
-          // Quiet resting breathing state
-          targetH = Math.max(2, baseline * 0.7 + Math.sin(time * 0.002 + i * 0.4) * 0.8);
+          // Quiet resting standby state
+          targetH = Math.max(2, baseline * 0.4);
         }
 
         // Fast attack, smooth decay
@@ -87,13 +98,15 @@ export const MiniEqualizer: React.FC<MiniEqualizerProps> = ({
         const bx = i * (barWidth + totalGap);
         const by = h - currentHeights[i];
 
-        // Cyan on left (norm < 0.5) transitioning to Magenta on right
-        const color = norm < 0.55 ? '#00f0ff' : '#ec4899';
+        // Cyan on left (norm < 0.55) transitioning to Magenta on right
+        const color = isReactive
+          ? (norm < 0.55 ? '#00f0ff' : '#ec4899')
+          : (norm < 0.55 ? 'rgba(0, 240, 255, 0.32)' : 'rgba(236, 72, 153, 0.32)');
         const shadowColor = norm < 0.55 ? 'rgba(0, 240, 255, 0.7)' : 'rgba(236, 72, 153, 0.7)';
 
         ctx.fillStyle = color;
         ctx.shadowColor = shadowColor;
-        ctx.shadowBlur = 4;
+        ctx.shadowBlur = isReactive ? 4 : 0;
 
         // Rounded top bar
         const radius = Math.min(barWidth / 2, 1.5);
@@ -109,8 +122,8 @@ export const MiniEqualizer: React.FC<MiniEqualizerProps> = ({
         ctx.fill();
 
         // Tip highlight
-        ctx.fillStyle = '#ffffff';
-        ctx.shadowBlur = 2;
+        ctx.fillStyle = isReactive ? '#ffffff' : 'rgba(255, 255, 255, 0.25)';
+        ctx.shadowBlur = isReactive ? 2 : 0;
         ctx.fillRect(bx, by, barWidth, 1);
       }
 

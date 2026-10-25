@@ -78,6 +78,37 @@
 ---
 
 ## 3. Changelog & Recent Fixes
+- **v1.18.0 (Main Menu Footer Attribution & High-Legibility Power-Up Subtitles)**:
+  1. *Main Menu Footer Attribution*: Updated footer in `TitleMenu.tsx` to display `v1.18.0 · 25/10/2026` on the left and author credit `Por Miguel Galego` on the right, cleanly formatted and visible on all mobile and desktop screens.
+  2. *High-Legibility Power-Up Subtitle Explanations*: Significantly enlarged the power-up notification explanation subtitle in `GameHUD.tsx` from `text-xs sm:text-sm` to `text-base sm:text-xl md:text-2xl font-bold` with dual high-contrast drop-shadows and expanded power-up icons (`w-7 h-7 sm:w-8 sm:h-8`), ensuring effortless readability on small smartphone screens during flight.
+- **v1.17.0 (Ghost Mode Overhaul, Chrono Dilation Bullet-Time & Prominent Power-Up Banners)**:
+  1. *Permanent Flight Assist Deactivation*: Flight assist is permanently deactivated across all difficulties (`NORMAL`, `PRO`, `EXTREME`) and options menus, cementing 100% manual piloting skill and pure reflexes.
+  2. *Authentic Ghost Mode Appearance*: In `ETHEREAL` mode, the ship now renders with a pulsating semi-transparent ghostly opacity (`alpha ~0.16–0.28`), an animated marching dashed outline (`setLineDash([5, 4])`), ghostly translucent lavender/cyan hull coloring, and spectral trailing wisps, making ghost form unmistakable.
+  3. *Frameless Text-Only Announcements Below Countdown*: Collecting any power-up displays a clean, frameless neon text announcement directly beneath the countdown timer (pure typography and icon, without any boxed frame), lasting 3 seconds:
+     - **Modo Fantasma**: *"Tu és um fantasma!"* ("Atravessa todos os obstáculos por 6 segundos")
+     - **Distorção Temporal**: *"Distorção Temporal Ativada!"* ("Câmara lenta a 50% — reflexos hiper-acelerados")
+     - **Escudo de Fase**: *"Escudo de Fase Ativado!"* ("Proteção impenetrável contra a próxima colisão")
+     - **Amortecedor Inercial**: *"Amortecedor Inercial Ativado!"* ("Absorção de impacto cinético e estabilidade aumentada")
+     - **Gravidade Reduzida**: *"Gravidade Reduzida!"* ("Surto de microgravidade — voo ultra-leve")
+     - **Pulso Sónico**: *"Pulso Sónico Disparado!"* ("Onda de choque que desativa lasers e minas de ressonância")
+     - **Invulnerabilidade**: *"Invulnerabilidade Total!"* ("Imunidade completa contra todos os danos")
+     - **Singularidade**: *"Singularidade Gravitacional!"* ("Vórtice atrai todos os orbes e cristais de ressonância")
+  4. *Chrono Dilation Physical Bullet-Time & Visual Overhaul*:
+     - **Physical Slowdown**: `applyThrusterForces` now scales by `timeScale = 0.50` so ship flight, velocity, gravity, and controls enter true 50% slow-motion bullet time synchronized with obstacle movement.
+     - **Temporal After-Images (Chronostasis Echoes)**: Trailing chromatic phantom hulls (teal, cyan, amber, violet) drift in the ship's wake.
+     - **Screen-Space Temporal Distortion**: Fullscreen radial teal/matrix vignette, temporal corner framing brackets, and expanding radial time shockwave rings.
+  5. *Instruction Manual Cleanup*: Removed the redundant "EMPUXO VERTICAL" box from the Dual-Thruster controls card in the title menu manual.
+- **v1.16.0 (Dedicated Menu Theme & Expanded Tracklist)**:
+  1. *Official Menu Theme ("Sonic Thrust - Main Menu Theme.mp3")*: The Title Menu background music now streams and loops the dedicated soundtrack `Sonic Thrust - Main Menu Theme.mp3`, preloaded on app initialization and seamlessly decoded with procedural synthwave fallback if unreachable. Excluded from the playable track selector so it serves exclusively as the game's menu identity soundtrack.
+  2. *Expanded Playable Track Manifest (`tracks.json`)*: Added newly uploaded songs to `public/tracks/tracks.json` and synchronized `DEFAULT_TRACKS` in `App.tsx`:
+     - `Classical Cybernetic` - miguelius (130 BPM, 245s, `.m4a`)
+     - `Cúig Nóiméad Eile` - miguelius (128 BPM, 265s)
+     - `High Tech Cello` - miguelius (132 BPM, 239s)
+     - `No Fear, No Ending` - miguelius (135 BPM, 245s)
+     - `O Compasso da Saudade` - miguelius (120 BPM, 230s)
+  3. *Equalizer Reactivity Separation*:
+     - **Mini Equalizer (`MiniEqualizer.tsx`)**: Sits right beside the selected track title in the mission card; now responds strictly when a track preview is active (`active={previewingTrackId === selectedTrack?.id} && audio.isTrackPlaying()`). During menu music playback, it remains in a dimmed, quiet resting standby baseline so users aren't confused into thinking the mission track is already playing.
+     - **Main Visualizer (`SynthwaveVisualizer.tsx`)**: Continues responding to all music across the app (both menu background theme and track previews).
 - **v1.15.0 (Hypersonic Atmospheric Entry & Dissipating Wake Trails)**:
   1. *500+ Speed Activation Threshold*: The visual high-speed effects now activate strictly at speeds starting at **500** (`HIGH_SPEED_MIN = 500`, scaling to 780+), ensuring normal cruise speeds (200-400) remain clean without constant activation.
   2. *Atmospheric Bow Shock Envelope & Mach Streamlines*: Replaced electric lightning bolts and synthetic sounds with an authentic hypersonic atmospheric re-entry effect: a curved supersonic bow shock wave wrapping around the nose and wings, aerodynamic air stagnation compression plasma heating on the nosecone, Prandtl-Glauert vapor shock waves, and high-velocity Mach air streamlines.

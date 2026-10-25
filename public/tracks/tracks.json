@@ -1,5 +1,55 @@
 [
   {
+    "id": "classical-cybernetic",
+    "title": "Classical Cybernetic",
+    "artist": "miguelius",
+    "filename": "Classical Cybernetic.m4a",
+    "estimatedBpm": 130,
+    "duration": 245,
+    "description": "Fusão eletrizante entre música clássica barroca e synthwave cibernético de alta voltagem.",
+    "isProcedural": false
+  },
+  {
+    "id": "cuig-noimead-eile",
+    "title": "Cúig Nóiméad Eile",
+    "artist": "miguelius",
+    "filename": "Cúig Nóiméad Eile.mp3",
+    "estimatedBpm": 128,
+    "duration": 265,
+    "description": "Viagem rítmica envolvente com influências celtas futuristas e batida pulsante.",
+    "isProcedural": false
+  },
+  {
+    "id": "high-tech-cello",
+    "title": "High Tech Cello",
+    "artist": "miguelius",
+    "filename": "High Tech Cello.mp3",
+    "estimatedBpm": 132,
+    "duration": 239,
+    "description": "Violoncelo futurista hiper-processado sobre graves analógicos e ritmo cortante.",
+    "isProcedural": false
+  },
+  {
+    "id": "no-fear-no-ending",
+    "title": "No Fear, No Ending",
+    "artist": "miguelius",
+    "filename": "No Fear, No Ending.mp3",
+    "estimatedBpm": 135,
+    "duration": 245,
+    "description": "Hino épico acelerado com guitarras sintetizadas e percussão enérgica para corridas de alta velocidade.",
+    "isProcedural": false
+  },
+  {
+    "id": "o-compasso-da-saudade",
+    "title": "O Compasso da Saudade",
+    "artist": "miguelius",
+    "filename": "O Compasso da Saudade.mp3",
+    "estimatedBpm": 120,
+    "duration": 230,
+    "description": "Melodia emotiva e nostálgica pontuada por batidas espaciais e atmosferas etéreas.",
+    "isProcedural": false
+  },
+  {
     "id": "kosmonova-ayla",
     "title": "Ayla",
     "artist": "Kosmonova",
@@ -60,6 +110,16 @@
     "isProcedural": false
   },
   {
+    "id": "redux-abyssum",
+    "title": "Redux Abyssum",
+    "artist": "Abyss Project",
+    "filename": "Redux Abyssum.mp3",
+    "estimatedBpm": 128,
+    "duration": 300,
+    "description": "Faixa synthwave abissal com graves profundos e pulsos rítmicos que criam uma atmosfera imersiva.",
+    "isProcedural": false
+  },
+  {
     "id": "cyber-overdrive",
     "title": "Cyber Overdrive (Procedural Synth)",
     "artist": "Sonic Thrust Labs",
@@ -88,15 +148,5 @@
     "duration": 84,
     "description": "Ondas subsónicas profundas com fortes oscilações no teto e chão.",
     "isProcedural": true
-  },
-  {
-    "id": "redux-abyssum",
-    "title": "Redux Abyssum",
-    "artist": "Abyss Project",
-    "filename": "Redux Abyssum.mp3",
-    "estimatedBpm": 128,
-    "duration": 300,
-    "description": "Faixa synthwave abissal com graves profundos e pulsos rítmicos que criam uma atmosfera imersiva.",
-    "isProcedural": false
   }
 ]

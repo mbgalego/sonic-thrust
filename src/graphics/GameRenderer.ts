@@ -58,6 +58,10 @@ export class GameRenderer {
   private cameraZoom: number = 1.0;
   private isMobileViewport: boolean = false;
 
+  // Chrono Dilation Temporal Motion Echoes
+  private chronoEchoes: Array<{ x: number; y: number; angle: number; time: number }> = [];
+  private lastChronoEchoTime: number = 0;
+
   // Quality setting: 'high' (full effects) or 'low' (reduced particles, lower blur)
   public quality: 'high' | 'low' = 'high';
 
@@ -304,6 +308,13 @@ export class GameRenderer {
     // 7.5. DeLorean High-Speed Fiery Temporal Trail (smoothly dissipating wake)
     this.renderTemporalTrails();
 
+    // 7.8. Chrono Dilation Temporal Motion Echoes (bullet-time after-images)
+    if (world.ship.chronoDilationTimer > 0) {
+      this.renderChronoEchoes(world, isPaused);
+    } else {
+      this.chronoEchoes = [];
+    }
+
     // 8. Player Ship & Jet Exhausts
     if (!world.ship.isDestroyed) {
       this.renderShip(world, isPaused, audioFreq);
@@ -317,6 +328,11 @@ export class GameRenderer {
     // 10. Drop Flash overlay (last: blooms the whole arena)
     if (this.dropFlash > 0.015) {
       this.renderDropFlashOverlay();
+    }
+
+    // 11. Chrono Dilation Full-Screen Temporal Distortion Field
+    if (world.ship.chronoDilationTimer > 0) {
+      this.renderChronoDilationScreenOverlay(world);
     }
   }
 
@@ -1535,10 +1551,12 @@ export class GameRenderer {
       if (flash) ctx.globalAlpha = 0.40;
     }
 
-    // Ethereal Ghost Mode: reduced craft opacity with crisp silhouette
+    // Ethereal Ghost Mode: ship looks like an authentic ghost (dashed, almost invisible, ghostly aura)
     const isEthereal = ship.etherealActiveTimer > 0;
     if (isEthereal) {
-      ctx.globalAlpha = (ctx.globalAlpha ?? 1.0) * 0.55;
+      // Almost invisible, ghostly pulse between 0.16 and 0.28
+      const ghostPulse = 0.22 + 0.08 * Math.sin(Date.now() * 0.007);
+      ctx.globalAlpha = (ctx.globalAlpha ?? 1.0) * ghostPulse;
     }
 
     // 1. Anti-Gravity Launch Stabilizer Field (during first 2.8s)
@@ -1633,15 +1651,20 @@ export class GameRenderer {
     let hullLineWidth = 2.5;
 
     if (isEthereal) {
-      const cyanPulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.009);
-      hullStroke = '#00f0ff';
-      hullFill = 'rgba(6, 182, 212, 0.22)';
-      hullGlow = '#00f0ff';
-      cockpitColor = '#00f0ff';
-      hullLineWidth = 2.8;
-      ctx.shadowBlur = 14 + cyanPulse * 14;
+      const ghostPulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.009);
+      hullStroke = '#c084fc'; // Spectral lavender / electric cyan
+      hullFill = 'rgba(192, 132, 252, 0.06)'; // Ghostly translucent sheen
+      hullGlow = '#a855f7';
+      cockpitColor = '#e9d5ff';
+      hullLineWidth = 2.0;
+      ctx.shadowBlur = 18 + ghostPulse * 12;
+      // Dotted / dashed outline so the ship looks unmistakably like a phantom ghost!
+      ctx.setLineDash([5, 4]);
+      ctx.lineDashOffset = -Date.now() * 0.012;
     } else {
       ctx.shadowBlur = 12;
+      ctx.setLineDash([]);
+      ctx.lineDashOffset = 0;
     }
 
     ctx.shadowColor = hullGlow;
@@ -1733,6 +1756,127 @@ export class GameRenderer {
     if (this.currentSpeedRatio > 0.04) {
       this.renderAtmosphericFrontEffect(ship, this.currentSpeedRatio);
     }
+
+    // Reset line dash so other elements are not affected
+    ctx.setLineDash([]);
+
+    ctx.restore();
+  }
+
+  /**
+   * Chrono Dilation Temporal Motion Blur / After-Images
+   * Leaves semi-transparent chromatic phantom hulls trailing in bullet-time behind the ship
+   */
+  private renderChronoEchoes(world: PhysicsWorld, isPaused: boolean): void {
+    const ship = world.ship;
+    const now = Date.now();
+
+    if (!isPaused && (now - this.lastChronoEchoTime > 40)) {
+      this.lastChronoEchoTime = now;
+      this.chronoEchoes.unshift({ x: ship.x, y: ship.y, angle: ship.angle, time: now });
+      if (this.chronoEchoes.length > 5) this.chronoEchoes.pop();
+    }
+
+    if (this.chronoEchoes.length === 0) return;
+
+    const ctx = this.ctx;
+    const w = ship.width;
+    const h = ship.height;
+    const colors = ['#14b8a6', '#06b6d4', '#f59e0b', '#a855f7', '#38bdf8'];
+
+    for (let i = 0; i < this.chronoEchoes.length; i++) {
+      const echo = this.chronoEchoes[i];
+      const alpha = 0.40 * (1 - i / this.chronoEchoes.length);
+      const color = colors[i % colors.length];
+
+      ctx.save();
+      ctx.translate(echo.x, echo.y);
+      ctx.rotate(echo.angle);
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = color;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 12;
+      ctx.lineWidth = 1.6;
+      ctx.setLineDash([4, 4]);
+
+      // Draw echo hull outline
+      ctx.beginPath();
+      ctx.moveTo(0, -h * 0.65);
+      ctx.lineTo(w * 0.5, h * 0.5);
+      ctx.lineTo(w * 0.25, h * 0.35);
+      ctx.lineTo(-w * 0.25, h * 0.35);
+      ctx.lineTo(-w * 0.5, h * 0.5);
+      ctx.closePath();
+      ctx.stroke();
+
+      ctx.restore();
+    }
+    ctx.setLineDash([]);
+  }
+
+  /**
+   * Chrono Dilation Screen-Wide Temporal Distortion Field
+   * Renders chromatic slow-motion vignette, matrix ripples, and temporal HUD framing
+   */
+  private renderChronoDilationScreenOverlay(_world: PhysicsWorld): void {
+    const ctx = this.ctx;
+    const w = this.width;
+    const h = this.height;
+    const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.008);
+
+    ctx.save();
+
+    // 1. Teal/Matrix edge vignette
+    const grad = ctx.createRadialGradient(w * 0.5, h * 0.5, Math.min(w, h) * 0.32, w * 0.5, h * 0.5, Math.hypot(w, h) * 0.52);
+    grad.addColorStop(0, 'rgba(20, 184, 166, 0)');
+    grad.addColorStop(0.65, 'rgba(20, 184, 166, 0.08)');
+    grad.addColorStop(1, `rgba(20, 184, 166, ${(0.22 + pulse * 0.12).toFixed(3)})`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+
+    // 2. High-tech temporal corner framing brackets
+    ctx.strokeStyle = 'rgba(20, 184, 166, 0.75)';
+    ctx.lineWidth = 2.2;
+    ctx.shadowColor = '#14b8a6';
+    ctx.shadowBlur = 12;
+
+    const cornerSize = 45;
+    // Top-left
+    ctx.beginPath();
+    ctx.moveTo(20, 20 + cornerSize);
+    ctx.lineTo(20, 20);
+    ctx.lineTo(20 + cornerSize, 20);
+    ctx.stroke();
+
+    // Top-right
+    ctx.beginPath();
+    ctx.moveTo(w - 20 - cornerSize, 20);
+    ctx.lineTo(w - 20, 20);
+    ctx.lineTo(w - 20, 20 + cornerSize);
+    ctx.stroke();
+
+    // Bottom-left
+    ctx.beginPath();
+    ctx.moveTo(20, h - 20 - cornerSize);
+    ctx.lineTo(20, h - 20);
+    ctx.lineTo(20 + cornerSize, h - 20);
+    ctx.stroke();
+
+    // Bottom-right
+    ctx.beginPath();
+    ctx.moveTo(w - 20 - cornerSize, h - 20);
+    ctx.lineTo(w - 20, h - 20);
+    ctx.lineTo(w - 20, h - 20 - cornerSize);
+    ctx.stroke();
+
+    // 3. Subtle expanding radial time-wave ring across viewport
+    const waveRadius = ((Date.now() * 0.16) % (Math.hypot(w, h) * 0.45));
+    ctx.beginPath();
+    ctx.arc(w * 0.5, h * 0.5, waveRadius, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(20, 184, 166, ${(0.18 * (1 - waveRadius / (Math.hypot(w, h) * 0.45))).toFixed(3)})`;
+    ctx.lineWidth = 1.8;
+    ctx.setLineDash([8, 8]);
+    ctx.stroke();
 
     ctx.restore();
   }

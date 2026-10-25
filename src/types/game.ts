@@ -43,6 +43,16 @@ export type PowerUpType =
   | 'CHRONO_DILATION' 
   | 'SINGULARITY';
 
+export interface PowerUpAnnouncement {
+  title: string;
+  subtitle: string;
+  type: PowerUpType;
+  color: string;
+  borderColor: string;
+  glowColor: string;
+  id: number;
+}
+
 export interface PowerUpItem {
   id: string;
   type: PowerUpType;
