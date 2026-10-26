@@ -1150,7 +1150,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                         Toda a música original deste jogo (artista <span className="font-semibold text-emerald-300">miguelius</span>) foi criada com uma conta <span className="font-semibold text-emerald-300">Suno Pro</span> e é <span className="font-semibold text-white">licenciada ao autor</span>, podendo ser utilizada comercialmente.
                       </p>
                       <p className="font-rajdhani text-xs sm:text-sm text-gray-300 leading-snug">
-                        Partilha permitida — se usares estas músicas noutros projetos, pede-se apenas <span className="font-semibold text-white">atribuição ao autor</span>: crédito «miguelius» com ligação ao repositório <span className="font-mono text-emerald-300">sonic-thrust</span>.
+                        Partilha permitida — se usares estas músicas noutros projetos, pede-se apenas <span className="font-semibold text-white">atribuição ao autor</span>: crédito «miguelius» com ligação ao repositório <span className="font-mono text-emerald-300">sonic-thrust</span>. A música está licenciada sob <span className="font-semibold text-white">Creative Commons BY 4.0</span>.
                       </p>
                     </div>
 
