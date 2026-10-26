@@ -293,6 +293,10 @@ export default function App() {
   const keysHeld = useRef<{ left: boolean; right: boolean }>({ left: false, right: false });
   const countTickLastSecRef = useRef<number>(-1);
   const timeUpRef = useRef(false);
+
+  // Monotonic token guarding the async track-preview flow: after every await we
+  // re-check it so a superseded request can never resolve and play a stale track.
+  const previewRequestRef = useRef(0);
   const [outOfTime, setOutOfTime] = useState(false);
   const [isStartingMission, setIsStartingMission] = useState(false);
   const touchesHeld = useRef<{ left: boolean; right: boolean }>({ left: false, right: false });
@@ -377,12 +381,17 @@ export default function App() {
     return () => {
       window.removeEventListener('pointerdown', handleUserInteraction);
       window.removeEventListener('keydown', handleUserInteraction);
+      // Clear the menu-music resume hook so a stale callback can never fire menu
+      // music over gameplay/defeat screens once we leave the menu (C1).
+      audio.setOnTrackEnded(null);
     };
   }, [gameState, previewingTrackId]);
 
   // 4. Responsive Track Preview in Menu (One-click instantaneous switch with Menu Music pause)
   const handlePreviewTrack = async (track: TrackMetadata) => {
-    await audio.init();
+    // Monotonic request token: only the LATEST preview request may touch audio
+    // state after any await resolves (C2).
+    const requestToken = ++previewRequestRef.current;
 
     // If already playing this track, toggle it off and resume menu music if not muted
     if (previewingTrackId === track.id) {
@@ -402,12 +411,16 @@ export default function App() {
     setLoadingTrackId(track.id);
 
     try {
+      await audio.init();
+      if (requestToken !== previewRequestRef.current) return; // superseded while initializing
       const buffer = await audio.loadTrack(track);
+      if (requestToken !== previewRequestRef.current) return; // superseded while loading
       audio.pauseMenuMusic(); // Double ensure menu music is silent
       audio.playTrack(buffer, 0);
       setPreviewingTrackId(track.id);
       setLoadingTrackId(null);
     } catch {
+      if (requestToken !== previewRequestRef.current) return; // superseded request failed: ignore
       audio.stopTrack();
       setPreviewingTrackId(null);
       setLoadingTrackId(null);
@@ -427,6 +440,11 @@ export default function App() {
       audio.silenceAllContinuous();
       audio.stopMenuMusic();
       audio.stopTrack();
+      // Defensive: ensure a stale menu-music resume callback can never fire over
+      // gameplay audio (C1 — the menu effect cleanup also clears it on commit).
+      audio.setOnTrackEnded(null);
+      // Invalidate any in-flight preview request so a stale load can't hijack state.
+      previewRequestRef.current++;
       setPreviewingTrackId(null);
       setLoadingTrackId(null);
 
