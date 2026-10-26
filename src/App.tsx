@@ -190,8 +190,8 @@ const POWER_UP_ANNOUNCEMENTS: Record<PowerUpType, { title: string; subtitle: str
     glowColor: 'rgba(0, 240, 255, 0.9)'
   },
   DAMPER: {
-    title: 'Amortecedor Inercial Ativado!',
-    subtitle: 'Absorção de impacto cinético e estabilidade aumentada',
+    title: 'Amortecedor Sónico Ativado!',
+    subtitle: 'O túnel deixa de pulsar com a música — deformação reduzida em 78% durante 6s',
     color: 'text-emerald-300',
     borderColor: 'border-emerald-400',
     glowColor: 'rgba(34, 197, 94, 0.9)'

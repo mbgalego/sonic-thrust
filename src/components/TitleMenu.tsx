@@ -952,10 +952,10 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                           <PowerUpGraphic type="DAMPER" size={48} />
                           <div className="flex flex-col min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="font-orbitron font-bold text-sm text-emerald-300">AMORTECEDOR INERCIAL</span>
+                              <span className="font-orbitron font-bold text-sm text-emerald-300">AMORTECEDOR SÓNICO</span>
                             </div>
                             <p className="font-rajdhani text-xs sm:text-sm text-gray-200 leading-snug mt-0.5">
-                              Amortece impactos violentos e estabiliza instantaneamente a trajetória e rotação.
+                              Acalma o túnel: a deformação que «respira» com o bass da música reduz em 78% durante 6s — corredor estável mesmo nos drops.
                             </p>
                           </div>
                         </div>
