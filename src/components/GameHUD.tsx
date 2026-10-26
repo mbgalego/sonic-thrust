@@ -102,7 +102,7 @@ export const GameHUD: React.FC<GameHUDProps> = ({
   };
 
   return (
-    <div className="absolute inset-0 z-20 pointer-events-none flex flex-col justify-between p-2 sm:p-3 md:p-6 select-none">
+    <div className="absolute inset-0 z-20 pointer-events-none flex flex-col justify-between p-2 sm:p-3 md:p-6 select-none max-h-screen overflow-hidden">
       
       {/* Top Stack: HUD bar → countdown → power-up notifications */}
       <div className="flex flex-col items-center w-full gap-1.5 sm:gap-2">
@@ -262,7 +262,7 @@ export const GameHUD: React.FC<GameHUDProps> = ({
       </div>
 
       {/* Bottom Perimeter Cluster: Speed + Dual-Thruster pressure bars */}
-      <footer className="flex items-end justify-start gap-4 max-w-5xl w-full mx-auto">
+      <footer className="flex items-end justify-start gap-4 max-w-5xl w-full mx-auto shrink-0">
 
         <div className="flex items-end gap-4 bg-black/60 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 font-mono text-xs">
           {/* Speed */}
