@@ -373,9 +373,8 @@ export class PhysicsWorld {
     // NORMAL: Escudo, Low-G, Pulso e Singularidade
     // PRO: Adiciona Amortecedor Sónico e Distorção Temporal
     // EXTREME: Adiciona Imortalidade Sónica exclusiva
-    // ETHEREAL (Modo Fantasma) is NOT part of the rotation — it gets
-    // guaranteed, evenly spaced pickups that scale with track length
-    // (min 2 per level) so ghost availability never starves.
+    // ETHEREAL (Modo Fantasma) is NOT part of the rotation — exactly ONE
+    // guaranteed pickup per level, near the track midpoint, on any difficulty.
     let powerUpCycle: PowerUpType[];
     if (this.difficulty.name === 'NORMAL') {
       powerUpCycle = ['SHIELD', 'LOW_G', 'PULSE', 'SINGULARITY'];
@@ -385,12 +384,8 @@ export class PhysicsWorld {
       powerUpCycle = ['SHIELD', 'DAMPER', 'LOW_G', 'PULSE', 'INVULNERABLE', 'CHRONO_DILATION', 'SINGULARITY'];
     }
     const totalPowerUps = Math.max(8, Math.floor(this.trackDuration / 11));
-    // Guaranteed ETHEREAL slots: evenly spread early/mid/late through the run
-    const etherealCount = Math.max(2, Math.floor(totalPowerUps / 7));
-    const etherealSlots = new Set<number>();
-    for (let m = 0; m < etherealCount; m++) {
-      etherealSlots.add(Math.min(totalPowerUps - 1, Math.floor(((m + 0.5) / etherealCount) * totalPowerUps)));
-    }
+    // Single guaranteed ETHEREAL slot (mid-run, ~50% of the track)
+    const etherealSlot = Math.floor(totalPowerUps / 2);
     
     for (let i = 0; i < totalPowerUps; i++) {
       const progress = (i + 0.5) / totalPowerUps;
@@ -399,7 +394,7 @@ export class PhysicsWorld {
         endSafeX,
         Math.max(startSafeX, startSafeX + progress * playableRange + seedJitter + (Math.random() * 120 - 60))
       );
-      const type: PowerUpType = etherealSlots.has(i) ? 'ETHEREAL' : powerUpCycle[i % powerUpCycle.length];
+      const type: PowerUpType = i === etherealSlot ? 'ETHEREAL' : powerUpCycle[i % powerUpCycle.length];
       const colors: Record<PowerUpType, string> = {
         SHIELD: '#00f0ff',           // Electric Cyan
         DAMPER: '#00ff88',           // Mint Green
