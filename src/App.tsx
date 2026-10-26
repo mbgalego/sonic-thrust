@@ -220,7 +220,6 @@ export default function App() {
   const [selectedTrack, setSelectedTrack] = useState<TrackMetadata | null>(DEFAULT_TRACKS[0]);
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('NORMAL');
   const [options, setOptions] = useState<GameOptions>({
-    flightAssist: false, // Permanently deactivated
     driftCompensation: true,
     musicVolume: 0.85,
     sfxVolume: 0.8
@@ -476,7 +475,6 @@ export default function App() {
       // Create Physics World with music-seeded terrain derived from track ID and BPM
       const newWorld = new PhysicsWorld(
         difficulty,
-        options.flightAssist,
         trackDuration,
         selectedTrack.id,
         trackBpm,
@@ -873,7 +871,6 @@ export default function App() {
           onOptionsChange={(o) => {
             setOptions(o);
             if (worldRef.current) {
-              worldRef.current.setFlightAssist(o.flightAssist);
               worldRef.current.setDriftCompensation(o.driftCompensation);
             }
           }}
@@ -897,11 +894,9 @@ export default function App() {
           onOptionsChange={(o) => {
             setOptions(o);
             if (worldRef.current) {
-              worldRef.current.setFlightAssist(o.flightAssist);
               worldRef.current.setDriftCompensation(o.driftCompensation);
             }
           }}
-          allowFlightAssist={difficulty !== 'EXTREME'}
         />
       )}
 

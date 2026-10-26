@@ -13,7 +13,6 @@ import {
   Info,
   Maximize,
   Minimize,
-  Compass,
   Activity,
   AlertTriangle,
   Shield,
@@ -234,7 +233,6 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
   const handleSetDifficulty = (level: DifficultyLevel) => {
     onSelectDifficulty(level);
-    onOptionsChange({ ...options, flightAssist: false });
   };
 
   return (
@@ -858,25 +856,6 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                 {/* Inline Scrollable Options Dropdown Panel */}
                 {isOptionsOpen && (
                   <div className="mt-3 pt-3 border-t border-cyan-500/25 flex flex-col gap-3 max-h-64 sm:max-h-72 overflow-y-auto pr-1 text-xs font-rajdhani">
-                    {/* Flight Assist (Always Deactivated) */}
-                    <div className="p-3 rounded-xl bg-slate-900/70 border border-white/10 flex items-center justify-between gap-2.5">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <Compass className="w-5 h-5 text-cyan-400 shrink-0" />
-                        <div>
-                          <div className="font-orbitron font-bold text-white text-sm">
-                            Flight Assist (Auto-Estabilização)
-                          </div>
-                          <div className="text-xs sm:text-sm text-gray-300 leading-snug mt-0.5">
-                            Desativado permanentemente — Voo 100% manual e reflexos puros
-                          </div>
-                        </div>
-                      </div>
-
-                      <span className="px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-white/10 text-gray-400 shrink-0">
-                        DESATIVADO
-                      </span>
-                    </div>
-
                     {/* Drift Compensation Toggle */}
                     <div className="p-3 rounded-xl bg-slate-900/70 border border-white/10 flex items-center justify-between gap-2.5">
                       <div className="flex items-center gap-3 min-w-0">

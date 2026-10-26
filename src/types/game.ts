@@ -14,8 +14,6 @@ export interface DifficultyConfig {
   gravityMultiplier: number;    // 0.70, 1.00, 1.30
   initialShields: number;       // 1, 0, 0
   initialLives: number;         // 3, 3, 2
-  allowFlightAssist: boolean;   // true, true, false
-  defaultFlightAssist: boolean; // true, false, false
   laserDensity: number;         // laser beam spawn multiplier (0.55 principiante, 1.0 pro, 1.2 extreme)
   laserGateThreshold: number;   // treble energy needed to fire the beam
   description: string;
@@ -136,7 +134,6 @@ export interface AudioFrequencyData {
 }
 
 export interface GameOptions {
-  flightAssist: boolean;
   driftCompensation: boolean; // neutralizes the ship's slight rightward drift when ON
   musicVolume: number; // 0.0 - 1.0
   sfxVolume: number;   // 0.0 - 1.0
