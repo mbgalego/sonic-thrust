@@ -370,18 +370,27 @@ export class PhysicsWorld {
     const playableRange = endSafeX - startSafeX;
 
     // 1. Refined Power-up Distribution
-    // NORMAL: Escudo, Low-G, Pulso, Fantasma e Singularidade
+    // NORMAL: Escudo, Low-G, Pulso e Singularidade
     // PRO: Adiciona Amortecedor Sónico e Distorção Temporal
     // EXTREME: Adiciona Imortalidade Sónica exclusiva
-    let powerUpTypes: PowerUpType[];
+    // ETHEREAL (Modo Fantasma) is NOT part of the rotation — it gets
+    // guaranteed, evenly spaced pickups that scale with track length
+    // (min 2 per level) so ghost availability never starves.
+    let powerUpCycle: PowerUpType[];
     if (this.difficulty.name === 'NORMAL') {
-      powerUpTypes = ['SHIELD', 'LOW_G', 'PULSE', 'ETHEREAL', 'SINGULARITY'];
+      powerUpCycle = ['SHIELD', 'LOW_G', 'PULSE', 'SINGULARITY'];
     } else if (this.difficulty.name === 'PRO') {
-      powerUpTypes = ['SHIELD', 'DAMPER', 'LOW_G', 'PULSE', 'ETHEREAL', 'CHRONO_DILATION', 'SINGULARITY'];
+      powerUpCycle = ['SHIELD', 'DAMPER', 'LOW_G', 'PULSE', 'CHRONO_DILATION', 'SINGULARITY'];
     } else {
-      powerUpTypes = ['SHIELD', 'DAMPER', 'LOW_G', 'PULSE', 'ETHEREAL', 'INVULNERABLE', 'CHRONO_DILATION', 'SINGULARITY'];
+      powerUpCycle = ['SHIELD', 'DAMPER', 'LOW_G', 'PULSE', 'INVULNERABLE', 'CHRONO_DILATION', 'SINGULARITY'];
     }
     const totalPowerUps = Math.max(8, Math.floor(this.trackDuration / 11));
+    // Guaranteed ETHEREAL slots: evenly spread early/mid/late through the run
+    const etherealCount = Math.max(2, Math.floor(totalPowerUps / 7));
+    const etherealSlots = new Set<number>();
+    for (let m = 0; m < etherealCount; m++) {
+      etherealSlots.add(Math.min(totalPowerUps - 1, Math.floor(((m + 0.5) / etherealCount) * totalPowerUps)));
+    }
     
     for (let i = 0; i < totalPowerUps; i++) {
       const progress = (i + 0.5) / totalPowerUps;
@@ -390,7 +399,7 @@ export class PhysicsWorld {
         endSafeX,
         Math.max(startSafeX, startSafeX + progress * playableRange + seedJitter + (Math.random() * 120 - 60))
       );
-      const type = powerUpTypes[i % powerUpTypes.length];
+      const type: PowerUpType = etherealSlots.has(i) ? 'ETHEREAL' : powerUpCycle[i % powerUpCycle.length];
       const colors: Record<PowerUpType, string> = {
         SHIELD: '#00f0ff',           // Electric Cyan
         DAMPER: '#00ff88',           // Mint Green

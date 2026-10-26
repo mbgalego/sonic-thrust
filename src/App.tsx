@@ -73,16 +73,6 @@ const DEFAULT_TRACKS: TrackMetadata[] = [
     "isProcedural": false
   },
   {
-    "id": "i-knew-you-were-trouble",
-    "title": "I Knew You Were Trouble",
-    "artist": "Walk off the Earth Feat. KRNFX",
-    "filename": "I Knew You Were Trouble - WALK OFF THE EARTH Feat. KRNFX.mp3",
-    "estimatedBpm": 120,
-    "duration": 219,
-    "description": "Beatbox poderoso e harmonias vocais com picos rítmicos marcados.",
-    "isProcedural": false
-  },
-  {
     "id": "hyper-drive",
     "title": "Hyper-Drive",
     "artist": "miguelius",
