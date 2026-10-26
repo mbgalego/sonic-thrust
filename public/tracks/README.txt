@@ -24,8 +24,9 @@
 
 === LICENCIAMENTO DE MÚSICA ===
 
-Toda a música original deste jogo (artista «miguelius») foi criada com uma
-conta Suno Pro e é licenciada ao autor, podendo ser utilizada comercialmente.
+Toda a música original deste jogo (artista «miguelius») foi criada pelo
+artista e é licenciada ao autor, podendo ser utilizada comercialmente.
+Perfil do artista no Suno: https://suno.com/@miguelius
 
 Partilha permitida — se usares estas músicas noutros projetos, pede-se apenas
 atribuição ao autor: crédito «miguelius» com ligação ao repositório

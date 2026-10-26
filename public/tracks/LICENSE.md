@@ -17,7 +17,8 @@ the license, and indicate if changes were made. You may do so in any reasonable
 manner, but not in any way that suggests the licensor endorses you or your use.
 Suggested credit line:
 
-  "Music by miguelius (licensed under CC BY 4.0 — see https://github.com/mbgalego/sonic-thrust)"
+  "Music by miguelius (licensed under CC BY 4.0 — see https://github.com/mbgalego/sonic-thrust)
+   Profile: https://suno.com/@miguelius"
 
 No additional restrictions — You may not apply legal terms or technological
 measures that legally restrict others from doing anything the license permits.
