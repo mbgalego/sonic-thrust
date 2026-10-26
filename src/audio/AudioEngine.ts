@@ -64,6 +64,11 @@ export class AudioEngine {
   private bufferCache: Map<string, AudioBuffer> = new Map();
   private loadingPromises: Map<string, Promise<AudioBuffer>> = new Map();
 
+  // LRU cap for decoded track buffers (M1): an AudioBuffer holds uncompressed
+  // PCM (~85MB per 3-minute stereo track), so the cache MUST NOT grow without
+  // bounds while the player browses/previews tracks in the menu.
+  private static readonly MAX_CACHED_BUFFERS = 3;
+
   constructor() {
     // Lazy init on first user interaction
   }
@@ -270,6 +275,11 @@ export class AudioEngine {
       return;
     }
 
+    // Capture the source being faded out: if the player restarts or starts a
+    // preview during the fade, this timeout must only ever kill THAT source,
+    // never the newly-started track (M2).
+    const fadedSource = this.currentSource;
+
     const now = this.ctx.currentTime;
     try {
       const currentVol = Math.max(0.001, this.musicGain.gain.value);
@@ -281,6 +291,9 @@ export class AudioEngine {
     }
 
     setTimeout(() => {
+      // A newer track started during the fade: playTrack already restored the
+      // gain node — do not touch audio state here.
+      if (this.currentSource !== fadedSource) return;
       this.stopTrack();
       if (this.ctx && this.musicGain) {
         this.musicGain.gain.cancelScheduledValues(this.ctx.currentTime);
@@ -301,8 +314,37 @@ export class AudioEngine {
     }
   }
 
+  /**
+   * LRU insert into bufferCache: refresh recency, then evict the
+   * least-recently-used entries above the cap. The buffer currently playing is
+   * never evicted.
+   */
+  private cacheBuffer(id: string, buffer: AudioBuffer): void {
+    this.bufferCache.delete(id);
+    this.bufferCache.set(id, buffer);
+    let evictions = this.bufferCache.size - AudioEngine.MAX_CACHED_BUFFERS;
+    if (evictions <= 0) return;
+    for (const key of Array.from(this.bufferCache.keys())) {
+      if (evictions <= 0) break;
+      // Never evict the buffer that is currently playing/loaded
+      if (this.bufferCache.get(key) === this.currentBuffer) continue;
+      this.bufferCache.delete(key);
+      evictions--;
+    }
+  }
+
+  /** LRU read: returns the cached buffer and refreshes its recency. */
+  private getCachedBuffer(id: string): AudioBuffer | undefined {
+    const buf = this.bufferCache.get(id);
+    if (buf !== undefined) {
+      this.bufferCache.delete(id);
+      this.bufferCache.set(id, buf);
+    }
+    return buf;
+  }
+
   public isTrackLoaded(trackId: string): boolean {
-    return this.bufferCache.has(trackId);
+    return this.getCachedBuffer(trackId) !== undefined;
   }
 
   public async preloadTrack(track: TrackMetadata): Promise<void> {
@@ -321,12 +363,13 @@ export class AudioEngine {
     if (!this.ctx) throw new Error('AudioContext not ready');
 
     if (track.audioBuffer) {
-      this.bufferCache.set(track.id, track.audioBuffer);
+      this.cacheBuffer(track.id, track.audioBuffer);
       return track.audioBuffer;
     }
 
-    if (this.bufferCache.has(track.id)) {
-      return this.bufferCache.get(track.id)!;
+    const cached = this.getCachedBuffer(track.id);
+    if (cached) {
+      return cached;
     }
 
     if (this.loadingPromises.has(track.id)) {
@@ -348,7 +391,7 @@ export class AudioEngine {
               this.ctx!.decodeAudioData(arrayBuffer.slice(0), resolve, reject);
             });
           }
-          this.bufferCache.set(track.id, decoded);
+          this.cacheBuffer(track.id, decoded);
           return decoded;
         }
       } catch {
@@ -361,7 +404,7 @@ export class AudioEngine {
         track.duration || 90,
         track.id
       );
-      this.bufferCache.set(track.id, proceduralBuffer);
+      this.cacheBuffer(track.id, proceduralBuffer);
       return proceduralBuffer;
     })();
 
@@ -553,6 +596,15 @@ export class AudioEngine {
     this.currentBuffer = buffer;
     this.trackDuration = buffer.duration;
     this.pauseOffset = startOffset;
+
+    // Restore the post-fader gain in case a defeat fade-out ramp was still
+    // scheduled on it — otherwise the new track would start muted/silent.
+    try {
+      this.musicGain.gain.cancelScheduledValues(this.ctx.currentTime);
+      this.musicGain.gain.setValueAtTime(this.currentMusicVolume, this.ctx.currentTime);
+    } catch {
+      // Ignore
+    }
 
     this.currentSource = this.ctx.createBufferSource();
     this.currentSource.buffer = buffer;
