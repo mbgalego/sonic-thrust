@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { audio } from './audio/AudioEngine';
+import { LocalTrackLoader, LocalUploadResult } from './audio/LocalTrackLoader';
 import { PhysicsWorld } from './physics/PhysicsWorld';
 import { GameRenderer } from './graphics/GameRenderer';
 import {
@@ -286,27 +287,39 @@ export default function App() {
   // stale mission parameters (selectedTrack / difficulty / options).
   const startMissionRef = useRef<() => void>(() => {});
 
-  // 1. Fetch available tracks from /tracks/tracks.json on mount
+  // 1. Fetch available tracks: /tracks/tracks.json + locally uploaded (IndexedDB)
   useEffect(() => {
     let isMounted = true;
     audio.preloadMenuMusic().catch(() => {});
     const fetchManifest = async () => {
+      // Remote manifest (bundled catalog), with bundled fallback
+      let remote: TrackMetadata[] = DEFAULT_TRACKS;
       try {
         const response = await fetch('/tracks/tracks.json');
         if (response.ok) {
           const data: TrackMetadata[] = await response.json();
-          if (isMounted && Array.isArray(data) && data.length > 0) {
-            setTracks(data);
-            setSelectedTrack((prev) => {
-              if (prev && prev.id !== DEFAULT_TRACKS[0].id) {
-                return prev;
-              }
-              return data[0] || prev;
-            });
-          }
+          if (Array.isArray(data) && data.length > 0) remote = data;
         }
       } catch {
         // Safe fallback to bundled DEFAULT_TRACKS
+      }
+      // Player-uploaded tracks persist only in this browser (IndexedDB)
+      let local: TrackMetadata[] = [];
+      try {
+        local = await LocalTrackLoader.listLocalTracks();
+      } catch {
+        // Storage unavailable (e.g. private browsing) — bundled catalog only
+      }
+      if (!isMounted) return;
+      const merged = [...remote, ...local];
+      if (merged.length > 0) {
+        setTracks(merged);
+        setSelectedTrack((prev) => {
+          if (prev && prev.id !== DEFAULT_TRACKS[0].id) {
+            return prev;
+          }
+          return merged[0];
+        });
       }
     };
     fetchManifest();
@@ -314,6 +327,30 @@ export default function App() {
       isMounted = false;
     };
   }, []);
+
+  /**
+   * Player uploads: decode + persist locally (IndexedDB), then merge into
+   * the selectable catalog. Returns the per-file outcome for UI feedback.
+   */
+  const handleAddLocalTracks = useCallback(async (files: File[]): Promise<LocalUploadResult> => {
+    const result = await LocalTrackLoader.addLocalFiles(files);
+    if (result.added.length > 0) {
+      setTracks((prev) => [...prev, ...result.added]);
+    }
+    return result;
+  }, []);
+
+  /** Removes a player-uploaded track from IndexedDB and the catalog. */
+  const handleDeleteLocalTrack = async (id: string) => {
+    await LocalTrackLoader.deleteLocalTrack(id);
+    const remaining = tracks.filter((t) => t.id !== id);
+    setTracks(remaining);
+    setSelectedTrack((sel) => {
+      if (sel && sel.id !== id) return sel;
+      // Deleted track was selected: fall back to the first surviving entry
+      return remaining[0] ?? null;
+    });
+  };
 
   // 2. Audio volume syncing
   useEffect(() => {
@@ -845,6 +882,8 @@ export default function App() {
           previewingTrackId={previewingTrackId}
           loadingTrackId={loadingTrackId}
           isStartingMission={isStartingMission}
+          onAddLocalTracks={handleAddLocalTracks}
+          onDeleteLocalTrack={handleDeleteLocalTrack}
         />
       )}
 

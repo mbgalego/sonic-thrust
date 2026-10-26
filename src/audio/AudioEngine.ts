@@ -5,9 +5,16 @@
  */
 
 import { AudioFrequencyData, TrackMetadata, PowerUpType } from '../types/game';
+import { localTrackDB } from './LocalTrackDB';
 
 export class AudioEngine {
   private ctx: AudioContext | null = null;
+
+  /** Context handle for external decoders (e.g. LocalTrackLoader). */
+  public getContext(): AudioContext | null {
+    return this.ctx;
+  }
+
   private masterGain: GainNode | null = null;
   private musicGain: GainNode | null = null;
   private musicPreGain: GainNode | null = null; // Pre-fader bus: unity gain connected to analyser
@@ -374,6 +381,31 @@ export class AudioEngine {
 
     if (this.loadingPromises.has(track.id)) {
       return this.loadingPromises.get(track.id)!;
+    }
+
+    // Player-uploaded track: decode from persisted bytes (IndexedDB), never
+    // from the /tracks/ web path. Same LRU cache bounds apply.
+    if (track.isLocal) {
+      const loadLocal = (async () => {
+        const bytes = await localTrackDB.getBytes(track.id);
+        if (!bytes) throw new Error('Local track data not found');
+        let decoded: AudioBuffer;
+        try {
+          decoded = await this.ctx!.decodeAudioData(bytes.slice(0));
+        } catch {
+          decoded = await new Promise<AudioBuffer>((resolve, reject) => {
+            this.ctx!.decodeAudioData(bytes.slice(0), resolve, reject);
+          });
+        }
+        this.cacheBuffer(track.id, decoded);
+        return decoded;
+      })();
+      this.loadingPromises.set(track.id, loadLocal);
+      try {
+        return await loadLocal;
+      } finally {
+        this.loadingPromises.delete(track.id);
+      }
     }
 
     const loadPromise = (async () => {
