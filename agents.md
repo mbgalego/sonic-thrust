@@ -6,6 +6,7 @@
 ---
 
 ## 2. Architecture & Core Systems
+- **Versioning Rule**: Every change that ships to the game requires bumping the version string in the main menu footer (`TitleMenu.tsx`: `v1.X.0 · DD/MM/YYYY`) and adding a matching changelog entry to this file (`agents.md`). Version must be bumped on every feature/fix/deploy.
 
 ### A. Physics & World Simulation (`/src/physics/PhysicsWorld.ts`)
 - **Dual-Thruster Aerodynamics**:
