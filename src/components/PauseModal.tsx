@@ -12,7 +12,6 @@ interface PauseModalProps {
   onExitToMenu: () => void;
   options: GameOptions;
   onOptionsChange: (newOptions: GameOptions) => void;
-  allowFlightAssist: boolean;
 }
 
 export const PauseModal: React.FC<PauseModalProps> = ({
@@ -20,8 +19,7 @@ export const PauseModal: React.FC<PauseModalProps> = ({
   onRestart,
   onExitToMenu,
   options,
-  onOptionsChange,
-  allowFlightAssist: _allowFlightAssist
+  onOptionsChange
 }) => {
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
@@ -37,13 +35,6 @@ export const PauseModal: React.FC<PauseModalProps> = ({
 
         {/* Quick Options */}
         <div className="p-3 rounded-xl bg-slate-900/60 border border-white/10 space-y-3">
-          <div className="flex items-center justify-between text-xs font-mono">
-            <span className="text-gray-300">Flight Assist</span>
-            <span className="text-[11px] font-bold text-gray-400 bg-white/10 px-2 py-0.5 rounded">
-              DESATIVADO
-            </span>
-          </div>
-
           <div className="flex items-center justify-between text-xs font-mono">
             <span className="text-gray-300">Compensação de Deriva</span>
             <button
