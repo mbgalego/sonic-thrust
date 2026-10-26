@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { audio } from './audio/AudioEngine';
+import { LocalTrackLoader, LocalUploadResult } from './audio/LocalTrackLoader';
 import { PhysicsWorld } from './physics/PhysicsWorld';
 import { GameRenderer } from './graphics/GameRenderer';
 import {
@@ -73,63 +74,43 @@ const DEFAULT_TRACKS: TrackMetadata[] = [
     "isProcedural": false
   },
   {
-    "id": "kosmonova-ayla",
-    "title": "Ayla",
-    "artist": "Kosmonova",
-    "filename": "Kosmonova_-_Ayla.mp3",
-    "estimatedBpm": 136,
-    "duration": 206,
-    "description": "Hino lendário do Trance com arpeggio cósmico icónico, sub-graves penetrantes e ritmo hipnótico a 136 BPM.",
+    "id": "hyper-drive",
+    "title": "Hyper-Drive",
+    "artist": "miguelius",
+    "filename": "Hyper-Drive.mp3",
+    "estimatedBpm": 140,
+    "duration": 268,
+    "description": "Turbo synthwave a alta velocidade com arpeggios cortantes e graves em overdrive.",
     "isProcedural": false
   },
   {
-    "id": "kosmonova-take-me-away",
-    "title": "Take Me Away (Club Mix)",
-    "artist": "Kosmonova",
-    "filename": "Kosmonova_-_Take_Me_Away__Club_Mix__1997.mp3",
-    "estimatedBpm": 135,
-    "duration": 389,
-    "description": "Clássico Euro-Trance épico de 1997 com sintetizadores rápidos, linhas de baixo pulsantes e adrenalina a 135 BPM.",
+    "id": "sonic-drift",
+    "title": "Sonic Drift",
+    "artist": "miguelius",
+    "filename": "Sonic Drift.m4a",
+    "estimatedBpm": 118,
+    "duration": 249,
+    "description": "Synthwave flutuante e cinematográfico, com grooves largos e atmosfera de estrada noturna.",
     "isProcedural": false
   },
   {
-    "id": "cant-feel-my-face",
-    "title": "Can't Feel My Face",
-    "artist": "Walk off the Earth (feat. Scott Helman)",
-    "filename": "Can t Feel My Face - Walk off the Earth (feat. Scott Helman).mp3",
-    "estimatedBpm": 108,
-    "duration": 220,
-    "description": "Cover acústico enérgico com ritmo pop vibrante e excelente dinâmica.",
+    "id": "sonic-drive",
+    "title": "Sonic Drive",
+    "artist": "miguelius",
+    "filename": "Sonic Drive.m4a",
+    "estimatedBpm": 126,
+    "duration": 202,
+    "description": "Corrida eletro-combustível com batida firme e linhas de baixo em ascensão contínua.",
     "isProcedural": false
   },
   {
-    "id": "i-knew-you-were-trouble",
-    "title": "I Knew You Were Trouble",
-    "artist": "Walk off the Earth Feat. KRNFX",
-    "filename": "I Knew You Were Trouble - WALK OFF THE EARTH Feat. KRNFX.mp3",
-    "estimatedBpm": 120,
-    "duration": 219,
-    "description": "Beatbox poderoso e harmonias vocais com picos rítmicos marcados.",
-    "isProcedural": false
-  },
-  {
-    "id": "clean-bandit-symphony",
-    "title": "Symphony",
-    "artist": "Clean Bandit (feat. Zara Larsson)",
-    "filename": "Clean Bandit - Symphony (feat. Zara Larsson).mp3",
-    "estimatedBpm": 123,
-    "duration": 246,
-    "description": "Pop orquestral e eletrónico dinâmico com progressões melódicas contínuas.",
-    "isProcedural": false
-  },
-  {
-    "id": "carl-poppa",
-    "title": "Carl Poppa (La Jiggy Jar Jar Doo)",
-    "artist": "Bad Lip Reading",
-    "filename": "CARL POPPA — Lyric Video [Q9aM9Ch97U8].mp3",
-    "estimatedBpm": 135,
-    "duration": 327,
-    "description": "Batida hip-hop rítmica com graves sólidos e andamento cativante.",
+    "id": "the-flight-has-ended",
+    "title": "The flight... has ended",
+    "artist": "miguelius",
+    "filename": "The flight... has ended.m4a",
+    "estimatedBpm": 96,
+    "duration": 107,
+    "description": "Coda melódica contemplativa com atmosfera de encerramento — ritmo lento e introspetivo.",
     "isProcedural": false
   },
   {
@@ -190,8 +171,8 @@ const POWER_UP_ANNOUNCEMENTS: Record<PowerUpType, { title: string; subtitle: str
     glowColor: 'rgba(0, 240, 255, 0.9)'
   },
   DAMPER: {
-    title: 'Amortecedor Inercial Ativado!',
-    subtitle: 'Absorção de impacto cinético e estabilidade aumentada',
+    title: 'Amortecedor Sónico Ativado!',
+    subtitle: 'O túnel deixa de pulsar com a música — deformação reduzida em 78% durante 6s',
     color: 'text-emerald-300',
     borderColor: 'border-emerald-400',
     glowColor: 'rgba(34, 197, 94, 0.9)'
@@ -293,6 +274,10 @@ export default function App() {
   const keysHeld = useRef<{ left: boolean; right: boolean }>({ left: false, right: false });
   const countTickLastSecRef = useRef<number>(-1);
   const timeUpRef = useRef(false);
+
+  // Monotonic token guarding the async track-preview flow: after every await we
+  // re-check it so a superseded request can never resolve and play a stale track.
+  const previewRequestRef = useRef(0);
   const [outOfTime, setOutOfTime] = useState(false);
   const [isStartingMission, setIsStartingMission] = useState(false);
   const touchesHeld = useRef<{ left: boolean; right: boolean }>({ left: false, right: false });
@@ -302,27 +287,39 @@ export default function App() {
   // stale mission parameters (selectedTrack / difficulty / options).
   const startMissionRef = useRef<() => void>(() => {});
 
-  // 1. Fetch available tracks from /tracks/tracks.json on mount
+  // 1. Fetch available tracks: /tracks/tracks.json + locally uploaded (IndexedDB)
   useEffect(() => {
     let isMounted = true;
     audio.preloadMenuMusic().catch(() => {});
     const fetchManifest = async () => {
+      // Remote manifest (bundled catalog), with bundled fallback
+      let remote: TrackMetadata[] = DEFAULT_TRACKS;
       try {
         const response = await fetch('/tracks/tracks.json');
         if (response.ok) {
           const data: TrackMetadata[] = await response.json();
-          if (isMounted && Array.isArray(data) && data.length > 0) {
-            setTracks(data);
-            setSelectedTrack((prev) => {
-              if (prev && prev.id !== DEFAULT_TRACKS[0].id) {
-                return prev;
-              }
-              return data[0] || prev;
-            });
-          }
+          if (Array.isArray(data) && data.length > 0) remote = data;
         }
       } catch {
         // Safe fallback to bundled DEFAULT_TRACKS
+      }
+      // Player-uploaded tracks persist only in this browser (IndexedDB)
+      let local: TrackMetadata[] = [];
+      try {
+        local = await LocalTrackLoader.listLocalTracks();
+      } catch {
+        // Storage unavailable (e.g. private browsing) — bundled catalog only
+      }
+      if (!isMounted) return;
+      const merged = [...remote, ...local];
+      if (merged.length > 0) {
+        setTracks(merged);
+        setSelectedTrack((prev) => {
+          if (prev && prev.id !== DEFAULT_TRACKS[0].id) {
+            return prev;
+          }
+          return merged[0];
+        });
       }
     };
     fetchManifest();
@@ -330,6 +327,30 @@ export default function App() {
       isMounted = false;
     };
   }, []);
+
+  /**
+   * Player uploads: decode + persist locally (IndexedDB), then merge into
+   * the selectable catalog. Returns the per-file outcome for UI feedback.
+   */
+  const handleAddLocalTracks = useCallback(async (files: File[]): Promise<LocalUploadResult> => {
+    const result = await LocalTrackLoader.addLocalFiles(files);
+    if (result.added.length > 0) {
+      setTracks((prev) => [...prev, ...result.added]);
+    }
+    return result;
+  }, []);
+
+  /** Removes a player-uploaded track from IndexedDB and the catalog. */
+  const handleDeleteLocalTrack = async (id: string) => {
+    await LocalTrackLoader.deleteLocalTrack(id);
+    const remaining = tracks.filter((t) => t.id !== id);
+    setTracks(remaining);
+    setSelectedTrack((sel) => {
+      if (sel && sel.id !== id) return sel;
+      // Deleted track was selected: fall back to the first surviving entry
+      return remaining[0] ?? null;
+    });
+  };
 
   // 2. Audio volume syncing
   useEffect(() => {
@@ -377,12 +398,17 @@ export default function App() {
     return () => {
       window.removeEventListener('pointerdown', handleUserInteraction);
       window.removeEventListener('keydown', handleUserInteraction);
+      // Clear the menu-music resume hook so a stale callback can never fire menu
+      // music over gameplay/defeat screens once we leave the menu (C1).
+      audio.setOnTrackEnded(null);
     };
   }, [gameState, previewingTrackId]);
 
   // 4. Responsive Track Preview in Menu (One-click instantaneous switch with Menu Music pause)
   const handlePreviewTrack = async (track: TrackMetadata) => {
-    await audio.init();
+    // Monotonic request token: only the LATEST preview request may touch audio
+    // state after any await resolves (C2).
+    const requestToken = ++previewRequestRef.current;
 
     // If already playing this track, toggle it off and resume menu music if not muted
     if (previewingTrackId === track.id) {
@@ -402,12 +428,16 @@ export default function App() {
     setLoadingTrackId(track.id);
 
     try {
+      await audio.init();
+      if (requestToken !== previewRequestRef.current) return; // superseded while initializing
       const buffer = await audio.loadTrack(track);
+      if (requestToken !== previewRequestRef.current) return; // superseded while loading
       audio.pauseMenuMusic(); // Double ensure menu music is silent
       audio.playTrack(buffer, 0);
       setPreviewingTrackId(track.id);
       setLoadingTrackId(null);
     } catch {
+      if (requestToken !== previewRequestRef.current) return; // superseded request failed: ignore
       audio.stopTrack();
       setPreviewingTrackId(null);
       setLoadingTrackId(null);
@@ -427,10 +457,18 @@ export default function App() {
       audio.silenceAllContinuous();
       audio.stopMenuMusic();
       audio.stopTrack();
+      // Defensive: ensure a stale menu-music resume callback can never fire over
+      // gameplay audio (C1 — the menu effect cleanup also clears it on commit).
+      audio.setOnTrackEnded(null);
+      // Invalidate any in-flight preview request so a stale load can't hijack state.
+      previewRequestRef.current++;
       setPreviewingTrackId(null);
       setLoadingTrackId(null);
 
       await audio.init();
+      // Preload the Game Over jingle in the background so it's ready instantly
+      // when a defeat screen appears (no-throw: failure just disables it).
+      audio.preloadGameOverJingle();
       const trackBuffer = await audio.loadTrack(selectedTrack);
       const trackDuration = trackBuffer.duration || selectedTrack.duration || 90;
       const trackBpm = selectedTrack.estimatedBpm || 135;
@@ -466,6 +504,7 @@ export default function App() {
           rendererRef.current.emitExplosion(newWorld.ship.x, newWorld.ship.y);
         }
         setTimeout(() => {
+          audio.playGameOverJingle();
           setGameState('GAMEOVER');
         }, 700);
       };
@@ -744,6 +783,7 @@ export default function App() {
             audio.playTimeUpSfx();
             setOutOfTime(true);
             setTimeout(() => {
+              audio.playGameOverJingle();
               setGameState('GAMEOVER');
             }, 900);
           }
@@ -842,6 +882,8 @@ export default function App() {
           previewingTrackId={previewingTrackId}
           loadingTrackId={loadingTrackId}
           isStartingMission={isStartingMission}
+          onAddLocalTracks={handleAddLocalTracks}
+          onDeleteLocalTrack={handleDeleteLocalTrack}
         />
       )}
 

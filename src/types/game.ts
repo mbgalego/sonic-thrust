@@ -31,6 +31,7 @@ export interface TrackMetadata {
   description?: string;
   isProcedural?: boolean;
   audioBuffer?: AudioBuffer;
+  isLocal?: boolean;
 }
 
 export type PowerUpType = 
