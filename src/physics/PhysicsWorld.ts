@@ -183,7 +183,7 @@ export class PhysicsWorld {
     difficultyLevel: DifficultyLevel,
     _flightAssist: boolean,
     trackDuration: number = 90,
-    trackId: string = 'kosmonova-take-me-away',
+    trackId: string = 'hyper-drive',
     trackBpm: number = 135,
     driftCompensation: boolean = true
   ) {

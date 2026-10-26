@@ -50,36 +50,6 @@
     "isProcedural": false
   },
   {
-    "id": "kosmonova-ayla",
-    "title": "Ayla",
-    "artist": "Kosmonova",
-    "filename": "Kosmonova_-_Ayla.mp3",
-    "estimatedBpm": 136,
-    "duration": 206,
-    "description": "Hino lendário do Trance com arpeggio cósmico icónico, sub-graves penetrantes e ritmo hipnótico a 136 BPM.",
-    "isProcedural": false
-  },
-  {
-    "id": "kosmonova-take-me-away",
-    "title": "Take Me Away (Club Mix)",
-    "artist": "Kosmonova",
-    "filename": "Kosmonova_-_Take_Me_Away__Club_Mix__1997.mp3",
-    "estimatedBpm": 135,
-    "duration": 389,
-    "description": "Clássico Euro-Trance épico de 1997 com sintetizadores rápidos, linhas de baixo pulsantes e adrenalina a 135 BPM.",
-    "isProcedural": false
-  },
-  {
-    "id": "cant-feel-my-face",
-    "title": "Can't Feel My Face",
-    "artist": "Walk off the Earth (feat. Scott Helman)",
-    "filename": "Can t Feel My Face - Walk off the Earth (feat. Scott Helman).mp3",
-    "estimatedBpm": 108,
-    "duration": 220,
-    "description": "Cover acústico enérgico com ritmo pop vibrante e excelente dinâmica.",
-    "isProcedural": false
-  },
-  {
     "id": "i-knew-you-were-trouble",
     "title": "I Knew You Were Trouble",
     "artist": "Walk off the Earth Feat. KRNFX",
@@ -90,23 +60,43 @@
     "isProcedural": false
   },
   {
-    "id": "clean-bandit-symphony",
-    "title": "Symphony",
-    "artist": "Clean Bandit (feat. Zara Larsson)",
-    "filename": "Clean Bandit - Symphony (feat. Zara Larsson).mp3",
-    "estimatedBpm": 123,
-    "duration": 246,
-    "description": "Pop orquestral e eletrónico dinâmico com progressões melódicas contínuas.",
+    "id": "hyper-drive",
+    "title": "Hyper-Drive",
+    "artist": "miguelius",
+    "filename": "Hyper-Drive.mp3",
+    "estimatedBpm": 140,
+    "duration": 268,
+    "description": "Turbo synthwave a alta velocidade com arpeggios cortantes e graves em overdrive.",
     "isProcedural": false
   },
   {
-    "id": "carl-poppa",
-    "title": "Carl Poppa (La Jiggy Jar Jar Doo)",
-    "artist": "Bad Lip Reading",
-    "filename": "CARL POPPA — Lyric Video [Q9aM9Ch97U8].mp3",
-    "estimatedBpm": 135,
-    "duration": 327,
-    "description": "Batida hip-hop rítmica com graves sólidos e andamento cativante.",
+    "id": "sonic-drift",
+    "title": "Sonic Drift",
+    "artist": "miguelius",
+    "filename": "Sonic Drift.m4a",
+    "estimatedBpm": 118,
+    "duration": 249,
+    "description": "Synthwave flutuante e cinematográfico, com grooves largos e atmosfera de estrada noturna.",
+    "isProcedural": false
+  },
+  {
+    "id": "sonic-drive",
+    "title": "Sonic Drive",
+    "artist": "miguelius",
+    "filename": "Sonic Drive.m4a",
+    "estimatedBpm": 126,
+    "duration": 202,
+    "description": "Corrida eletro-combustível com batida firme e linhas de baixo em ascensão contínua.",
+    "isProcedural": false
+  },
+  {
+    "id": "the-flight-has-ended",
+    "title": "The flight... has ended",
+    "artist": "miguelius",
+    "filename": "The flight... has ended.m4a",
+    "estimatedBpm": 96,
+    "duration": 107,
+    "description": "Coda melódica contemplativa com atmosfera de encerramento — ritmo lento e introspetivo.",
     "isProcedural": false
   },
   {

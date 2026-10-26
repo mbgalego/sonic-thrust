@@ -665,6 +665,70 @@ export class AudioEngine {
     this.pauseOffset = 0;
   }
 
+  // Dedicated Game Over jingle (NOT a playable track): decoded once in the
+  // background, then launched as a one-shot when the defeat screen appears.
+  private gameOverJingleBuffer: AudioBuffer | null = null;
+  private gameOverJingleLoading: Promise<void> | null = null;
+
+  /**
+   * Preloads "Sonic Thrust - Game Over].m4a". Never throws — on failure the
+   * jingle simply won't play (e.g. browsers without AAC/m4a decoding).
+   */
+  public async preloadGameOverJingle(): Promise<void> {
+    if (this.gameOverJingleBuffer || this.gameOverJingleLoading) return;
+    this.gameOverJingleLoading = (async () => {
+      try {
+        await this.init();
+        if (!this.ctx) return;
+        const response = await fetch(encodeURI('/tracks/Sonic Thrust - Game Over].m4a'));
+        if (!response.ok) return;
+        const arrayBuffer = await response.arrayBuffer();
+        try {
+          this.gameOverJingleBuffer = await this.ctx.decodeAudioData(arrayBuffer.slice(0));
+        } catch {
+          // Legacy callback-style decode fallback
+          this.gameOverJingleBuffer = await new Promise<AudioBuffer>((resolve, reject) => {
+            this.ctx!.decodeAudioData(arrayBuffer.slice(0), resolve, reject);
+          });
+        }
+      } catch {
+        // Jingle stays unavailable; gameplay is unaffected
+      } finally {
+        this.gameOverJingleLoading = null;
+      }
+    })();
+    await this.gameOverJingleLoading;
+  }
+
+  /**
+   * Plays the Game Over jingle once over the defeat screen. Safe to call even
+   * if the preload failed (no-op). Routed through currentSource so that any
+   * stopTrack() (menu exit, restart) cleanly kills the jingle.
+   */
+  public playGameOverJingle(): void {
+    if (!this.ctx || !this.musicGain || !this.gameOverJingleBuffer) return;
+    this.stopTrack();
+    // Restore fader in case a defeat fade-out ramp is still scheduled
+    try {
+      this.musicGain.gain.cancelScheduledValues(this.ctx.currentTime);
+      this.musicGain.gain.setValueAtTime(this.currentMusicVolume, this.ctx.currentTime);
+    } catch {
+      // Ignore
+    }
+    this.currentSource = this.ctx.createBufferSource();
+    this.currentSource.buffer = this.gameOverJingleBuffer;
+    if (this.musicPreGain) {
+      this.currentSource.connect(this.musicPreGain);
+    } else {
+      this.currentSource.connect(this.musicGain);
+    }
+    this.currentSource.onended = () => {
+      if (this.isPlaying) this.isPlaying = false;
+    };
+    this.currentSource.start();
+    this.isPlaying = true; // guard: blocks menu music from overlapping while the jingle plays
+  }
+
   /**
    * Preload the dedicated Menu Theme ("Sonic Thrust - Main Menu Theme.mp3") in the background.
    */
