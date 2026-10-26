@@ -671,7 +671,7 @@ export class AudioEngine {
   private gameOverJingleLoading: Promise<void> | null = null;
 
   /**
-   * Preloads "Sonic Thrust - Game Over].m4a". Never throws — on failure the
+   * Preloads "Sonic Thrust - Game Over.m4a". Never throws — on failure the
    * jingle simply won't play (e.g. browsers without AAC/m4a decoding).
    */
   public async preloadGameOverJingle(): Promise<void> {
@@ -680,7 +680,7 @@ export class AudioEngine {
       try {
         await this.init();
         if (!this.ctx) return;
-        const response = await fetch(encodeURI('/tracks/Sonic Thrust - Game Over].m4a'));
+        const response = await fetch(encodeURI('/tracks/Sonic Thrust - Game Over.m4a'));
         if (!response.ok) return;
         const arrayBuffer = await response.arrayBuffer();
         try {
