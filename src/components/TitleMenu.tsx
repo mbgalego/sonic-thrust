@@ -942,7 +942,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                 <div
                   onClick={() => setIsControlsOpen(prev => !prev)}
                   className="flex items-center justify-between gap-3 cursor-pointer group/ctrl select-none"
-                  title={isControlsOpen ? 'Fechar informações' : 'Abrir informações e guia'}
+                  title={isControlsOpen ? 'Fechar informações' : 'Abrir informações'}
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div className="w-11 h-11 rounded-xl border border-cyan-400/60 bg-cyan-950/60 text-cyan-400 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(6,182,212,0.3)] group-hover/ctrl:scale-105 transition-all">
@@ -951,7 +951,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
                     <div className="flex flex-col min-w-0 flex-1">
                       <span className="font-orbitron font-bold text-sm sm:text-base text-white group-hover/ctrl:text-cyan-300 transition-colors tracking-wide truncate">
-                        INFORMAÇÕES & GUIA DO PILOTO
+                        INFORMAÇÕES
                       </span>
                       <span className="font-rajdhani text-sm text-gray-200 font-medium truncate mt-0.5">
                         Controlos (Ecrã Tátil & Teclado) e os 8 Power-Ups
