@@ -21,3 +21,12 @@
 3. Guarda o ficheiro tracks.json. O jogo carrega a lista a partir deste
    ficheiro; a duração e o BPM aproximado são calculados automaticamente pela
    Web Audio API durante a reprodução.
+
+=== LICENCIAMENTO DE MÚSICA ===
+
+Toda a música original deste jogo (artista «miguelius») foi criada com uma
+conta Suno Pro e é licenciada ao autor, podendo ser utilizada comercialmente.
+
+Partilha permitida — se usares estas músicas noutros projetos, pede-se apenas
+atribuição ao autor: crédito «miguelius» com ligação ao repositório
+sonic-thrust.

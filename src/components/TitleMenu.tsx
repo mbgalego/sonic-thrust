@@ -4,7 +4,7 @@
  * Features live reactive FFT mini-equalizer & inline scrollable track dropdown.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Play,
   Pause,
@@ -24,8 +24,12 @@ import {
   ChevronDown,
   User,
   Smartphone,
-  Touchpad
+  Touchpad,
+  Plus,
+  Trash2,
+  HardDrive
 } from 'lucide-react';
+import { LocalTrackLoader, LocalUploadResult } from '../audio/LocalTrackLoader';
 import {
   DifficultyLevel,
   TrackMetadata,
@@ -142,6 +146,8 @@ interface TitleMenuProps {
   previewingTrackId: string | null;
   loadingTrackId: string | null;
   isStartingMission?: boolean;
+  onAddLocalTracks?: (files: File[]) => Promise<LocalUploadResult>;
+  onDeleteLocalTrack?: (id: string) => void;
 }
 
 export const TitleMenu: React.FC<TitleMenuProps> = ({
@@ -156,12 +162,39 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
   onPreviewTrack,
   previewingTrackId,
   loadingTrackId,
-  isStartingMission = false
+  isStartingMission = false,
+  onAddLocalTracks,
+  onDeleteLocalTrack
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isDifficultyOpen, setIsDifficultyOpen] = useState(false);
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [isControlsOpen, setIsControlsOpen] = useState(false);
+
+  // Player-uploaded music (stored ONLY in this browser's IndexedDB)
+  const localFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [localUploadBusy, setLocalUploadBusy] = useState(false);
+  const [localUploadNotice, setLocalUploadNotice] = useState<string | null>(null);
+  const [localPersistent, setLocalPersistent] = useState(true);
+  const [localStorageUsage, setLocalStorageUsage] = useState<{ usageBytes: number | null; quotaBytes: number | null } | null>(null);
+
+  // Storage usage meter (only measured while the Info panel is open)
+  useEffect(() => {
+    if (!isControlsOpen) return;
+    let active = true;
+    LocalTrackLoader.getStorageUsage().then((u) => {
+      if (active) setLocalStorageUsage(u);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [isControlsOpen]);
+
+  const localTracks = tracks.filter((t) => t.isLocal);
+  const formatBytes = (b: number | null): string => {
+    if (b === null) return '—';
+    if (b >= 1024 * 1024 * 1024) return `${(b / 1024 / 1024 / 1024).toFixed(1)}GB`;
+    if (b >= 1024 * 1024) return `${(b / 1024 / 1024).toFixed(0)}MB`;
+    return `${(b / 1024).toFixed(0)}KB`;
+  };
   const [isMuted, setIsMuted] = useState(audio.isMenuMusicMuted());
   const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement));
 
@@ -496,8 +529,75 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                   <div className="mt-3 pt-3 border-t border-cyan-500/25 flex flex-col gap-1.5">
                     <div className="flex items-center justify-between text-xs sm:text-sm font-orbitron font-bold text-cyan-300/90 px-1 pb-1">
                       <span>CATÁLOGO DE MÚSICAS ({tracks.length})</span>
-                      <span className="text-xs font-mono text-gray-400">Escolhe ou pré-escuta</span>
+                      <div className="flex items-center gap-2">
+                        {onAddLocalTracks && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              localFileInputRef.current?.click();
+                            }}
+                            disabled={localUploadBusy}
+                            className="px-2 py-1 rounded-md border border-emerald-400/40 bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 font-rajdhani font-semibold cursor-pointer transition flex items-center gap-1 disabled:opacity-50"
+                            title="Adicionar música do teu dispositivo (guardada apenas neste navegador)"
+                          >
+                            {localUploadBusy ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Plus className="w-3.5 h-3.5" />
+                            )}
+                            <span className="text-[10px] sm:text-xs tracking-wide">ADICIONAR</span>
+                          </button>
+                        )}
+                        <span className="text-xs font-mono text-gray-400 hidden sm:inline">Escolhe ou pré-escuta</span>
+                      </div>
                     </div>
+
+                    {onAddLocalTracks && (
+                      <input
+                        ref={localFileInputRef}
+                        type="file"
+                        accept="audio/*,.mp3,.wav,.ogg,.flac,.m4a,.aac,.opus"
+                        multiple
+                        className="hidden"
+                        onChange={async (e) => {
+                          const files = Array.from(e.target.files || []);
+                          e.target.value = ''; // allow re-uploading the same file
+                          if (!files.length || localUploadBusy) return;
+                          setLocalUploadBusy(true);
+                          setLocalUploadNotice(null);
+                          try {
+                            const res = await onAddLocalTracks(files);
+                            setLocalPersistent(res.persistent);
+                            const parts: string[] = [];
+                            if (res.added.length > 0) {
+                              parts.push(`${res.added.length} faixa${res.added.length > 1 ? 's' : ''} adicionada${res.added.length > 1 ? 's' : ''}`);
+                            }
+                            if (res.failed.length > 0) {
+                              parts.push(`${res.failed.length} ficheiro(s) não suportado(s): ${res.failed.slice(0, 2).join(', ')}${res.failed.length > 2 ? '…' : ''}`);
+                            }
+                            if (res.added.length > 0 && !res.persistent) {
+                              parts.push('apenas nesta sessão (armazenamento indisponível)');
+                            }
+                            setLocalUploadNotice(parts.join(' · ') || 'Nada foi adicionado');
+                          } catch {
+                            setLocalUploadNotice('Falha no upload — tenta novamente');
+                          } finally {
+                            setLocalUploadBusy(false);
+                          }
+                        }}
+                      />
+                    )}
+
+                    {localUploadNotice && (
+                      <div className={`px-2 py-1 rounded-md text-[11px] sm:text-xs font-rajdhani font-semibold border ${
+                        localPersistent
+                          ? 'border-emerald-400/30 bg-emerald-950/40 text-emerald-300'
+                          : 'border-yellow-400/40 bg-yellow-950/40 text-yellow-300'
+                      }`}>
+                        {localUploadNotice}
+                      </div>
+                    )}
 
                     <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto pr-1">
                       {tracks.map((track) => {
@@ -555,6 +655,11 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                                       Synth
                                     </span>
                                   )}
+                                  {track.isLocal && (
+                                    <span className="text-xs uppercase font-mono font-semibold px-1.5 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
+                                      Local
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="text-xs sm:text-sm text-gray-300 font-rajdhani font-medium truncate mt-0.5">
                                   {track.artist}
@@ -563,6 +668,21 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                             </div>
 
                             <div className="flex items-center gap-2 shrink-0 font-mono text-xs sm:text-sm">
+                              {track.isLocal && onDeleteLocalTrack && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (window.confirm(`Apagar «${track.title}» deste dispositivo?`)) {
+                                      onDeleteLocalTrack(track.id);
+                                    }
+                                  }}
+                                  className="text-gray-500 hover:text-rose-400 transition cursor-pointer"
+                                  title="Apagar faixa local deste navegador"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
                               <span className="text-cyan-400 font-semibold tabular-nums">{track.estimatedBpm || 128} BPM</span>
                               <span className="text-gray-400">·</span>
                               <span className="text-gray-200 tabular-nums">
@@ -699,11 +819,11 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
             </div>
           </div>
 
-          {/* Section: OPÇÕES (ÁUDIO E VOO) (Inline Scrollable Dropdown) */}
+          {/* Section: OPÇÕES (ÁUDIO E VOO) → renomeado simplesmente “Configurações” */}
           <div className="flex flex-col gap-1.5">
             <div>
               <h2 className="text-sm sm:text-base font-bold tracking-wider text-[#00f0ff] uppercase font-orbitron drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
-                OPÇÕES (ÁUDIO E VOO)
+                CONFIGURAÇÕES
               </h2>
             </div>
 
@@ -713,7 +833,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                 <div
                   onClick={() => setIsOptionsOpen(prev => !prev)}
                   className="flex items-center justify-between gap-3 cursor-pointer group/opt select-none"
-                  title={isOptionsOpen ? 'Fechar opções' : 'Abrir configurações de áudio e voo'}
+                  title={isOptionsOpen ? 'Fechar Configurações' : 'Abrir Configurações'}
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div className="w-11 h-11 rounded-xl border border-cyan-400/60 bg-cyan-950/60 text-cyan-400 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(6,182,212,0.3)] group-hover/opt:scale-105 transition-all">
@@ -722,7 +842,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
                     <div className="flex flex-col min-w-0 flex-1">
                       <span className="font-orbitron font-bold text-sm sm:text-base text-white group-hover/opt:text-cyan-300 transition-colors tracking-wide truncate">
-                        CONFIGURAÇÕES DE VOO E ÁUDIO
+                        CONFIGURAÇÕES
                       </span>
                       <span className="font-rajdhani text-sm text-gray-200 font-medium truncate mt-0.5">
                         Voo Manual (100% Reflexos) • Mús {Math.round(options.musicVolume * 100)}% • SFX {Math.round(options.sfxVolume * 100)}%
@@ -952,10 +1072,10 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                           <PowerUpGraphic type="DAMPER" size={48} />
                           <div className="flex flex-col min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="font-orbitron font-bold text-sm text-emerald-300">AMORTECEDOR INERCIAL</span>
+                              <span className="font-orbitron font-bold text-sm text-emerald-300">AMORTECEDOR SÓNICO</span>
                             </div>
                             <p className="font-rajdhani text-xs sm:text-sm text-gray-200 leading-snug mt-0.5">
-                              Amortece impactos violentos e estabiliza instantaneamente a trajetória e rotação.
+                              Acalma o túnel: a deformação que «respira» com o bass da música reduz em 78% durante 6s — corredor estável mesmo nos drops.
                             </p>
                           </div>
                         </div>
@@ -1038,6 +1158,40 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                           </div>
                         </div>
 
+                      </div>
+                    </div>
+
+                    {/* Music Licensing & Attribution */}
+                    <div className="p-3.5 rounded-xl bg-slate-900/85 border border-emerald-400/20 flex flex-col gap-2.5 shadow-lg">
+                      <div className="flex items-center gap-2 font-orbitron font-bold text-emerald-300 text-sm uppercase">
+                        <Shield className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <span>LICENCIAMENTO DE MÚSICA</span>
+                      </div>
+                      <p className="font-rajdhani text-xs sm:text-sm text-gray-200 leading-snug">
+                        Toda a música original deste jogo (artista <span className="font-semibold text-emerald-300">miguelius</span>) foi criada com uma conta <span className="font-semibold text-emerald-300">Suno Pro</span> e é <span className="font-semibold text-white">licenciada ao autor</span>, podendo ser utilizada comercialmente.
+                      </p>
+                      <p className="font-rajdhani text-xs sm:text-sm text-gray-300 leading-snug">
+                        Partilha permitida — se usares estas músicas noutros projetos, pede-se apenas <span className="font-semibold text-white">atribuição ao autor</span>: crédito «miguelius» com ligação ao repositório <span className="font-mono text-emerald-300">sonic-thrust</span>.
+                      </p>
+                    </div>
+
+                    {/* Player Local Library (IndexedDB — never leaves the device) */}
+                    <div className="p-3.5 rounded-xl bg-slate-900/85 border border-sky-400/20 flex flex-col gap-2.5 shadow-lg">
+                      <div className="flex items-center gap-2 font-orbitron font-bold text-sky-300 text-sm uppercase">
+                        <HardDrive className="w-4 h-4 text-sky-400 shrink-0" />
+                        <span>MÚSICA LOCAL</span>
+                      </div>
+                      <p className="font-rajdhani text-xs sm:text-sm text-gray-200 leading-snug">
+                        Podes adicionar as tuas próprias músicas com o botão <span className="font-semibold text-emerald-300">+ ADICIONAR</span> do catálogo. Os ficheiros ficam guardados <span className="font-semibold text-white">apenas neste navegador</span> (IndexedDB) — nunca são enviados para nenhum servidor.
+                      </p>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono text-sky-300/90">
+                        <span>{localTracks.length} faixa{localTracks.length === 1 ? '' : 's'} local{localTracks.length === 1 ? '' : 'e(s)'}</span>
+                        {localStorageUsage?.usageBytes !== null && (
+                          <span className="tabular-nums">
+                            Armazenamento: {formatBytes(localStorageUsage?.usageBytes ?? null)}
+                            {localStorageUsage?.quotaBytes ? ` / ${formatBytes(localStorageUsage.quotaBytes)}` : ''}
+                          </span>
+                        )}
                       </div>
                     </div>
 

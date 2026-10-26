@@ -183,7 +183,7 @@ export class PhysicsWorld {
     difficultyLevel: DifficultyLevel,
     _flightAssist: boolean,
     trackDuration: number = 90,
-    trackId: string = 'kosmonova-take-me-away',
+    trackId: string = 'hyper-drive',
     trackBpm: number = 135,
     driftCompensation: boolean = true
   ) {
@@ -370,18 +370,22 @@ export class PhysicsWorld {
     const playableRange = endSafeX - startSafeX;
 
     // 1. Refined Power-up Distribution
-    // NORMAL: Escudo, Low-G, Pulso, Fantasma e Singularidade
+    // NORMAL: Escudo, Low-G, Pulso e Singularidade
     // PRO: Adiciona Amortecedor Sónico e Distorção Temporal
     // EXTREME: Adiciona Imortalidade Sónica exclusiva
-    let powerUpTypes: PowerUpType[];
+    // ETHEREAL (Modo Fantasma) is NOT part of the rotation — exactly ONE
+    // guaranteed pickup per level, near the track midpoint, on any difficulty.
+    let powerUpCycle: PowerUpType[];
     if (this.difficulty.name === 'NORMAL') {
-      powerUpTypes = ['SHIELD', 'LOW_G', 'PULSE', 'ETHEREAL', 'SINGULARITY'];
+      powerUpCycle = ['SHIELD', 'LOW_G', 'PULSE', 'SINGULARITY'];
     } else if (this.difficulty.name === 'PRO') {
-      powerUpTypes = ['SHIELD', 'DAMPER', 'LOW_G', 'PULSE', 'ETHEREAL', 'CHRONO_DILATION', 'SINGULARITY'];
+      powerUpCycle = ['SHIELD', 'DAMPER', 'LOW_G', 'PULSE', 'CHRONO_DILATION', 'SINGULARITY'];
     } else {
-      powerUpTypes = ['SHIELD', 'DAMPER', 'LOW_G', 'PULSE', 'ETHEREAL', 'INVULNERABLE', 'CHRONO_DILATION', 'SINGULARITY'];
+      powerUpCycle = ['SHIELD', 'DAMPER', 'LOW_G', 'PULSE', 'INVULNERABLE', 'CHRONO_DILATION', 'SINGULARITY'];
     }
     const totalPowerUps = Math.max(8, Math.floor(this.trackDuration / 11));
+    // Single guaranteed ETHEREAL slot (mid-run, ~50% of the track)
+    const etherealSlot = Math.floor(totalPowerUps / 2);
     
     for (let i = 0; i < totalPowerUps; i++) {
       const progress = (i + 0.5) / totalPowerUps;
@@ -390,7 +394,7 @@ export class PhysicsWorld {
         endSafeX,
         Math.max(startSafeX, startSafeX + progress * playableRange + seedJitter + (Math.random() * 120 - 60))
       );
-      const type = powerUpTypes[i % powerUpTypes.length];
+      const type: PowerUpType = i === etherealSlot ? 'ETHEREAL' : powerUpCycle[i % powerUpCycle.length];
       const colors: Record<PowerUpType, string> = {
         SHIELD: '#00f0ff',           // Electric Cyan
         DAMPER: '#00ff88',           // Mint Green
