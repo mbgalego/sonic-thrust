@@ -247,7 +247,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#00f0ff]" />
           <span className="font-orbitron text-xs sm:text-sm tracking-wider text-cyan-400 font-bold uppercase">
-            SONIC ARCADE
+            {selectedTrack?.title || 'SONIC ARCADE'}
           </span>
         </div>
 
