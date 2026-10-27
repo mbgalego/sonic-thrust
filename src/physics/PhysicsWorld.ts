@@ -784,25 +784,31 @@ export class PhysicsWorld {
       this.ship.vx = Math.min(this.ship.vx, this.baseForwardVelocity * 1.35);
     }
 
-    // Update positions
-    this.ship.x += this.ship.vx * dt;
-    this.ship.y += this.ship.vy * dt;
+    // Continuous Collision Detection (CCD) sub-stepping to prevent tunneling at high velocities
+    const motionDist = Math.hypot(this.ship.vx, this.ship.vy) * dt;
+    const subSteps = Math.min(4, Math.max(1, Math.ceil(motionDist / 8)));
+    const subDt = dt / subSteps;
 
-    // HARD BOUNDARY ENFORCEMENT: Never allow the craft to penetrate ceiling or floor
-    const currentTerrain = this.getTerrainAt(this.ship.x);
-    const shipRadius = 14;
-    const minSafeY = currentTerrain.ceilY + shipRadius;
-    const maxSafeY = currentTerrain.floorY - shipRadius;
+    for (let step = 0; step < subSteps; step++) {
+      this.ship.x += this.ship.vx * subDt;
+      this.ship.y += this.ship.vy * subDt;
 
-    if (this.ship.y <= minSafeY) {
-      this.ship.y = minSafeY;
-      if (this.ship.vy < 0) {
-        this.ship.vy = Math.abs(this.ship.vy) * 0.35;
-      }
-    } else if (this.ship.y >= maxSafeY) {
-      this.ship.y = maxSafeY;
-      if (this.ship.vy > 0) {
-        this.ship.vy = -Math.abs(this.ship.vy) * 0.35;
+      // HARD BOUNDARY ENFORCEMENT: Never allow the craft to penetrate ceiling or floor
+      const currentTerrain = this.getTerrainAt(this.ship.x);
+      const shipRadius = 14;
+      const minSafeY = currentTerrain.ceilY + shipRadius;
+      const maxSafeY = currentTerrain.floorY - shipRadius;
+
+      if (this.ship.y <= minSafeY) {
+        this.ship.y = minSafeY;
+        if (this.ship.vy < 0) {
+          this.ship.vy = Math.abs(this.ship.vy) * 0.35;
+        }
+      } else if (this.ship.y >= maxSafeY) {
+        this.ship.y = maxSafeY;
+        if (this.ship.vy > 0) {
+          this.ship.vy = -Math.abs(this.ship.vy) * 0.35;
+        }
       }
     }
 
