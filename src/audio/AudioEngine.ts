@@ -80,16 +80,38 @@ export class AudioEngine {
     // Lazy init on first user interaction
   }
 
+  /**
+   * Resumes AudioContext if suspended or interrupted (WebKit/iOS Safari state)
+   */
+  public async ensureRunning(): Promise<void> {
+    if (!this.ctx || this.ctx.state === 'closed') return;
+    const state = this.ctx.state as string;
+    if (state === 'suspended' || state === 'interrupted') {
+      try {
+        await this.ctx.resume();
+      } catch {
+        // Handled on subsequent user interaction
+      }
+    }
+  }
+
   public async init(): Promise<void> {
     if (this.ctx && this.ctx.state !== 'closed') {
-      if (this.ctx.state === 'suspended') {
-        await this.ctx.resume();
-      }
+      await this.ensureRunning();
       return;
     }
 
     const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     this.ctx = new AudioContextClass();
+
+    // Auto-resume audio when user switches back to the tab or unminimizes browser
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          this.ensureRunning().catch(() => {});
+        }
+      });
+    }
     
     // Master, SFX Routing
     this.masterGain = this.ctx.createGain();
@@ -619,6 +641,7 @@ export class AudioEngine {
    */
   public playTrack(buffer: AudioBuffer, startOffset: number = 0): void {
     if (!this.ctx || !this.musicGain) return;
+    this.ensureRunning().catch(() => {});
 
     // CRITICAL: Stop and pause menu music immediately to guarantee they NEVER overlap!
     this.stopMenuMusicSource();
@@ -703,8 +726,8 @@ export class AudioEngine {
   private gameOverJingleLoading: Promise<void> | null = null;
 
   /**
-   * Preloads "Sonic Thrust - Game Over.m4a". Never throws — on failure the
-   * jingle simply won't play (e.g. browsers without AAC/m4a decoding).
+   * Preloads "Sonic Thrust - Game Over.mp3". Never throws — on failure the
+   * jingle simply won't play.
    */
   public async preloadGameOverJingle(): Promise<void> {
     if (this.gameOverJingleBuffer || this.gameOverJingleLoading) return;
@@ -712,7 +735,7 @@ export class AudioEngine {
       try {
         await this.init();
         if (!this.ctx) return;
-        const response = await fetch(encodeURI('/tracks/Sonic Thrust - Game Over.m4a'));
+        const response = await fetch(encodeURI('/tracks/Sonic Thrust - Game Over.mp3'));
         if (!response.ok) return;
         const arrayBuffer = await response.arrayBuffer();
         try {

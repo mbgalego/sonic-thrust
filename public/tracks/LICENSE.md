@@ -27,5 +27,5 @@ Full license text: https://creativecommons.org/licenses/by/4.0/legalcode
 
 Tracker of covered files:
 
-- All *.mp3 and *.m4a files in public/tracks/ (except files under public/assets/aistudio/)
+- All *.mp3 files in public/tracks/ (except files under public/assets/aistudio/)
 - public/tracks/README.txt

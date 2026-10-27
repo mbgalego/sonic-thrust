@@ -18,7 +18,7 @@ import {
   PowerUpAnnouncement
 } from './types/game';
 import { TitleMenu } from './components/TitleMenu';
-import { GameHUD } from './components/GameHUD';
+import { GameHUD, GameHUDHandle } from './components/GameHUD';
 import { PauseModal } from './components/PauseModal';
 import { EndGameModal } from './components/EndGameModal';
 
@@ -27,7 +27,7 @@ const DEFAULT_TRACKS: TrackMetadata[] = [
     "id": "classical-cybernetic",
     "title": "Classical Cybernetic",
     "artist": "miguelius",
-    "filename": "Classical Cybernetic.m4a",
+    "filename": "Classical Cybernetic.mp3",
     "estimatedBpm": 130,
     "duration": 245,
     "description": "Fusão eletrizante entre música clássica barroca e synthwave cibernético de alta voltagem.",
@@ -87,7 +87,7 @@ const DEFAULT_TRACKS: TrackMetadata[] = [
     "id": "sonic-drift",
     "title": "Sonic Drift",
     "artist": "miguelius",
-    "filename": "Sonic Drift.m4a",
+    "filename": "Sonic Drift.mp3",
     "estimatedBpm": 118,
     "duration": 249,
     "description": "Synthwave flutuante e cinematográfico, com grooves largos e atmosfera de estrada noturna.",
@@ -97,17 +97,27 @@ const DEFAULT_TRACKS: TrackMetadata[] = [
     "id": "sonic-drive",
     "title": "Sonic Drive",
     "artist": "miguelius",
-    "filename": "Sonic Drive.m4a",
+    "filename": "Sonic Drive.mp3",
     "estimatedBpm": 126,
     "duration": 202,
     "description": "Corrida eletro-combustível com batida firme e linhas de baixo em ascensão contínua.",
     "isProcedural": false
   },
   {
+    "id": "soundwave-drift",
+    "title": "Soundwave Drift",
+    "artist": "miguelius",
+    "filename": "Soundwave Drift.mp3",
+    "estimatedBpm": 85,
+    "duration": 218,
+    "description": "Viagem cósmica serena com harpas etéreas, sintetizadores ambientais e coro imersivo.",
+    "isProcedural": false
+  },
+  {
     "id": "the-flight-has-ended",
     "title": "The flight... has ended",
     "artist": "miguelius",
-    "filename": "The flight... has ended.m4a",
+    "filename": "The flight... has ended.mp3",
     "estimatedBpm": 96,
     "duration": 107,
     "description": "Coda melódica contemplativa com atmosfera de encerramento — ritmo lento e introspetivo.",
@@ -229,7 +239,7 @@ export default function App() {
   const [previewingTrackId, setPreviewingTrackId] = useState<string | null>(null);
   const [loadingTrackId, setLoadingTrackId] = useState<string | null>(null);
 
-  // HUD State (synced at throttled frequency to keep 60fps canvas buttery smooth)
+  // Final stats snapshot for EndGameModal
   const [hudStats, setHudStats] = useState<GameStats>({
     distanceTravelled: 0,
     totalDistance: 18000,
@@ -243,23 +253,12 @@ export default function App() {
     currentBpm: 132
   });
 
-  const [shipHudInfo, setShipHudInfo] = useState({
-    shields: 1,
-    lives: 3,
-    maxLives: 3,
-    damperActiveTimer: 0,
-    lowGActiveTimer: 0,
-    invulnerableTime: 0,
-    etherealActiveTimer: 0,
-    chronoDilationTimer: 0,
-    singularityNotifyTimer: 0,
-    leftThrusterPower: 0,
-    rightThrusterPower: 0,
-    sonicPulseNotifyTimer: 0,
-    timePenaltyNotifyTimer: 0,
-    vx: 0,
-    vy: 0
-  });
+  // Direct HUD DOM Ref Handle (Technical Proposal 1: Zero React reconciliation during flight)
+  const hudHandleRef = useRef<GameHUDHandle | null>(null);
+
+  // Fixed Timestep Accumulator (Fase 2: Deterministic physics independent of display refresh rate)
+  const FIXED_DT = 1 / 60;
+  const accumulatorRef = useRef<number>(0);
 
   // Canvas & Engine References
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -267,7 +266,6 @@ export default function App() {
   const worldRef = useRef<PhysicsWorld | null>(null);
   const animationFrameIdRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
-  const hudThrottleTimerRef = useRef<number>(0);
 
   // Input states
   const keysHeld = useRef<{ left: boolean; right: boolean }>({ left: false, right: false });
@@ -495,6 +493,7 @@ export default function App() {
 
       newWorld.onShipDestroyed = () => {
         // Silence continuous thrusters immediately and fade out track as punishment
+        setHudStats({ ...newWorld.stats });
         audio.silenceAllContinuous();
         audio.fadeOutAndStopTrack(0.85);
         audio.playExplosionSfx();
@@ -553,6 +552,7 @@ export default function App() {
       };
 
       newWorld.onGoalReached = () => {
+        setHudStats({ ...newWorld.stats });
         audio.silenceAllContinuous();
         audio.setLoopTrack(true);
         audio.playVictorySfx();
@@ -744,7 +744,7 @@ export default function App() {
 
       const rawDt = (timestamp - lastTimeRef.current) / 1000;
       lastTimeRef.current = timestamp;
-      const dt = Math.min(rawDt, 0.045); // Clamp dt against browser hiccups
+      const clampedDt = Math.min(rawDt, 0.1); // Clamp to prevent spiral of death during backgrounding
 
       const world = worldRef.current;
       const renderer = rendererRef.current;
@@ -754,18 +754,23 @@ export default function App() {
         const leftPressed = keysHeld.current.left || touchesHeld.current.left;
         const rightPressed = keysHeld.current.right || touchesHeld.current.right;
 
-        // Extract real-time multi-band FFT with envelope followers
-        const audioFreq = audio.getFrequencyData(0.24, dt);
-
-        // Step physics only when PLAYING
+        // Step physics only when PLAYING using fixed timestep accumulator (Fase 2)
         if (gameState === 'PLAYING') {
-          // Update continuous procedural sound for dual thrusters. Gated to
-          // PLAYING so pause / game-over / victory stay silent even if the ship
-          // retains a non-zero thruster power value.
+          // Update continuous procedural sound for dual thrusters
           audio.updateThrusterAudio(world.ship.leftThrusterPower, world.ship.rightThrusterPower);
 
-          const trackCurrentTime = audio.getCurrentTime();
-          world.update(dt, leftPressed, rightPressed, audioFreq, trackCurrentTime);
+          accumulatorRef.current += clampedDt;
+          let subSteps = 0;
+          while (accumulatorRef.current >= FIXED_DT && subSteps < 3) {
+            const audioFreq = audio.getFrequencyData(0.24, FIXED_DT);
+            const trackCurrentTime = audio.getCurrentTime();
+            world.update(FIXED_DT, leftPressed, rightPressed, audioFreq, trackCurrentTime);
+            accumulatorRef.current -= FIXED_DT;
+            subSteps++;
+          }
+          if (accumulatorRef.current > FIXED_DT * 2) {
+            accumulatorRef.current = 0; // Discard backlog after extreme stalls
+          }
 
           // Countdown tick: alternating tic-toc in the final 25 seconds (rising tension)
           const remainingWholeSec = Math.ceil(world.stats.totalDuration - world.stats.timeElapsed);
@@ -780,45 +785,29 @@ export default function App() {
             audio.silenceAllContinuous();
             audio.playTimeUpSfx();
             setOutOfTime(true);
+            setHudStats({ ...world.stats });
             setTimeout(() => {
               audio.playGameOverJingle();
               setGameState('GAMEOVER');
             }, 900);
           }
 
-          // Throttled HUD update (~12Hz) to prevent React state from slowing down 60fps canvas
-          hudThrottleTimerRef.current += dt;
-          if (hudThrottleTimerRef.current > 0.08) {
-            hudThrottleTimerRef.current = 0;
-            setHudStats({ ...world.stats });
-            setShipHudInfo({
-              shields: world.ship.shields,
-              lives: world.ship.lives,
-              maxLives: world.ship.maxLives,
-              damperActiveTimer: world.ship.damperActiveTimer,
-              lowGActiveTimer: world.ship.lowGActiveTimer,
-              invulnerableTime: world.ship.invulnerableTime,
-              etherealActiveTimer: world.ship.etherealActiveTimer,
-              chronoDilationTimer: world.ship.chronoDilationTimer,
-              singularityNotifyTimer: world.ship.singularityNotifyTimer,
-              leftThrusterPower: world.ship.leftThrusterPower,
-              rightThrusterPower: world.ship.rightThrusterPower,
-              sonicPulseNotifyTimer: world.ship.sonicPulseNotifyTimer,
-              timePenaltyNotifyTimer: world.ship.timePenaltyNotifyTimer,
-              vx: world.ship.vx,
-              vy: world.ship.vy
-            });
-          }
+          // Direct DOM HUD update (Technical Proposal 1: Zero React reconciliation overhead during flight)
+          hudHandleRef.current?.update(world.stats, world.ship, world.launchGraceTimer);
+        } else {
+          accumulatorRef.current = 0;
         }
 
         // Render Frame
-        renderer.render(world, audioFreq, dt, gameState === 'PAUSED');
+        const renderFreq = audio.getFrequencyData(0.24, clampedDt);
+        renderer.render(world, renderFreq, clampedDt, gameState === 'PAUSED');
       }
 
       animationFrameIdRef.current = requestAnimationFrame(loop);
     };
 
     lastTimeRef.current = performance.now();
+    accumulatorRef.current = 0;
     animationFrameIdRef.current = requestAnimationFrame(loop);
 
     return () => {
@@ -831,7 +820,8 @@ export default function App() {
 
   return (
     <div
-      className="relative w-screen h-screen overflow-hidden bg-black select-none touch-none"
+      className="relative w-screen h-screen overflow-hidden bg-black select-none touch-none overscroll-none"
+      style={{ overscrollBehavior: 'none', touchAction: 'none', WebkitUserSelect: 'none' }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -843,18 +833,16 @@ export default function App() {
         className="absolute inset-0 w-full h-full block cursor-crosshair"
       />
 
-      {/* HUD during Gameplay */}
+      {/* HUD during Gameplay (Technical Proposal 1: Direct DOM mutations via ref) */}
       {gameState === 'PLAYING' && worldRef.current && (
         <GameHUD
-          stats={hudStats}
-          ship={{
-            ...worldRef.current.ship,
-            ...shipHudInfo
-          }}
+          ref={hudHandleRef}
+          initialStats={worldRef.current.stats}
+          initialShip={worldRef.current.ship}
           difficulty={difficulty}
           trackTitle={selectedTrack?.title || 'Sonic Orbit'}
           onPause={handlePause}
-          launchGraceTimer={worldRef.current.launchGraceTimer}
+          initialLaunchGraceTimer={worldRef.current.launchGraceTimer}
           announcement={activeAnnouncement}
         />
       )}
