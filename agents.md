@@ -84,6 +84,10 @@
   2. *Re-energized Dynamic Amplitudes*: Raised `maxAmp` (17–24px) and base amplitude (3.0–4.5px) with strong kick/beat bounces (+7.5px sub-bass / +4.5px others) so waves visibly swell and heave to drum kicks and basslines.
   3. *Crisp Yet Smooth Ballistics*: Tuned attack to `0.30` (instantly feels kicks and chords) and decay to `0.15` (silky 6-frame release that prevents visual flutter or trembling).
   4. *Living Idle Waveform*: Added natural multi-frequency breathing oscillation during quiet/standby states so the menu visualizer never looks motionless.
+- **v1.26.0 (News Ticker Marquee & Parody Magazine Names)**:
+  1. *Continuous Scrolling Marquee*: Replaced the static 4s-cycling headline with an infinitely looping CSS marquee (`@keyframes newsMarquee`, 28s linear, translateX -50%). Headlines glide horizontally like a real news ticker, with soft edge fading (`news-ticker-mask`). `width: max-content; white-space: nowrap` keeps it on one line without affecting layout.
+  2. *Parody Magazine/Landmark Names*: Satirized famous outlets so the joke is obvious — `IGN`→`IGNORÂNCIA`, `PC Gamer`→`PC GAMERRA`, `GameSpot`→`GAME SPÔT`, `Polygon`→`POLYGONO`, `Eurogamer`→`EUROGAMBER`, `Edge`→`EDGE NÃO`, `Kotaku`→`KOTAKU MEIO`.
+  3. *Layout Preservation*: Marquee is bounded by `max-w-[150px]/[280px]/[420px]` (mobile/tablet/desktop) inside the existing top bar; mobile menu still fits the viewport (scroll-height ≈ viewport-height).
 - **v1.25.0 (Mobile Menu Compactness & Visualizer Height Normalization)**:
   1. *Reduced Menu Element Sizes on Mobile*: Shrunk title (`text-5xl`→`text-3xl` base), card paddings (`p-3.5`→`p-2.5`), icons (`w-12`→`w-10`), gaps, headers, metadata rows, and footer so the entire menu fits a ~390×844 viewport without scrolling. Desktop (`sm:`/`lg:`) sizes unchanged.
   2. *Visualizer Height Normalization (`hScale`)*: `SynthwaveVisualizer.tsx` now scales all below-horizon extents (wave ribbons, spectrum mountain) by `min(1, h/480)` so the synthwave scene is never clipped on short canvases; ≥480px canvases render byte-identical to the original. Fixes sine-wave ribbons cut off at the bottom edge on mobile.

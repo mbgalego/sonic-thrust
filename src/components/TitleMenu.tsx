@@ -44,11 +44,13 @@ import { audio } from '../audio/AudioEngine';
  * Pixel-accurate vector representation of each in-game power-up beacon
  */
 const NEWS_TICKER = [
-  "JOGO DO ANO — IGN",
-  "MELHOR TRILHA SYNTHWAVE — PC Gamer",
-  "ESCOLHA DOS EDITORES — GameSpot",
-  "IMPERDÍVEL — Polygon",
-  "PRÉMIO OURO — Eurogamer",
+  "JOGO DO ANO — IGNORÂNCIA",
+  "MELHOR TRILHA SYNTHWAVE — PC GAMERRA",
+  "ESCOLHA DOS EDITORES — GAME SPÔT",
+  "IMPERDÍVEL — POLYGONO",
+  "PRÉMIO OURO — EUROGAMBER",
+  "LEITURA OBRIGATÓRIA — EDGE NÃO",
+  "5/5 — KOTAKU MEIO",
 ];
 
 const PowerUpGraphic: React.FC<{ type: PowerUpType; size?: number }> = ({ type, size = 44 }) => {
@@ -178,14 +180,9 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [isControlsOpen, setIsControlsOpen] = useState(false);
 
-  // News ticker rotation (cycles gaming awards every 4s)
-  const [newsTickerIndex, setNewsTickerIndex] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => {
-      setNewsTickerIndex((i) => (i + 1) % NEWS_TICKER.length);
-    }, 4000);
-    return () => clearInterval(id);
-  }, []);
+  // News ticker: all headlines joined into one scrolling marquee string.
+  // Each entry is repeated twice so the CSS loop is seamless (translateX -50%).
+  const newsTickerText = `${NEWS_TICKER.join('  ✦  ')}  ✦  ${NEWS_TICKER.join('  ✦  ')}  ✦  `;
 
   // Player-uploaded music (stored ONLY in this browser's IndexedDB)
   const localFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -261,11 +258,13 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
       {/* Top Bar Row: Controls located cleanly above the header so they never overlap the game title */}
       <div className="relative z-20 flex items-center justify-between w-full max-w-6xl mx-auto px-1 sm:px-4 pt-1 sm:pt-2 pb-2 shrink-0">
-        <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-          <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#00f0ff] shrink-0" />
-          <span className="font-orbitron text-xs sm:text-sm tracking-wider text-cyan-400 font-bold uppercase whitespace-nowrap truncate max-w-[150px] sm:max-w-[260px] lg:max-w-[360px]">
-            {NEWS_TICKER[newsTickerIndex]}
-          </span>
+        <div className="flex items-center min-w-0 overflow-hidden flex-1 sm:flex-initial">
+          <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#00f0ff] shrink-0 mr-2" />
+          <div className="news-ticker-mask overflow-hidden min-w-0 max-w-[150px] sm:max-w-[280px] lg:max-w-[420px]">
+            <div className="animate-news-marquee font-orbitron text-xs sm:text-sm tracking-wider text-cyan-400 font-bold uppercase">
+              {newsTickerText}
+            </div>
+          </div>
         </div>
 
         {/* Audio Mute & Fullscreen Controls */}
@@ -1210,7 +1209,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
       {/* Footer: Version and Last Update Date on left, Author on right */}
       <footer className="relative z-10 flex items-center justify-between text-xs sm:text-sm font-mono text-cyan-400/90 pt-1.5 pb-1 sm:pt-3 sm:pb-2 border-t border-white/10 max-w-6xl w-full mx-auto px-2">
-        <span className="tracking-wide">v1.25.0 · 27/10/2026</span>
+        <span className="tracking-wide">v1.26.0 · 27/10/2026</span>
         <span className="tracking-wide font-semibold text-gray-200">Por Miguel Galego</span>
       </footer>
 
