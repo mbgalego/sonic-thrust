@@ -33,6 +33,13 @@ export const SynthwaveVisualizer: React.FC<SynthwaveVisualizerProps> = ({
     let animId: number;
     let time = 0;
     let lastTime = performance.now();
+    let ripplePhase = 0; // Monotonic rhythm-synced phase accumulator matching GameRenderer.ts
+    let currentPhaseSpeed = 0.75; // Low-pass filtered phase velocity for smooth gliding momentum
+    // Adaptive normalization states for the 6 equalizer wave bands (persists across frames)
+    const eqAvg = [0.12, 0.12, 0.10, 0.08, 0.06, 0.05];
+    const eqPeak = [0.50, 0.50, 0.40, 0.35, 0.30, 0.25];
+    // Damped amplitude buffer for each band to completely eliminate jitter and trembling in the menu
+    const lerpedWaveAmps = new Float32Array(6).fill(3.0);
 
     // Number of bars in the equalizer mountain
     const numBars = 46;
@@ -96,6 +103,14 @@ export const SynthwaveVisualizer: React.FC<SynthwaveVisualizerProps> = ({
       // Motion speed modulated by music energy
       const speedMultiplier = isAnyPlaying ? 1 + freqData.energy * 0.8 : 0.6;
       time += dt * speedMultiplier;
+
+      // Lively, organic phase speed for menu waves (clear forward momentum without stutter)
+      const macroE = freqData.macroEnergy ?? freqData.energy;
+      const targetPhaseSpeed = isAnyPlaying
+        ? (1.35 + 1.5 * Math.pow(macroE, 1.2) + (freqData.subBass || 0) * 0.9 + (freqData.beatPulse || 0) * 1.0)
+        : 0.95;
+      currentPhaseSpeed += (targetPhaseSpeed - currentPhaseSpeed) * 0.18;
+      ripplePhase += currentPhaseSpeed * dt;
 
       const rect = canvas.getBoundingClientRect();
       const w = rect.width;
@@ -241,46 +256,186 @@ export const SynthwaveVisualizer: React.FC<SynthwaveVisualizerProps> = ({
       }
       ctx.restore();
 
-      // 4. Draw Tangled Neon Oscilloscope Sine Waves (Ribbons) modulated by FFT
-      const waveConfigs = [
-        { color: 'rgba(6, 182, 212, 0.95)', shadow: 'rgba(6, 182, 212, 0.8)', freq: 0.012, amp: 26, speed: 2.2, phase: 0.2, yOffset: 30, band: freqData.subBass },
-        { color: 'rgba(234, 179, 8, 0.95)', shadow: 'rgba(234, 179, 8, 0.8)', freq: 0.015, amp: 32, speed: 1.8, phase: 1.5, yOffset: 48, band: freqData.bass },
-        { color: 'rgba(249, 115, 22, 0.95)', shadow: 'rgba(249, 115, 22, 0.8)', freq: 0.011, amp: 28, speed: 2.4, phase: 3.1, yOffset: 65, band: freqData.lowMids },
-        { color: 'rgba(244, 63, 94, 0.95)', shadow: 'rgba(244, 63, 94, 0.8)', freq: 0.016, amp: 34, speed: 2.0, phase: 4.2, yOffset: 80, band: freqData.highMids },
-        { color: 'rgba(217, 70, 239, 0.95)', shadow: 'rgba(217, 70, 239, 0.8)', freq: 0.013, amp: 30, speed: 2.6, phase: 5.6, yOffset: 95, band: freqData.treble },
-        { color: 'rgba(16, 185, 129, 0.9)', shadow: 'rgba(16, 185, 129, 0.7)', freq: 0.018, amp: 22, speed: 1.6, phase: 2.3, yOffset: 110, band: freqData.energy }
+      // 4. In-Game Equalizer Waves (Balanced Sweet Spot for Main Menu Ambience)
+      // Visibly alive, flowing, and bouncing to beats and bass drops, while filtered against jitter:
+      // - Band 0: Sub-Bass (20 - 85 Hz): Deep rolling ocean swell, heaves with kicks and drops
+      // - Band 1: Punch Bass (85 - 250 Hz): Bounces forcefully with kick drums and basslines
+      // - Band 2: Low-Mids (250 - 900 Hz): Musical harmonic wave driven by synthesizer chords
+      // - Band 3: High-Mids (900 - 4500 Hz): Luminous crests reacting to snares and vocals
+      // - Band 4: Treble (4500 - 16000 Hz): Shimmering ribbon undulating with hi-hats and cymbals
+      // - Band 5: Presence (Ultra Highs): Upper atmosphere sparkle
+      // Strictly preserves the existing menu visualizer layout, dimensions, framing, and bounds!
+      const eqWaveBands = [
+        {
+          name: 'SUB_BASS',
+          color: '#00f0ff',
+          shadow: 'rgba(0, 240, 255, 0.85)',
+          spatialFreq: 0.0032,
+          speedMult: 0.90,
+          yOffset: 30,
+          baseAmp: 4.5,
+          maxAmp: 24,
+          phaseOffset: 0,
+          binStart: 1,
+          binEnd: 8
+        },
+        {
+          name: 'PUNCH_BASS',
+          color: '#38bdf8',
+          shadow: 'rgba(56, 189, 248, 0.85)',
+          spatialFreq: 0.0055,
+          speedMult: 1.10,
+          yOffset: 48,
+          baseAmp: 4.0,
+          maxAmp: 22,
+          phaseOffset: 0.80,
+          binStart: 8,
+          binEnd: 20
+        },
+        {
+          name: 'LOW_MIDS',
+          color: '#f97316',
+          shadow: 'rgba(249, 115, 22, 0.85)',
+          spatialFreq: 0.0080,
+          speedMult: 1.25,
+          yOffset: 65,
+          baseAmp: 3.8,
+          maxAmp: 20,
+          phaseOffset: 1.60,
+          binStart: 20,
+          binEnd: 45
+        },
+        {
+          name: 'HIGH_MIDS',
+          color: '#10b981',
+          shadow: 'rgba(16, 185, 129, 0.85)',
+          spatialFreq: 0.0115,
+          speedMult: 1.45,
+          yOffset: 80,
+          baseAmp: 3.5,
+          maxAmp: 18,
+          phaseOffset: 2.40,
+          binStart: 45,
+          binEnd: 90
+        },
+        {
+          name: 'TREBLE',
+          color: '#f43f5e',
+          shadow: 'rgba(244, 63, 94, 0.85)',
+          spatialFreq: 0.0150,
+          speedMult: 1.65,
+          yOffset: 95,
+          baseAmp: 3.2,
+          maxAmp: 17,
+          phaseOffset: 3.20,
+          binStart: 90,
+          binEnd: 160
+        },
+        {
+          name: 'PRESENCE',
+          color: '#d946ef',
+          shadow: 'rgba(217, 70, 239, 0.85)',
+          spatialFreq: 0.0100,
+          speedMult: 1.35,
+          yOffset: 110,
+          baseAmp: 3.0,
+          maxAmp: 18,
+          phaseOffset: 4.50,
+          binStart: 160,
+          binEnd: 240
+        }
       ];
 
-      ctx.save();
-      waveConfigs.forEach((cfg) => {
-        const audioAmpMod = isAnyPlaying ? 1 + cfg.band * 1.2 : 1;
-        ctx.lineWidth = isAnyPlaying && cfg.band > 0.5 ? 2.8 : 2.0;
-        ctx.strokeStyle = cfg.color;
-        ctx.shadowColor = cfg.shadow;
-        ctx.shadowBlur = 8 + (isAnyPlaying ? cfg.band * 14 : 0);
-        ctx.beginPath();
+      const beatPulseVal = freqData.beatPulse || (freqData.isBeat ? 1.0 : 0.0);
+      const fa = freqData.frequencyArray;
 
-        const startX = w * 0.05;
-        const endX = w * 0.98;
-        const steps = 70;
-        const dx = (endX - startX) / steps;
+      const startX = w * 0.05;
+      const endX = w * 0.98;
+      const steps = 90;
+      const dx = (endX - startX) / steps;
 
+      for (let b = 0; b < eqWaveBands.length; b++) {
+        const band = eqWaveBands[b];
+
+        // 1) Raw bin average for this band's frequency range
+        let raw = 0;
+        if (isAnyPlaying && fa && fa.length > 0) {
+          const count = Math.max(1, band.binEnd - band.binStart);
+          for (let i = band.binStart; i < band.binEnd && i < fa.length; i++) {
+            raw += (fa[i] || 0) / 255;
+          }
+          raw /= count;
+        }
+
+        // 2) Adaptive normalization with responsive baseline tracking
+        const avgAlpha = 1.0 - Math.exp(-dt / 2.2);
+        eqAvg[b] += (raw - eqAvg[b]) * avgAlpha;
+        eqPeak[b] = Math.max(raw, eqPeak[b] * Math.exp(-dt / 1.6));
+        const span = Math.max(0.08, eqPeak[b] - eqAvg[b]);
+        const bandE = isAnyPlaying ? Math.min(1.0, Math.max(0.0, (raw - eqAvg[b]) / span)) : 0;
+
+        // 3) Responsive amplitude with fast-attack, silky-decay filtering (sweet spot: lively & smooth)
+        const beatBoost = (b <= 1 ? beatPulseVal * 7.5 : beatPulseVal * 4.5);
+        const idleBreathing = Math.sin(time * 2.6 + b * 0.9) * 2.4 + Math.cos(time * 1.6 + b * 1.3) * 1.4;
+        const targetAmp = isAnyPlaying
+          ? (band.baseAmp + bandE * band.maxAmp + beatBoost)
+          : (band.baseAmp + idleBreathing);
+
+        // Fast attack (0.30) to feel every beat instantaneously, smooth release (0.15) to kill jitter
+        const attackFactor = targetAmp > lerpedWaveAmps[b] ? 0.30 : 0.15;
+        lerpedWaveAmps[b] += (targetAmp - lerpedWaveAmps[b]) * attackFactor;
+        const amp = lerpedWaveAmps[b];
+
+        // 4) Dynamic glow, thickness, and opacity reflecting energy
+        const ampRatio = Math.min(1.0, Math.max(0, (amp - band.baseAmp) / band.maxAmp));
+        const alpha = isAnyPlaying ? Math.max(0.40, Math.min(0.98, 0.45 + ampRatio * 0.50)) : 0.48;
+        const lineWidth = 1.6 + ampRatio * 2.0;
+        const shadowBlur = 6 + ampRatio * 18;
+
+        const wavePhase = ripplePhase * band.speedMult + band.phaseOffset;
+
+        // Sample points across the menu layout width
+        const pts: { x: number; y: number }[] = [];
         for (let s = 0; s <= steps; s++) {
           const px = startX + s * dx;
           const progress = s / steps;
-          const baseWaveY = horizonY + cfg.yOffset + progress * 60 + Math.sin(progress * Math.PI) * 20;
-          const sineY = Math.sin(px * cfg.freq + time * cfg.speed + cfg.phase) * (cfg.amp * audioAmpMod) * Math.sin(progress * Math.PI);
-          const py = baseWaveY + sineY;
+          // Exact menu perspective baseline trajectory
+          const baseWaveY = horizonY + band.yOffset + progress * 60 + Math.sin(progress * Math.PI) * 20;
 
-          if (s === 0) {
-            ctx.moveTo(px, py);
-          } else {
-            ctx.lineTo(px, py);
+          // Harmonic dual synthesis: prominent fundamental + rich overtone
+          const s1 = Math.sin(px * band.spatialFreq - wavePhase);
+          const s2 = Math.cos(px * (band.spatialFreq * 0.48) - wavePhase * 0.58) * 0.35;
+          const displacement = (s1 + s2) * amp;
+
+          // Smooth edge tapering so waves integrate seamlessly into menu layout
+          const edgeTaper = Math.sin(Math.pow(progress, 0.85) * Math.PI);
+          const py = baseWaveY + displacement * edgeTaper;
+          pts.push({ x: px, y: py });
+        }
+
+        // Draw with smooth quadratic Bézier spline curves
+        ctx.save();
+        ctx.strokeStyle = band.color;
+        ctx.globalAlpha = alpha;
+        ctx.shadowColor = band.shadow;
+        ctx.shadowBlur = shadowBlur;
+        ctx.lineWidth = lineWidth;
+
+        ctx.beginPath();
+        if (pts.length > 0) {
+          ctx.moveTo(pts[0].x, pts[0].y);
+          for (let s = 1; s < pts.length; s++) {
+            const prev = pts[s - 1];
+            const curr = pts[s];
+            const midX = (prev.x + curr.x) / 2;
+            const midY = (prev.y + curr.y) / 2;
+            ctx.quadraticCurveTo(prev.x, prev.y, midX, midY);
           }
+          ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
         }
         ctx.stroke();
-      });
-      ctx.restore();
+        ctx.restore();
+      }
 
       animId = requestAnimationFrame(render);
     };
