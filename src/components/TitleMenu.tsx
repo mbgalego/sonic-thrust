@@ -43,6 +43,15 @@ import { audio } from '../audio/AudioEngine';
 /**
  * Pixel-accurate vector representation of each in-game power-up beacon
  */
+const NEWS_TICKER = [
+  "INDIE GAME OF THE YEAR — IGN",
+  "BEST SYNTHWAVE SOUNDTRACK — PC Gamer",
+  "EDITOR'S CHOICE — GameSpot",
+  "A MUST PLAY — Polygon",
+  "GOLD AWARD — Eurogamer",
+  "SONIC THRUST — Suno Pro Premiere",
+];
+
 const PowerUpGraphic: React.FC<{ type: PowerUpType; size?: number }> = ({ type, size = 44 }) => {
   switch (type) {
     case 'SHIELD':
@@ -170,6 +179,15 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [isControlsOpen, setIsControlsOpen] = useState(false);
 
+  // News ticker rotation (cycles gaming awards every 4s)
+  const [newsTickerIndex, setNewsTickerIndex] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setNewsTickerIndex((i) => (i + 1) % NEWS_TICKER.length);
+    }, 4000);
+    return () => clearInterval(id);
+  }, []);
+
   // Player-uploaded music (stored ONLY in this browser's IndexedDB)
   const localFileInputRef = useRef<HTMLInputElement | null>(null);
   const [localUploadBusy, setLocalUploadBusy] = useState(false);
@@ -247,7 +265,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#00f0ff]" />
           <span className="font-orbitron text-xs sm:text-sm tracking-wider text-cyan-400 font-bold uppercase">
-            {selectedTrack?.title || 'SONIC ARCADE'}
+            {NEWS_TICKER[newsTickerIndex]}
           </span>
         </div>
 
