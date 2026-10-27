@@ -144,6 +144,13 @@ export const SynthwaveVisualizer: React.FC<SynthwaveVisualizerProps> = ({
       const vpX = w * 0.82; // Vanishing point skewed towards right as in reference mock-up
       const vpY = horizonY;
 
+      // Height-normalization factor: the whole scene (grid volume, mountain, and wave
+      // ribbons) is authored for a 420px-tall canvas. When the container is shorter
+      // (e.g. mobile), scale all below-horizon extents down so the drawing is never
+      // clipped at the bottom edge. >=480px keeps the exact original layout; the
+      // extra conservativeness (480 vs 420) also absorbs shadow/blur overdraw.
+      const hScale = Math.min(1, h / 480);
+
       // Perspective grid gradient stroke
       ctx.lineWidth = 1.2;
       const gridBeatBoost = isAnyPlaying ? freqData.subBass * 0.3 : 0;
@@ -191,8 +198,8 @@ export const SynthwaveVisualizer: React.FC<SynthwaveVisualizerProps> = ({
         const norm = i / (numBars - 1);
         const bx = mountainStartX + i * barSpacing;
         
-        // Base y follows perspective slope
-        const baseY = horizonY + 25 + norm * 45 + Math.sin(norm * Math.PI) * 15;
+        // Base y follows perspective slope (extents scaled by hScale to fit short canvases)
+        const baseY = horizonY + (25 + norm * 45 + Math.sin(norm * Math.PI) * 15) * hScale;
         const baseEnv = mountainEnvelope(i, numBars);
 
         // Sample real audio FFT bins for this bar
@@ -399,8 +406,9 @@ export const SynthwaveVisualizer: React.FC<SynthwaveVisualizerProps> = ({
         for (let s = 0; s <= steps; s++) {
           const px = startX + s * dx;
           const progress = s / steps;
-          // Exact menu perspective baseline trajectory
-          const baseWaveY = horizonY + band.yOffset + progress * 60 + Math.sin(progress * Math.PI) * 20;
+          // Exact menu perspective baseline trajectory (scaled by hScale so it never
+          // runs past a short canvas — full depth is restored at >= 420px height)
+          const baseWaveY = horizonY + (band.yOffset + progress * 60 + Math.sin(progress * Math.PI) * 20) * hScale;
 
           // Harmonic dual synthesis: prominent fundamental + rich overtone
           const s1 = Math.sin(px * band.spatialFreq - wavePhase);
