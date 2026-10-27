@@ -44,12 +44,11 @@ import { audio } from '../audio/AudioEngine';
  * Pixel-accurate vector representation of each in-game power-up beacon
  */
 const NEWS_TICKER = [
-  "INDIE GAME OF THE YEAR — IGN",
-  "BEST SYNTHWAVE SOUNDTRACK — PC Gamer",
-  "EDITOR'S CHOICE — GameSpot",
-  "A MUST PLAY — Polygon",
-  "GOLD AWARD — Eurogamer",
-  "SONIC THRUST — Suno Pro Premiere",
+  "JOGO DO ANO — IGN",
+  "MELHOR TRILHA SYNTHWAVE — PC Gamer",
+  "ESCOLHA DOS EDITORES — GameSpot",
+  "IMPERDÍVEL — Polygon",
+  "PRÉMIO OURO — Eurogamer",
 ];
 
 const PowerUpGraphic: React.FC<{ type: PowerUpType; size?: number }> = ({ type, size = 44 }) => {
@@ -262,9 +261,9 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
       {/* Top Bar Row: Controls located cleanly above the header so they never overlap the game title */}
       <div className="relative z-20 flex items-center justify-between w-full max-w-6xl mx-auto px-1 sm:px-4 pt-1 sm:pt-2 pb-2 shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#00f0ff]" />
-          <span className="font-orbitron text-xs sm:text-sm tracking-wider text-cyan-400 font-bold uppercase">
+        <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+          <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#00f0ff] shrink-0" />
+          <span className="font-orbitron text-xs sm:text-sm tracking-wider text-cyan-400 font-bold uppercase whitespace-nowrap truncate max-w-[150px] sm:max-w-[260px] lg:max-w-[360px]">
             {NEWS_TICKER[newsTickerIndex]}
           </span>
         </div>
