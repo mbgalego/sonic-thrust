@@ -253,7 +253,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
   };
 
   return (
-    <div className="absolute inset-0 z-30 flex flex-col justify-between p-3 sm:p-5 md:p-8 bg-[#060216]/95 backdrop-blur-md overflow-y-auto overflow-x-hidden select-none">
+    <div className="absolute inset-0 z-30 flex flex-col justify-between p-2 sm:p-5 md:p-8 bg-[#060216]/95 backdrop-blur-md overflow-y-auto overflow-x-hidden select-none">
       
       {/* Background Radial Glows */}
       <div className="absolute top-1/4 left-1/4 w-[450px] h-[450px] bg-cyan-500/10 rounded-full blur-[110px] pointer-events-none" />
@@ -319,21 +319,21 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
       </div>
 
       {/* Header with Sonic Thrust Neon Brand Title (Unobstructed at all resolutions) */}
-      <header className="relative z-10 flex flex-col items-center justify-center text-center pt-1 sm:pt-2 pb-2 sm:pb-3 shrink-0">
-        <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black italic tracking-wider uppercase font-orbitron flex items-center justify-center gap-3 sm:gap-4 drop-shadow-[0_0_24px_rgba(0,240,255,0.4)]">
+      <header className="relative z-10 flex flex-col items-center justify-center text-center pt-0 sm:pt-2 pb-1 sm:pb-3 shrink-0">
+        <h1 className="text-3xl sm:text-6xl md:text-7xl lg:text-8xl font-black italic tracking-wider uppercase font-orbitron flex items-center justify-center gap-2 sm:gap-4 drop-shadow-[0_0_24px_rgba(0,240,255,0.4)]">
           <span className="neon-text-cyan text-[#00f0ff]">SONIC</span>
           <span className="neon-text-magenta text-[#ff007f]">THRUST</span>
         </h1>
-        <p className="text-[#38bdf8] text-sm sm:text-base md:text-lg lg:text-xl font-rajdhani font-semibold max-w-2xl mt-1.5 sm:mt-2 tracking-wide leading-relaxed px-4 drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]">
+        <p className="text-[#38bdf8] text-xs sm:text-base md:text-lg lg:text-xl font-rajdhani font-semibold max-w-2xl mt-0.5 sm:mt-2 tracking-wide leading-snug px-4 drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]">
           Navega por desfiladeiros de néon que vibram com as frequências sonoras e testa os teus reflexos.
         </p>
       </header>
 
       {/* Main Content: Left Column (Cards) & Right Column (Synthwave Visualizer Landscape) */}
-      <main className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-center max-w-6xl w-full mx-auto my-auto py-2">
+      <main className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-10 items-center max-w-6xl w-full mx-auto my-auto py-1">
         
         {/* Left Column: The 4 Menu Sections from Mock-up */}
-        <section className="lg:col-span-6 flex flex-col gap-4.5 max-w-lg mx-auto lg:mx-0 w-full">
+        <section className="lg:col-span-6 flex flex-col gap-2 sm:gap-4.5 max-w-lg mx-auto lg:mx-0 w-full">
           
           {/* Card 1: INICIAR (Primary Action Pill Button with Circulating Loading Indicator) */}
           <div
@@ -415,7 +415,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
             <div className="relative z-10 rounded-[calc(1rem-2px)] p-1 bg-[#0a0520]">
               <div
-                className={`relative flex items-center justify-center gap-3.5 py-3.5 sm:py-4 px-6 rounded-xl transition-all ${
+                className={`relative flex items-center justify-center gap-3 py-1.5 sm:py-4 px-4 sm:px-6 rounded-xl transition-all ${
                   isStartingMission
                     ? 'bg-gradient-to-r from-[#ff007f] via-[#c084fc] to-[#00f0ff] shadow-[0_0_30px_rgba(0,240,255,0.8)]'
                     : 'bg-gradient-to-r from-[#ff007f] via-[#ec4899] to-[#00f0ff] shadow-[0_0_25px_rgba(236,72,153,0.5)] group-hover:shadow-[0_0_35px_rgba(0,240,255,0.7)] group-hover:scale-[1.01] active:scale-[0.99]'
@@ -425,7 +425,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                   <>
                     {/* Spinning Cyber Loader Icon */}
                     <div className="flex items-center text-black">
-                      <Loader2 className="w-7 h-7 sm:w-8 sm:h-8 animate-spin stroke-[2.5]" />
+                      <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin stroke-[2.5]" />
                     </div>
 
                     {/* Dynamic Loading Label */}
@@ -442,11 +442,11 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                   <>
                     {/* Black Double Chevron Play / FastForward Icon */}
                     <div className="flex items-center text-black">
-                      <FastForward className="w-7 h-7 sm:w-8 sm:h-8 fill-black stroke-black" />
+                      <FastForward className="w-6 h-6 sm:w-8 sm:h-8 fill-black stroke-black" />
                     </div>
 
                     {/* Single clean title: INICIAR */}
-                    <span className="font-orbitron font-black text-xl sm:text-2xl text-black tracking-widest leading-none uppercase">
+                    <span className="font-orbitron font-black text-lg sm:text-2xl text-black tracking-widest leading-none uppercase">
                       INICIAR
                     </span>
                   </>
@@ -456,15 +456,15 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
           </div>
 
           {/* Section 2: SELECIONAR FAIXA with Inline Scrollable Dropdown */}
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1">
             <div>
-              <h2 className="text-sm sm:text-base font-bold tracking-wider text-[#00f0ff] uppercase font-orbitron drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
+              <h2 className="text-xs sm:text-base font-bold tracking-wider text-[#00f0ff] uppercase font-orbitron drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
                 SELECIONAR FAIXA
               </h2>
             </div>
 
             <div className="menu-gradient-card">
-              <div className="menu-gradient-card-inner p-3.5 sm:p-4 flex flex-col">
+              <div className="menu-gradient-card-inner p-2.5 sm:p-4 flex flex-col">
                 
                 {/* Active Track Row (Full-width metadata & clickable dropdown toggle) */}
                 <div className="flex items-center gap-3 sm:gap-4">
@@ -475,7 +475,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                       e.stopPropagation();
                       if (selectedTrack) onPreviewTrack(selectedTrack);
                     }}
-                    className="w-12 h-12 rounded-xl border border-cyan-400/80 bg-cyan-950/60 hover:bg-cyan-500/20 text-cyan-300 hover:text-white flex items-center justify-center shrink-0 transition-all shadow-[0_0_12px_rgba(6,182,212,0.35)] cursor-pointer"
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl border border-cyan-400/80 bg-cyan-950/60 hover:bg-cyan-500/20 text-cyan-300 hover:text-white flex items-center justify-center shrink-0 transition-all shadow-[0_0_12px_rgba(6,182,212,0.35)] cursor-pointer"
                     title={previewingTrackId === selectedTrack?.id ? 'Parar pré-escuta' : 'Pré-escutar faixa'}
                   >
                     {loadingTrackId === selectedTrack?.id ? (
@@ -496,7 +496,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                     {/* Header Row: Title + Badges + Expand Chevron */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-orbitron font-bold text-base sm:text-lg text-white group-hover/track:text-cyan-300 transition-colors tracking-wide truncate">
+                        <span className="font-orbitron font-bold text-sm sm:text-lg text-white group-hover/track:text-cyan-300 transition-colors tracking-wide truncate">
                           {selectedTrack?.title || 'Ayla'}
                         </span>
                         {selectedTrack?.isProcedural && (
@@ -512,7 +512,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                     </div>
 
                     {/* Metadata Row: Author / Artist + BPM + Duration */}
-                    <div className="flex items-center flex-wrap gap-x-2.5 gap-y-1 mt-1 text-sm">
+                    <div className="flex items-center flex-wrap gap-x-2.5 gap-y-0.5 mt-0.5 text-xs sm:text-sm">
                       <span className="text-cyan-300 font-rajdhani font-semibold truncate flex items-center gap-1.5">
                         <User className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                         <span className="text-gray-400 font-normal">Artista:</span>
@@ -530,9 +530,9 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                     </div>
 
                     {/* Full-width 60FPS Reactive Mini Equalizer Canvas - Only reacts when track preview is active */}
-                    <div className="w-full h-6 mt-1.5">
+                    <div className="w-full h-5 mt-1">
                       <MiniEqualizer
-                        className="w-full h-6"
+                        className="w-full h-5"
                         active={Boolean(previewingTrackId && previewingTrackId === selectedTrack?.id)}
                       />
                     </div>
@@ -541,7 +541,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
                 {/* Inline Scrollable Drop-Down List */}
                 {isDropdownOpen && (
-                  <div className="mt-3 pt-3 border-t border-cyan-500/25 flex flex-col gap-1.5">
+                  <div className="mt-2 pt-2 border-t border-cyan-500/25 flex flex-col gap-1.5">
                     <div className="flex items-center justify-between text-xs sm:text-sm font-orbitron font-bold text-cyan-300/90 px-1 pb-1">
                       <span>CATÁLOGO DE MÚSICAS ({tracks.length})</span>
                       <div className="flex items-center gap-2">
@@ -718,15 +718,15 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
           </div>
 
           {/* Section: DIFICULDADE (Inline Scrollable Dropdown) */}
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1">
             <div>
-              <h2 className="text-sm sm:text-base font-bold tracking-wider text-[#00f0ff] uppercase font-orbitron drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
+              <h2 className="text-xs sm:text-base font-bold tracking-wider text-[#00f0ff] uppercase font-orbitron drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
                 DIFICULDADE
               </h2>
             </div>
 
             <div className="menu-gradient-card">
-              <div className="menu-gradient-card-inner p-3.5 sm:p-4 flex flex-col">
+              <div className="menu-gradient-card-inner p-2.5 sm:p-4 flex flex-col">
                 {/* Active Difficulty Header (Click to toggle dropdown) */}
                 <div
                   onClick={() => setIsDifficultyOpen(prev => !prev)}
@@ -734,7 +734,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                   title={isDifficultyOpen ? 'Fechar menu de dificuldade' : 'Clica para escolher a dificuldade'}
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className={`w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 transition-all ${
+                    <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl border flex items-center justify-center shrink-0 transition-all ${
                       difficulty === 'NORMAL'
                         ? 'border-cyan-400/80 bg-cyan-950/60 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.35)]'
                         : difficulty === 'PRO'
@@ -748,7 +748,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
                     <div className="flex flex-col min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className={`font-orbitron font-black text-base sm:text-lg tracking-wider ${
+                        <span className={`font-orbitron font-black text-sm sm:text-lg tracking-wider ${
                           difficulty === 'NORMAL'
                             ? 'text-cyan-300'
                             : difficulty === 'PRO'
@@ -761,7 +761,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                           {currentDiffConfig.initialLives} Vidas
                         </span>
                       </div>
-                      <span className="font-rajdhani text-sm text-gray-200 font-medium truncate mt-0.5">
+                      <span className="font-rajdhani text-xs sm:text-sm text-gray-200 font-medium truncate mt-0.5">
                         {difficulty === 'NORMAL' && 'Gravidade 70% • 1 Escudo • Voo Manual'}
                         {difficulty === 'PRO' && 'Gravidade 100% • Sem Escudos • Dinâmico'}
                         {difficulty === 'EXTREME' && 'Gravidade 130% • 2 Vidas • Sem Escudos'}
@@ -835,15 +835,15 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
           </div>
 
           {/* Section: OPÇÕES (ÁUDIO E VOO) → renomeado simplesmente “Configurações” */}
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1">
             <div>
-              <h2 className="text-sm sm:text-base font-bold tracking-wider text-[#00f0ff] uppercase font-orbitron drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
+              <h2 className="text-xs sm:text-base font-bold tracking-wider text-[#00f0ff] uppercase font-orbitron drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
                 CONFIGURAÇÕES
               </h2>
             </div>
 
             <div className="menu-gradient-card">
-              <div className="menu-gradient-card-inner p-3.5 sm:p-4 flex flex-col">
+              <div className="menu-gradient-card-inner p-2.5 sm:p-4 flex flex-col">
                 {/* Header Row (Click to toggle dropdown) */}
                 <div
                   onClick={() => setIsOptionsOpen(prev => !prev)}
@@ -851,7 +851,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                   title={isOptionsOpen ? 'Fechar Configurações' : 'Abrir Configurações'}
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-11 h-11 rounded-xl border border-cyan-400/60 bg-cyan-950/60 text-cyan-400 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(6,182,212,0.3)] group-hover/opt:scale-105 transition-all">
+                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl border border-cyan-400/60 bg-cyan-950/60 text-cyan-400 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(6,182,212,0.3)] group-hover/opt:scale-105 transition-all">
                       <Settings className="w-6 h-6 text-cyan-400 group-hover/opt:rotate-45 transition-transform duration-300" />
                     </div>
 
@@ -859,7 +859,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                       <span className="font-orbitron font-bold text-sm sm:text-base text-white group-hover/opt:text-cyan-300 transition-colors tracking-wide truncate">
                         CONFIGURAÇÕES
                       </span>
-                      <span className="font-rajdhani text-sm text-gray-200 font-medium truncate mt-0.5">
+                      <span className="font-rajdhani text-xs sm:text-sm text-gray-200 font-medium truncate mt-0.5">
                         Voo Manual (100% Reflexos) • Mús {Math.round(options.musicVolume * 100)}% • SFX {Math.round(options.sfxVolume * 100)}%
                       </span>
                     </div>
@@ -946,15 +946,15 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
           </div>
 
           {/* Section: INFORMAÇÕES (Inline Scrollable Dropdown) */}
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1">
             <div>
-              <h2 className="text-sm sm:text-base font-bold tracking-wider text-[#00f0ff] uppercase font-orbitron drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
+              <h2 className="text-xs sm:text-base font-bold tracking-wider text-[#00f0ff] uppercase font-orbitron drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]">
                 INFORMAÇÕES
               </h2>
             </div>
 
             <div className="menu-gradient-card">
-              <div className="menu-gradient-card-inner p-3.5 sm:p-4 flex flex-col">
+              <div className="menu-gradient-card-inner p-2.5 sm:p-4 flex flex-col">
                 {/* Header Row (Click to toggle dropdown) */}
                 <div
                   onClick={() => setIsControlsOpen(prev => !prev)}
@@ -962,7 +962,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                   title={isControlsOpen ? 'Fechar informações' : 'Abrir informações'}
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-11 h-11 rounded-xl border border-cyan-400/60 bg-cyan-950/60 text-cyan-400 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(6,182,212,0.3)] group-hover/ctrl:scale-105 transition-all">
+                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl border border-cyan-400/60 bg-cyan-950/60 text-cyan-400 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(6,182,212,0.3)] group-hover/ctrl:scale-105 transition-all">
                       <Info className="w-6 h-6 text-cyan-400" />
                     </div>
 
@@ -970,7 +970,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                       <span className="font-orbitron font-bold text-sm sm:text-base text-white group-hover/ctrl:text-cyan-300 transition-colors tracking-wide truncate">
                         INFORMAÇÕES
                       </span>
-                      <span className="font-rajdhani text-sm text-gray-200 font-medium truncate mt-0.5">
+                      <span className="font-rajdhani text-xs sm:text-sm text-gray-200 font-medium truncate mt-0.5">
                         Controlos (Ecrã Tátil & Teclado) e os 8 Power-Ups
                       </span>
                     </div>
@@ -1200,7 +1200,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
         </section>
 
         {/* Right Column: 3D Synthwave Visualizer (Mountain Equalizer + Oscilloscope Ribbons + Perspective Grid) */}
-        <section className="lg:col-span-6 relative w-full h-[360px] sm:h-[420px] lg:h-[480px] flex items-center justify-center overflow-hidden rounded-2xl">
+        <section className="lg:col-span-6 relative w-full h-[230px] sm:h-[420px] lg:h-[480px] flex items-center justify-center overflow-hidden rounded-2xl">
           <SynthwaveVisualizer
             className="w-full h-full"
           />
@@ -1209,8 +1209,8 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
       </main>
 
       {/* Footer: Version and Last Update Date on left, Author on right */}
-      <footer className="relative z-10 flex items-center justify-between text-xs sm:text-sm font-mono text-cyan-400/90 pt-3 pb-2 border-t border-white/10 max-w-6xl w-full mx-auto px-2">
-        <span className="tracking-wide">v1.24.0 · 26/10/2026</span>
+      <footer className="relative z-10 flex items-center justify-between text-xs sm:text-sm font-mono text-cyan-400/90 pt-1.5 pb-1 sm:pt-3 sm:pb-2 border-t border-white/10 max-w-6xl w-full mx-auto px-2">
+        <span className="tracking-wide">v1.25.0 · 27/10/2026</span>
         <span className="tracking-wide font-semibold text-gray-200">Por Miguel Galego</span>
       </footer>
 

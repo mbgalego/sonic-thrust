@@ -84,6 +84,16 @@
   2. *Re-energized Dynamic Amplitudes*: Raised `maxAmp` (17–24px) and base amplitude (3.0–4.5px) with strong kick/beat bounces (+7.5px sub-bass / +4.5px others) so waves visibly swell and heave to drum kicks and basslines.
   3. *Crisp Yet Smooth Ballistics*: Tuned attack to `0.30` (instantly feels kicks and chords) and decay to `0.15` (silky 6-frame release that prevents visual flutter or trembling).
   4. *Living Idle Waveform*: Added natural multi-frequency breathing oscillation during quiet/standby states so the menu visualizer never looks motionless.
+- **v1.25.0 (Mobile Menu Compactness & Visualizer Height Normalization)**:
+  1. *Reduced Menu Element Sizes on Mobile*: Shrunk title (`text-5xl`→`text-3xl` base), card paddings (`p-3.5`→`p-2.5`), icons (`w-12`→`w-10`), gaps, headers, metadata rows, and footer so the entire menu fits a ~390×844 viewport without scrolling. Desktop (`sm:`/`lg:`) sizes unchanged.
+  2. *Visualizer Height Normalization (`hScale`)*: `SynthwaveVisualizer.tsx` now scales all below-horizon extents (wave ribbons, spectrum mountain) by `min(1, h/480)` so the synthwave scene is never clipped on short canvases; ≥480px canvases render byte-identical to the original. Fixes sine-wave ribbons cut off at the bottom edge on mobile.
+  3. *Version Footer*: Bumped to `v1.25.0 · 27/10/2026` in the title menu footer.
+- **v1.24.0**:
+  1. *Soundwave Drift track added* and audio files migrated from `.m4a` to `.mp3` (all tracks).
+  2. *AudioContext persistence* implemented on tab visibility changes to prevent context loss during playback.
+  3. *HUD optimization*: imperative DOM refs (`GameHUDHandle`) bypass React reconciliation during flight for smoother 60fps gameplay.
+  4. *Physics fixed timestep*: deterministic accumulator-based updates decoupled from display refresh rate.
+  5. *Removed AI Studio MP3s*: `Kosmonova_-_Take_Me_Away__Club_Mix__1997_2a08146f.mp3` and `public/tracks/CARL POPPA — Lyric Video [Q9aM9Ch97U8].mp3` deleted from the repo.
 - **v1.23.0 (Main Menu Visualizer Motion Smoothing & Anti-Flutter)**:
   1. *Low-Pass Damped Amplitudes (`lerpedWaveAmps`)*: Integrated dedicated physical attack/decay exponential damping (`attack = 0.14`, `decay = 0.07`) on the menu wave ribbons, completely eliminating rapid frame-by-frame vibration, fluttering, and trembling.
   2. *Low-Pass Phase Velocity (`currentPhaseSpeed`)*: Replaced instantaneous velocity spikes on `ripplePhase` with continuous, inertia-damped velocity filtering, providing graceful, unbroken gliding momentum across the menu canvas.
