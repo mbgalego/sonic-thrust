@@ -79,6 +79,22 @@
 ---
 
 ## 3. Changelog & Recent Fixes
+- **v1.24.0 (Main Menu Visualizer Balanced Motion Sweet Spot)**:
+  1. *Lively Forward Wave Propagation*: Calibrated `targetPhaseSpeed` to ~1.35–3.2 rad/s with responsive `0.18` tracking, restoring clear, lively forward wave rolling across the menu canvas while avoiding frame stutter.
+  2. *Re-energized Dynamic Amplitudes*: Raised `maxAmp` (17–24px) and base amplitude (3.0–4.5px) with strong kick/beat bounces (+7.5px sub-bass / +4.5px others) so waves visibly swell and heave to drum kicks and basslines.
+  3. *Crisp Yet Smooth Ballistics*: Tuned attack to `0.30` (instantly feels kicks and chords) and decay to `0.15` (silky 6-frame release that prevents visual flutter or trembling).
+  4. *Living Idle Waveform*: Added natural multi-frequency breathing oscillation during quiet/standby states so the menu visualizer never looks motionless.
+- **v1.23.0 (Main Menu Visualizer Motion Smoothing & Anti-Flutter)**:
+  1. *Low-Pass Damped Amplitudes (`lerpedWaveAmps`)*: Integrated dedicated physical attack/decay exponential damping (`attack = 0.14`, `decay = 0.07`) on the menu wave ribbons, completely eliminating rapid frame-by-frame vibration, fluttering, and trembling.
+  2. *Low-Pass Phase Velocity (`currentPhaseSpeed`)*: Replaced instantaneous velocity spikes on `ripplePhase` with continuous, inertia-damped velocity filtering, providing graceful, unbroken gliding momentum across the menu canvas.
+  3. *Elimination of High-Frequency Micro-Jitter*: Removed high-frequency spatial jitter harmonics (`hasJitter`) and widened spatial wavelengths, yielding elegant, silky dual-harmonic ribbons that undulate like liquid neon silk.
+  4. *In-Game Terrain Untouched*: All changes apply strictly to the main menu visualizer (`SynthwaveVisualizer.tsx`), leaving in-game terrain ripples, bedrock equalizers, and high-energy physics in `GameRenderer.ts` completely intact.
+- **v1.22.0 (In-Game Audio-Reactive Wave Dynamics for Main Menu Visualizer)**:
+  1. *In-Game Physics & Rhythm Phase Progression*: Integrated monotonic, tempo-locked `ripplePhase` acceleration into `SynthwaveVisualizer.tsx` matching `GameRenderer.ts` — wave movement accelerates dynamically with musical `macroEnergy` and surges forward on sub-bass and beat transients (`speedImpulse = subBass * 1.8 + beatPulse * 2.2`).
+  2. *Adaptive Normalization per Frequency Band*: Ported `GameRenderer.ts`'s rolling baseline average (`eqAvg`) and peak decay (`eqPeak`) envelope followers across 6 resonant frequency bands (Sub-Bass 20-85Hz, Punch Bass 85-250Hz, Low-Mids 250-900Hz, High-Mids 900-4500Hz, Treble 4500-16000Hz, Presence 16000Hz+). Delivers full dynamic range on all tracks regardless of audio mastering or loudness.
+  3. *Harmonic Multi-Frequency Synthesis*: Replaced simple artificial sine waves with multi-harmonic synthesis (`Math.sin` fundamental + `Math.cos` second overtone + high-frequency shimmer jitter on snares/hi-hats) and explosive rhythm `beatBoost` kick amplification on drum beats.
+  4. *Silky Bézier Curves*: Rendered continuous vector ribbons via midpoint quadratic Bézier splines (`quadraticCurveTo`), eliminating angular polyline segments.
+  5. *Strict Layout & Framing Preservation*: Retained 100% of the existing menu visualizer layout, dimensions, framing, perspective horizon slope, and edge tapering.
 - **v1.20.0 (Main Menu Overhaul, Visual Touch Controls & In-Game Power-Up Graphics)**:
   1. *Section Header Streamlining*: Removed right-side badge/counter text from all main menu section headers (`SELECIONAR FAIXA`, `DIFICULDADE`, `OPÇÕES`, `INFORMAÇÕES`), leaving clean and uncluttered titles.
   2. *Global Typography & Font-Scale Boost*: Enlarged all sub-12px texts across all menu cards, dropdown selectors, badges, and controls to `text-xs` (12px), `text-sm` (14px), and `text-base` (16px), ensuring great readability on smartphones and small displays.
