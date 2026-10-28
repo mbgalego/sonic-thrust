@@ -1205,7 +1205,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
             className="w-full h-full"
           />
           {/* Lyrics of the menu theme, floating above the equalizer bars */}
-          <MenuLyrics className="absolute inset-x-0 top-[16%] sm:top-[18%] flex justify-center px-3 pointer-events-none z-10" />
+          <MenuLyrics className="absolute inset-x-0 top-[10%] sm:top-[12%] flex justify-center px-3 pointer-events-none z-10" />
         </section>
 
       </main>
