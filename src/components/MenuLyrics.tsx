@@ -11,7 +11,7 @@ import { audio } from '../audio/AudioEngine';
 const MENU_THEME_LYRICS: { start: number; end: number; text: string }[] = [
   { start: 8.0, end: 11.0, text: 'System online...' },
   { start: 17.0, end: 20.0, text: 'Grid initialized.' },
-  { start: 33.0, end: 36.0, text: 'Vector...' },
+  { start: 34.0, end: 37.0, text: 'Vector...' },
   { start: 39.0, end: 42.0, text: 'Pulse...' },
   { start: 43.0, end: 46.0, text: 'Sub-bass...' },
   { start: 47.0, end: 50.0, text: 'Ready.' },
@@ -22,6 +22,7 @@ const MENU_THEME_LYRICS: { start: number; end: number; text: string }[] = [
   { start: 133.0, end: 134.0, text: 'Frequency...' },
   { start: 135.0, end: 136.0, text: 'Resonance...' },
   { start: 137.0, end: 138.0, text: 'Harmonic flow.' },
+  { start: 140.0, end: 143.0, text: 'Flow' },
   { start: 177.0, end: 179.0, text: 'Sonic...' },
   { start: 180.0, end: 183.0, text: 'Thrust.' },
   { start: 188.0, end: 190.0, text: 'Sonic...' },
