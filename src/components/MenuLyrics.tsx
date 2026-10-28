@@ -9,24 +9,24 @@ import { audio } from '../audio/AudioEngine';
  * Entries must stay sorted by `start`.
  */
 const MENU_THEME_LYRICS: { start: number; end: number; text: string }[] = [
-  { start: 8.0, end: 17.0, text: 'System online...' },
-  { start: 18.0, end: 33.0, text: 'Grid initialized.' },
-  { start: 34.0, end: 38.5, text: 'Vector...' },
-  { start: 39.0, end: 42.5, text: 'Pulse...' },
-  { start: 43.0, end: 46.5, text: 'Sub-bass...' },
-  { start: 47.0, end: 53.0, text: 'Ready.' },
-  { start: 54.0, end: 68.0, text: 'Sonic Thrust.' },
-  { start: 69.0, end: 84.0, text: 'Sonic Thrust.' },
-  { start: 85.0, end: 97.0, text: 'Sonic Thrust.' },
-  { start: 98.0, end: 104.5, text: 'Engage.' },
-  { start: 133.0, end: 134.5, text: 'Frequency...' },
-  { start: 135.0, end: 136.5, text: 'Resonance...' },
-  { start: 137.0, end: 144.0, text: 'Harmonic flow.' },
-  { start: 176.0, end: 179.0, text: 'Sonic...' },
-  { start: 180.0, end: 186.0, text: 'Thrust.' },
-  { start: 188.0, end: 191.0, text: 'Sonic...' },
-  { start: 192.0, end: 198.0, text: 'Thrust.' },
-  { start: 211.0, end: 222.0, text: 'Sonic Thrust.' },
+  { start: 8.0, end: 11.0, text: 'System online...' },
+  { start: 18.0, end: 21.0, text: 'Grid initialized.' },
+  { start: 34.0, end: 37.0, text: 'Vector...' },
+  { start: 39.0, end: 42.0, text: 'Pulse...' },
+  { start: 43.0, end: 46.0, text: 'Sub-bass...' },
+  { start: 47.0, end: 50.0, text: 'Ready.' },
+  { start: 54.0, end: 57.0, text: 'Sonic Thrust.' },
+  { start: 69.0, end: 72.0, text: 'Sonic Thrust.' },
+  { start: 85.0, end: 88.0, text: 'Sonic Thrust.' },
+  { start: 98.0, end: 101.0, text: 'Engage.' },
+  { start: 133.0, end: 135.0, text: 'Frequency...' },
+  { start: 135.0, end: 137.0, text: 'Resonance...' },
+  { start: 137.0, end: 139.0, text: 'Harmonic flow.' },
+  { start: 176.0, end: 178.0, text: 'Sonic...' },
+  { start: 180.0, end: 183.0, text: 'Thrust.' },
+  { start: 188.0, end: 190.0, text: 'Sonic...' },
+  { start: 192.0, end: 195.0, text: 'Thrust.' },
+  { start: 211.0, end: 216.0, text: 'Sonic Thrust.' },
 ];
 
 /** Fast reveal on line activation (s) */
@@ -81,7 +81,7 @@ export const MenuLyrics: React.FC<MenuLyricsProps> = ({ className = '' }) => {
     <div className={className}>
       <p
         aria-live="polite"
-        className="font-orbitron font-bold uppercase tracking-[0.25em] text-center text-white text-[10px] sm:text-sm leading-snug drop-shadow-[0_0_10px_rgba(0,240,255,0.9)]"
+        className="font-orbitron font-bold uppercase tracking-[0.25em] text-center text-white text-[11px] sm:text-[15px] leading-snug drop-shadow-[0_0_10px_rgba(0,240,255,0.9)]"
         style={{
           opacity: activeIdx !== null ? 1 : 0,
           transition: `opacity ${activeIdx !== null ? FADE_IN_S : FADE_OUT_S}s ease` + ', transform 0.4s ease',
