@@ -931,6 +931,17 @@ export class AudioEngine {
     return this.isMenuMusicPlaying;
   }
 
+  /**
+   * Current playback position (seconds) of the looping menu theme, wrapped into
+   * [0, bufferDuration). While paused it reports the stored pause offset, so the
+   * lyrics overlay can keep its place when playback resumes mid-loop.
+   */
+  public getMenuMusicPosition(): number {
+    if (!this.ctx || !this.menuMusicBuffer || !this.menuMusicBuffer.duration) return 0;
+    if (!this.isMenuMusicPlaying) return this.menuMusicPauseOffset;
+    return (this.ctx.currentTime - this.menuMusicStartTime) % this.menuMusicBuffer.duration;
+  }
+
 
   private stopMenuMusicSource(): void {
     if (this.menuMusicSource) {

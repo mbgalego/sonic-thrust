@@ -84,6 +84,11 @@
   2. *Re-energized Dynamic Amplitudes*: Raised `maxAmp` (17–24px) and base amplitude (3.0–4.5px) with strong kick/beat bounces (+7.5px sub-bass / +4.5px others) so waves visibly swell and heave to drum kicks and basslines.
   3. *Crisp Yet Smooth Ballistics*: Tuned attack to `0.30` (instantly feels kicks and chords) and decay to `0.15` (silky 6-frame release that prevents visual flutter or trembling).
   4. *Living Idle Waveform*: Added natural multi-frequency breathing oscillation during quiet/standby states so the menu visualizer never looks motionless.
+- **v1.27.0 (Menu Theme Lyrics Overlay — feature branch `feature/lyrics-overlay`)**:
+  1. *Timed Lyrics Above the Equalizer Bars*: New `MenuLyrics.tsx` displays the spoken lines of "Sonic Thrust - Main Menu Theme" inside the visualizer box (≈16% from the canvas top — above the equalizer mountain peaks). Only shown while the menu theme itself is playing (hidden during track previews).
+  2. *Playback Position Getter*: `AudioEngine.getMenuMusicPosition()` exposes the looping theme's current time (`(ctx.currentTime - startTime) % bufferDuration`), also reporting the pause offset when paused, so lyric windows follow the track even across pause/resume.
+  3. *Asymmetric Fading*: Lines fade in quickly (0.3s) and fade out slowly (1.8s ease), holding the last visible line during the dissolve. Very lightweight: a rAF loop only triggers React re-renders when the active line changes.
+  4. *Timestamp Tuning*: First-pass placeholder timings live in a single constant (`MENU_THEME_LYRICS`); loop-aware (timings repeat on every 234.8s loop of the theme).
 - **v1.26.0 (News Ticker Marquee & Parody Magazine Names)**:
   1. *Continuous Scrolling Marquee*: Replaced the static 4s-cycling headline with an infinitely looping CSS marquee (`@keyframes newsMarquee`, 28s linear, translateX -50%). Headlines glide horizontally like a real news ticker, with soft edge fading (`news-ticker-mask`). `width: max-content; white-space: nowrap` keeps it on one line without affecting layout.
   2. *Parody Magazine/Landmark Names*: Satirized famous outlets so the joke is obvious — `IGN`→`IGNORÂNCIA`, `PC Gamer`→`PC GAMERRA`, `GameSpot`→`GAME SPÔT`, `Polygon`→`POLYGONO`, `Eurogamer`→`EUROGAMBER`, `Edge`→`EDGE NÃO`, `Kotaku`→`KOTAKU MEIO`.
