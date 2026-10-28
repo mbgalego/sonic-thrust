@@ -260,7 +260,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
       <div className="relative z-20 flex items-center justify-between w-full max-w-6xl mx-auto px-1 sm:px-4 pt-1 sm:pt-2 pb-2 shrink-0">
         <div className="flex items-center min-w-0 overflow-hidden flex-1 sm:flex-initial">
           <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#00f0ff] shrink-0 mr-2" />
-          <div className="news-ticker-mask overflow-hidden min-w-0 max-w-[150px] sm:max-w-[280px] lg:max-w-[420px]">
+          <div className="news-ticker-mask overflow-hidden min-w-0 max-w-[185px] sm:max-w-[340px] lg:max-w-[520px]">
             <div className="animate-news-marquee font-orbitron text-xs sm:text-sm tracking-wider text-cyan-400 font-bold uppercase">
               {newsTickerText}
             </div>
@@ -319,11 +319,11 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
       {/* Header with Sonic Thrust Neon Brand Title (Unobstructed at all resolutions) */}
       <header className="relative z-10 flex flex-col items-center justify-center text-center pt-0 sm:pt-2 pb-1 sm:pb-3 shrink-0">
-        <h1 className="text-3xl sm:text-6xl md:text-7xl lg:text-8xl font-black italic tracking-wider uppercase font-orbitron flex items-center justify-center gap-2 sm:gap-4 drop-shadow-[0_0_24px_rgba(0,240,255,0.4)]">
+        <h1 className="text-[42px] landscape:text-6xl sm:text-6xl md:text-7xl lg:text-8xl font-black italic tracking-wider uppercase font-orbitron flex items-center justify-center gap-2 sm:gap-4 drop-shadow-[0_0_24px_rgba(0,240,255,0.4)]">
           <span className="neon-text-cyan text-[#00f0ff]">SONIC</span>
           <span className="neon-text-magenta text-[#ff007f]">THRUST</span>
         </h1>
-        <p className="text-[#38bdf8] text-xs sm:text-base md:text-lg lg:text-xl font-rajdhani font-semibold max-w-2xl mt-0.5 sm:mt-2 tracking-wide leading-snug px-4 drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]">
+        <p className="text-[#38bdf8] text-sm sm:text-base md:text-lg lg:text-xl font-rajdhani font-semibold max-w-2xl mt-0.5 sm:mt-2 tracking-wide leading-snug px-4 drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]">
           Navega por desfiladeiros de néon que vibram com as frequências sonoras e testa os teus reflexos.
         </p>
       </header>
