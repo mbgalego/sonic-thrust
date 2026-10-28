@@ -10,7 +10,7 @@ import { audio } from '../audio/AudioEngine';
  */
 const MENU_THEME_LYRICS: { start: number; end: number; text: string }[] = [
   { start: 8.0, end: 11.0, text: 'System online...' },
-  { start: 17.0, end: 20.0, text: 'Grid initialized.' },
+  { start: 17.0, end: 20.0, text: 'Grid initialized' },
   { start: 34.0, end: 37.0, text: 'Vector' },
   { start: 39.0, end: 42.0, text: 'Pulse' },
   { start: 43.0, end: 46.0, text: 'Sub-bass' },
