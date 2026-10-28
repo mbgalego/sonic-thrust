@@ -4,28 +4,29 @@ import { audio } from '../audio/AudioEngine';
 /**
  * Timed lyric lines for "Sonic Thrust - Main Menu Theme" (looping, ≈234.8s).
  * `start` / `end` are seconds within the track — the theme loops, so these
- * timings repeat on every loop. Tune the times by ear: edit the numbers here.
+ * timings repeat on every loop. Start times kindly provided by ear; durations
+ * are approximations (each end ≈ next start − 1s, with a long final hold).
  * Entries must stay sorted by `start`.
  */
 const MENU_THEME_LYRICS: { start: number; end: number; text: string }[] = [
-  { start: 3.0, end: 7.0, text: 'System online...' },
-  { start: 8.0, end: 12.5, text: 'Grid initialized.' },
-  { start: 16.5, end: 19.5, text: 'Vector...' },
-  { start: 20.5, end: 23.0, text: 'Pulse...' },
-  { start: 24.0, end: 26.5, text: 'Sub-bass...' },
-  { start: 27.5, end: 31.0, text: 'Ready.' },
-  { start: 34.0, end: 39.5, text: 'Sonic... Thrust.' },
-  { start: 44.0, end: 50.0, text: 'Sonic Thrust.' },
-  { start: 51.5, end: 57.5, text: 'Sonic Thrust.' },
-  { start: 59.0, end: 63.5, text: 'Engage.' },
-  { start: 74.0, end: 78.5, text: 'Frequency...' },
-  { start: 79.5, end: 84.0, text: 'Resonance...' },
-  { start: 85.0, end: 91.0, text: 'Harmonic flow.' },
-  { start: 108.0, end: 112.0, text: 'Sonic...' },
-  { start: 113.0, end: 118.5, text: 'Thrust.' },
-  { start: 124.0, end: 128.0, text: 'Sonic...' },
-  { start: 129.0, end: 134.5, text: 'Thrust.' },
-  { start: 140.0, end: 150.0, text: 'Sonic Thrust.' },
+  { start: 8.0, end: 17.0, text: 'System online...' },
+  { start: 18.0, end: 33.0, text: 'Grid initialized.' },
+  { start: 34.0, end: 38.5, text: 'Vector...' },
+  { start: 39.0, end: 42.5, text: 'Pulse...' },
+  { start: 43.0, end: 46.5, text: 'Sub-bass...' },
+  { start: 47.0, end: 53.0, text: 'Ready.' },
+  { start: 54.0, end: 68.0, text: 'Sonic Thrust.' },
+  { start: 69.0, end: 84.0, text: 'Sonic Thrust.' },
+  { start: 85.0, end: 97.0, text: 'Sonic Thrust.' },
+  { start: 98.0, end: 104.5, text: 'Engage.' },
+  { start: 133.0, end: 134.5, text: 'Frequency...' },
+  { start: 135.0, end: 136.5, text: 'Resonance...' },
+  { start: 137.0, end: 144.0, text: 'Harmonic flow.' },
+  { start: 176.0, end: 179.0, text: 'Sonic...' },
+  { start: 180.0, end: 186.0, text: 'Thrust.' },
+  { start: 188.0, end: 191.0, text: 'Sonic...' },
+  { start: 192.0, end: 198.0, text: 'Thrust.' },
+  { start: 211.0, end: 222.0, text: 'Sonic Thrust.' },
 ];
 
 /** Fast reveal on line activation (s) */
