@@ -27,7 +27,9 @@ import {
   Plus,
   Trash2,
   HardDrive,
-  Cpu
+  Cpu,
+  Lock,
+  Music
 } from 'lucide-react';
 import { LocalTrackLoader, LocalUploadResult } from '../audio/LocalTrackLoader';
 import {
@@ -41,6 +43,7 @@ import { SynthwaveVisualizer } from './SynthwaveVisualizer';
 import { MiniEqualizer } from './MiniEqualizer';
 import { MenuLyrics } from './MenuLyrics';
 import { audio } from '../audio/AudioEngine';
+import { isTrackUnlocked } from '../utils/trackUnlocks';
 
 /**
  * Pixel-accurate vector representation of each in-game power-up beacon
@@ -203,6 +206,23 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
     return () => { active = false; };
   }, [isControlsOpen]);
 
+  // Track unlock notification system
+  const [unlockNotification, setUnlockNotification] = useState<{ trackIds: string[]; tracks: TrackMetadata[] } | null>(null);
+  
+  useEffect(() => {
+    const handleUnlock = (event: CustomEvent<{ trackIds: string[] }>) => {
+      const unlockedTracks = tracks.filter(t => event.detail.trackIds.includes(t.id));
+      if (unlockedTracks.length > 0) {
+        setUnlockNotification({ trackIds: event.detail.trackIds, tracks: unlockedTracks });
+        // Auto-dismiss after 6 seconds
+        setTimeout(() => setUnlockNotification(null), 6000);
+      }
+    };
+    
+    window.addEventListener('tracks-unlocked', handleUnlock as EventListener);
+    return () => window.removeEventListener('tracks-unlocked', handleUnlock as EventListener);
+  }, [tracks]);
+
   const localTracks = tracks.filter((t) => t.isLocal);
   const formatBytes = (b: number | null): string => {
     if (b === null) return '—';
@@ -257,6 +277,26 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
       {/* Background Radial Glows */}
       <div className="absolute top-1/4 left-1/4 w-[450px] h-[450px] bg-cyan-500/10 rounded-full blur-[110px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-fuchsia-500/15 rounded-full blur-[130px] pointer-events-none" />
+
+      {/* Track Unlock Notification Toast */}
+      {unlockNotification && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-slide-down pointer-events-none">
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-fuchsia-950/95 via-cyan-950/95 to-fuchsia-950/95 border border-fuchsia-400/50 shadow-[0_0_30px_rgba(217,70,239,0.4),0_0_60px_rgba(0,240,255,0.2)] text-center max-w-md">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-fuchsia-500 to-cyan-400 flex items-center justify-center shrink-0 shadow-[0_0_20px_rgba(217,70,239,0.6)] animate-pulse">
+              <Music className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex-1 text-left">
+              <div className="font-orbitron font-black text-xs sm:text-sm text-white uppercase tracking-wider">NOVA FAIXA DESBLOQUEADA!</div>
+              <div className="font-rajdhani text-xs sm:text-sm text-cyan-200 mt-0.5">
+                {unlockNotification.tracks.map(t => t.title).join(', ')}
+              </div>
+              <div className="font-rajdhani text-[10px] text-fuchsia-300/80 mt-1">
+                Disponível no catálogo de músicas
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Top Bar Row: Controls located cleanly above the header so they never overlap the game title */}
       <div className="relative z-20 flex items-center justify-between w-full max-w-6xl mx-auto px-1 sm:px-4 pt-1 sm:pt-2 pb-2 shrink-0">
@@ -620,18 +660,24 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                         const isSelected = selectedTrack?.id === track.id;
                         const isPlayingThis = previewingTrackId === track.id;
                         const isLoadingThis = loadingTrackId === track.id;
+                        const trackUnlocked = isTrackUnlocked(track);
+                        const isLocked = !trackUnlocked && track.unlockCondition && track.secret;
 
                         return (
                           <div
                             key={track.id}
                             onClick={() => {
-                              onSelectTrack(track);
-                              setIsDropdownOpen(false);
+                              if (!isLocked) {
+                                onSelectTrack(track);
+                                setIsDropdownOpen(false);
+                              }
                             }}
-                            className={`p-2.5 rounded-lg border transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
-                              isSelected
-                                ? 'border-cyan-400 bg-cyan-950/70 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
-                                : 'border-white/10 bg-slate-900/60 hover:border-cyan-500/40 hover:bg-slate-900/90'
+                            className={`p-2.5 rounded-lg border transition-all flex items-center justify-between gap-2.5 ${
+                              isLocked
+                                ? 'border-white/5 bg-slate-900/40 opacity-60 cursor-not-allowed'
+                                : isSelected
+                                  ? 'border-cyan-400 bg-cyan-950/70 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                                  : 'border-white/10 bg-slate-900/60 hover:border-cyan-500/40 hover:bg-slate-900/90'
                             }`}
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
@@ -639,23 +685,33 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  onSelectTrack(track);
-                                  onPreviewTrack(track);
+                                  if (!isLocked) {
+                                    onSelectTrack(track);
+                                    onPreviewTrack(track);
+                                  }
                                 }}
-                                disabled={isLoadingThis}
+                                disabled={isLoadingThis || isLocked}
                                 className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition cursor-pointer ${
-                                  isPlayingThis
-                                    ? 'bg-cyan-400 text-black shadow-md shadow-cyan-400/50'
-                                    : isSelected
-                                      ? 'bg-cyan-500 text-black'
-                                      : 'bg-white/10 text-cyan-300 hover:bg-cyan-500/20'
+                                  isLocked
+                                    ? 'bg-white/5 text-white/20 cursor-not-allowed'
+                                    : isPlayingThis
+                                      ? 'bg-cyan-400 text-black shadow-md shadow-cyan-400/50'
+                                      : isSelected
+                                        ? 'bg-cyan-500 text-black'
+                                        : 'bg-white/10 text-cyan-300 hover:bg-cyan-500/20'
                                 }`}
-                                title={isPlayingThis ? 'Parar pré-escuta' : 'Pré-escutar faixa'}
+                                title={isLocked
+                                  ? (track.unlockCondition?.description || 'Faixa bloqueada')
+                                  : isPlayingThis
+                                    ? 'Parar pré-escuta'
+                                    : 'Pré-escutar faixa'}
                               >
                                 {isLoadingThis ? (
                                   <Loader2 className="w-4 h-4 animate-spin text-cyan-300" />
                                 ) : isPlayingThis ? (
                                   <Pause className="w-4 h-4 fill-current text-black animate-pulse" />
+                                ) : isLocked ? (
+                                  <Lock className="w-4 h-4 fill-current text-white/40" />
                                 ) : (
                                   <Play className="w-4 h-4 fill-current text-cyan-300 ml-0.5" />
                                 )}
@@ -663,8 +719,9 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
                               <div className="truncate">
                                 <div className="flex items-center gap-2">
-                                  <span className="font-orbitron font-bold text-sm sm:text-base text-white truncate">
+                                  <span className={`font-orbitron font-bold text-sm sm:text-base truncate ${isLocked ? 'text-white/40' : 'text-white'}`}>
                                     {track.title}
+                                    {isLocked && <Lock className="w-3.5 h-3.5 text-white/30 ml-1 shrink-0" />}
                                   </span>
                                   {track.isProcedural && (
                                     <span className="text-xs uppercase font-mono font-semibold px-1.5 py-0.5 rounded bg-fuchsia-950/80 border border-fuchsia-500/40 text-fuchsia-300">
@@ -677,14 +734,16 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                                     </span>
                                   )}
                                 </div>
-                                <div className="text-xs sm:text-sm text-gray-300 font-rajdhani font-medium truncate mt-0.5">
-                                  {track.artist}
+                                <div className={`text-xs sm:text-sm font-rajdhani font-medium truncate mt-0.5 ${isLocked ? 'text-white/30' : 'text-gray-300'}`}>
+                                  {isLocked
+                                    ? (track.unlockCondition?.description || 'Faixa bloqueada')
+                                    : track.artist}
                                 </div>
                               </div>
                             </div>
 
                             <div className="flex items-center gap-2 shrink-0 font-mono text-xs sm:text-sm">
-                              {track.isLocal && onDeleteLocalTrack && (
+                              {track.isLocal && onDeleteLocalTrack && !isLocked && (
                                 <button
                                   type="button"
                                   onClick={(e) => {
@@ -699,7 +758,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                                   <Trash2 className="w-4 h-4" />
                                 </button>
                               )}
-                              <span className="text-cyan-400 font-semibold tabular-nums">{track.estimatedBpm || 128} BPM</span>
+                              <span className={`text-cyan-400 font-semibold tabular-nums ${isLocked ? 'text-white/30' : ''}`}>{track.estimatedBpm || 128} BPM</span>
                               <span className="text-gray-400">·</span>
                               <span className="text-gray-200 tabular-nums">
                                 {Math.floor((track.duration || 90) / 60)}:

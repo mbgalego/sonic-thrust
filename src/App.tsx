@@ -8,6 +8,7 @@ import { audio } from './audio/AudioEngine';
 import { LocalTrackLoader, LocalUploadResult } from './audio/LocalTrackLoader';
 import { PhysicsWorld } from './physics/PhysicsWorld';
 import { GameRenderer } from './graphics/GameRenderer';
+import { checkAndUnlockTracks } from './utils/trackUnlocks';
 import {
   GameState,
   DifficultyLevel,
@@ -560,6 +561,16 @@ export default function App() {
         audio.silenceAllContinuous();
         audio.setLoopTrack(false);
         audio.playVictorySfx();
+        
+        // Check for track unlocks based on difficulty completed (only PRO and EXTREME unlock tracks)
+        if (difficulty === 'PRO' || difficulty === 'EXTREME') {
+          const newlyUnlocked = checkAndUnlockTracks(difficulty, tracks);
+          if (newlyUnlocked.length > 0) {
+            // Trigger unlock notification in TitleMenu via event
+            window.dispatchEvent(new CustomEvent('tracks-unlocked', { detail: { trackIds: newlyUnlocked } }));
+          }
+        }
+        
         setTimeout(() => {
           setGameState('VICTORY');
         }, 1000);
