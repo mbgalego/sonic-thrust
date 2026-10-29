@@ -142,6 +142,16 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
   const musicProgressBarRef = useRef<HTMLDivElement | null>(null);
   const peakBarsRef = useRef<number[]>(new Array(56).fill(0));
 
+  // Logical (CSS pixel) size per canvas. The DPR resize handler stores back-buffer
+  // (device-pixel) dimensions in canvas.width/height + a dpr scale transform, so ALL
+  // drawing code must use these LOGICAL dimensions for coordinates, never canvas.width.
+  // Regression v1.32.1: on dpr > 1 screens (Windows 125%/150% scaling) the drawing
+  // got scaled in double → corner VU segments drawn off-canvas (invisible) and the
+  // central visualizer clipped/zoomed. v1.33.1 fix.
+  const logicalSizeMap = new WeakMap<HTMLCanvasElement, { w: number; h: number }>();
+  const getLogicalSize = (canvas: HTMLCanvasElement): { w: number; h: number } =>
+    logicalSizeMap.get(canvas) ?? { w: canvas.width, h: canvas.height };
+
   // 60FPS Hardware-Accelerated Animation Loop
   // Updates canvas pixels directly without triggering ANY React component layout recalculations!
   useEffect(() => {
@@ -184,8 +194,7 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
       if (waveCanvas) {
         const ctx = waveCanvas.getContext('2d');
         if (ctx) {
-          const w = waveCanvas.width;
-          const h = waveCanvas.height;
+          const { w, h } = getLogicalSize(waveCanvas);
           const centerY = h / 2;
 
           ctx.clearRect(0, 0, w, h);
@@ -363,8 +372,7 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
-        const w = canvas.width;
-        const h = canvas.height;
+        const { w, h } = getLogicalSize(canvas);
         const midY = h / 2;
 
         ctx.clearRect(0, 0, w, h);
@@ -438,8 +446,7 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
-        const w = canvas.width;
-        const h = canvas.height;
+        const { w, h } = getLogicalSize(canvas);
         ctx.clearRect(0, 0, w, h);
 
         const barCount = 5;
@@ -451,7 +458,7 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
 
         for (let i = 0; i < barCount; i++) {
           const x = i * (barW + barGap);
-          const activeLevel = Math.max(0.1, Math.min(1, levels[i % levels.length]));
+          const activeLevel = Math.max(0.3, Math.min(1, levels[i % levels.length]));
           const activeSegments = Math.round(activeLevel * segments);
 
           for (let s = 0; s < segments; s++) {
@@ -544,10 +551,14 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
         const canvas = ref.current;
         if (!canvas) return;
         const rect = canvas.getBoundingClientRect();
+        // Skip degenerate measurements (layout not ready) to avoid zeroed buffers
+        if (rect.width < 1 || rect.height < 1) return;
         canvas.width = Math.floor(rect.width * dpr);
         canvas.height = Math.floor(rect.height * dpr);
         const ctx = canvas.getContext('2d');
         if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        // Drawing code works in logical (CSS px) coordinates
+        logicalSizeMap.set(canvas, { w: Math.floor(rect.width), h: Math.floor(rect.height) });
       });
     };
     const ro = new ResizeObserver(resizeCanvases);
