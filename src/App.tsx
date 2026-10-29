@@ -271,6 +271,7 @@ export default function App() {
   const keysHeld = useRef<{ left: boolean; right: boolean }>({ left: false, right: false });
   const countTickLastSecRef = useRef<number>(-1);
   const timeUpRef = useRef(false);
+  const missionElapsedRef = useRef<number>(0);
 
   // Monotonic token guarding the async track-preview flow: after every await we
   // re-check it so a superseded request can never resolve and play a stale track.
@@ -481,6 +482,7 @@ export default function App() {
       newWorld.stats.currentBpm = trackBpm;
       countTickLastSecRef.current = -1; // reset countdown tick state for the new mission
       timeUpRef.current = false;
+      missionElapsedRef.current = 0;
       setOutOfTime(false);
 
       // Attach callbacks
@@ -493,7 +495,8 @@ export default function App() {
 
       newWorld.onShipDestroyed = () => {
         // Silence continuous thrusters immediately and fade out track as punishment
-        setHudStats({ ...newWorld.stats });
+        const finalStats = { ...newWorld.stats, timeElapsed: missionElapsedRef.current + newWorld.stats.timePenalty };
+        setHudStats(finalStats);
         audio.silenceAllContinuous();
         audio.fadeOutAndStopTrack(0.85);
         audio.playExplosionSfx();
@@ -552,7 +555,8 @@ export default function App() {
       };
 
       newWorld.onGoalReached = () => {
-        setHudStats({ ...newWorld.stats });
+        const finalStats = { ...newWorld.stats, timeElapsed: missionElapsedRef.current + newWorld.stats.timePenalty };
+        setHudStats(finalStats);
         audio.silenceAllContinuous();
         audio.setLoopTrack(false);
         audio.playVictorySfx();
@@ -603,6 +607,9 @@ export default function App() {
     }
     audio.setLoopTrack(false);
     audio.silenceAllContinuous();
+    setOutOfTime(false);
+    timeUpRef.current = false;
+    missionElapsedRef.current = 0;
     startMissionRef.current();
   }, []);
 
@@ -783,8 +790,13 @@ export default function App() {
             accumulatorRef.current = 0; // Discard backlog after extreme stalls
           }
 
+          // Use independent mission elapsed timer (not audio.getCurrentTime) so timeout
+          // still fires correctly even after the track finishes and isPlaying becomes false.
+          missionElapsedRef.current += clampedDt;
+          const missionElapsedSec = missionElapsedRef.current;
+
           // Countdown tick: alternating tic-toc in the final 25 seconds (rising tension)
-          const remainingWholeSec = Math.ceil(world.stats.totalDuration - world.stats.timeElapsed);
+          const remainingWholeSec = Math.ceil(world.stats.totalDuration - missionElapsedSec);
           if (remainingWholeSec <= 25 && remainingWholeSec > 0 && remainingWholeSec !== countTickLastSecRef.current) {
             countTickLastSecRef.current = remainingWholeSec;
             audio.playCountdownTick();
@@ -802,7 +814,9 @@ export default function App() {
             audio.silenceAllContinuous();
             audio.playTimeUpSfx();
             setOutOfTime(true);
-            setHudStats({ ...world.stats });
+            // Use independent mission timer for accurate stats (audio.getCurrentTime() returns 0 after track ends)
+            const finalStats = { ...world.stats, timeElapsed: missionElapsedRef.current + world.stats.timePenalty, destructionReason: 'TIME_UP' as const };
+            setHudStats(finalStats);
             setTimeout(() => {
               audio.playGameOverJingle();
               setGameState('GAMEOVER');
