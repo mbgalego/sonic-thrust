@@ -79,6 +79,10 @@
 ---
 
 ## 3. Changelog & Recent Fixes
+- **v1.34.0 (Prevent Accidental Page Zoom / "Menu Suddenly Bigger")**:
+  1. *Bug report*: main menu "intermittently looks zoomed" — everything bigger; fixed only by clearing cache/site data; other sites unaffected. Investigation (code audit + Playwright emulation at 100%→200% zoom) found NO app-side zoom mechanism and identified the cause as the browser's **per-origin remembered page zoom** (touchpad pinch / Ctrl+scroll trigger it silently; the browser re-applies it on every visit to the site; clearing site data resets it; fullscreen exit re-applies it — hence "intermittent, menu-only appearance").
+  2. *Fix*: `App.tsx` now cancels `wheel` events with `ctrlKey` (touchpad pinch + Ctrl+scroll — the accidental triggers used by games/webgames commonly) and Safari `gesturestart`/`gesturechange`, so accidental page zoom can no longer occur from gestures. Intentional keyboard zoom (`Ctrl`+`+`/`-`/`0`) and the browser zoom UI remain fully available for accessibility.
+  3. *Verified objectively* via `WheelEvent.defaultPrevented` probing: ctrl+wheel prevented ✔, normal wheel untouched ✔, keyboard zoom not intercepted ✔. Lint + build pass.
 - **v1.33.1 (Fix: EndGameModal visualizers missing on hi-DPI screens)**:
   1. *Root cause*: Regression from v1.32.1 — the ResizeObserver DPR-resize handler overwrote `canvas.width/height` with device-pixel sizes + applied a `dpr` scale transform, but the drawing code read `canvas.width/height` as logical (CSS px) coordinates. On screens with `devicePixelRatio ≠ 1` (e.g. Windows 125%/150% scaling) everything was drawn double-scaled: corner mini-VU segments landed off-canvas (invisible) and the central spectrum was zoomed/clipped.
   2. *Fix*: Logical (CSS px) sizes are now stored in a `WeakMap` during resize and all canvas drawing (`drawMiniVU`, `drawDynamicWaveLine`, central spectrum) uses `getLogicalSize()` instead of `canvas.width/height` — crisp at any DPR, with degenerate 0-size measurements guarded.

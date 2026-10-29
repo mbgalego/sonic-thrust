@@ -757,6 +757,31 @@ export default function App() {
     };
   }, []);
 
+  // 9.6. Block ACCIDENTAL browser page zoom (v1.34.0)
+  // Touchpad pinch and Ctrl+scroll emit `wheel` + ctrlKey, which the browser turns into
+  // page zoom that is remembered PER-ORIGIN and silently re-applied on every visit
+  // (bug report: menu "suddenly looks zoomed", fixed only by clearing site data).
+  // Intercepting those events keeps the UI at the browser's zoom level. Intentional
+  // keyboard zoom (Ctrl+/-/0) and the browser zoom UI remain untouched (a11y).
+  // `gesturestart` additionally blocks Safari trackpad magnification on macOS.
+  useEffect(() => {
+    const blockWheelZoom = (e: WheelEvent) => {
+      if (e.ctrlKey) e.preventDefault();
+    };
+    const blockGestureZoom = (e: Event) => {
+      e.preventDefault();
+    };
+    window.addEventListener('wheel', blockWheelZoom, { passive: false });
+    // Safari-only non-standard event; no-op elsewhere
+    window.addEventListener('gesturestart', blockGestureZoom);
+    window.addEventListener('gesturechange', blockGestureZoom);
+    return () => {
+      window.removeEventListener('wheel', blockWheelZoom);
+      window.removeEventListener('gesturestart', blockGestureZoom);
+      window.removeEventListener('gesturechange', blockGestureZoom);
+    };
+  }, []);
+
   // 9.5. Sync Graphic Performance Mode with GameRenderer
   useEffect(() => {
     if (rendererRef.current) {
