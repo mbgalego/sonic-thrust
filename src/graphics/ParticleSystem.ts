@@ -327,6 +327,32 @@ export class ParticleSystem {
   }
 
   /**
+   * Emits Shield Generator charge-complete burst — golden energy ring + amber
+   * spark shower, signaling a new Phase Shield being forged (v1.35.0)
+   */
+  public emitGeneratorShieldCharged(x: number, y: number): void {
+    this.acquireShockwave(x, y, 14, 110, 0.9, '#fbbf24', 3);
+
+    const colors = ['#fbbf24', '#fde047', '#facc15', '#ffffff'];
+    for (let i = 0; i < 26; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 80 + Math.random() * 240;
+      this.acquireParticle(
+        x,
+        y,
+        Math.cos(angle) * speed,
+        Math.sin(angle) * speed,
+        0.3 + Math.random() * 0.4,
+        1.8 + Math.random() * 2.6,
+        colors[Math.floor(Math.random() * colors.length)],
+        'SPARK',
+        0.95,
+        0
+      );
+    }
+  }
+
+  /**
    * Emits temporal ionization sparks and incandescent wake embers (DeLorean High-Speed VFX)
    */
   public emitTemporalSpark(

@@ -172,6 +172,11 @@ export class GameRenderer {
     this.particleSystem.emitShieldAbsorb(x, y);
   }
 
+  public emitGeneratorShieldCharged(x: number, y: number): void {
+    this.triggerScreenShake(6);
+    this.particleSystem.emitGeneratorShieldCharged(x, y);
+  }
+
   public emitPowerUpCollect(x: number, y: number, color: string): void {
     this.particleSystem.emitPowerUpCollect(x, y, color);
   }
@@ -1646,6 +1651,46 @@ export class GameRenderer {
         ctx.fill();
         ctx.restore();
       }
+    }
+
+    // 2.5 Shield Generator charging aura — amber rotary arc gauge (v1.35.0)
+    // The spark zone doubles as the charging zone: the arc sweeps with the charge.
+    if (ship.shieldGeneratorCharge > 0.02) {
+      const charge = ship.shieldGeneratorCharge;
+      const ready = charge >= 1;
+      const t = Date.now() * 0.005;
+      ctx.save();
+      ctx.rotate(t);
+
+      // Faint dashed track circle showing the gauge range
+      ctx.beginPath();
+      ctx.arc(0, 0, 30, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.18)';
+      ctx.lineWidth = 1.4;
+      ctx.setLineDash([4, 5]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Charging progress arc (amber -> bright yellow when ready)
+      ctx.beginPath();
+      ctx.arc(0, 0, 30, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * charge);
+      ctx.strokeStyle = ready ? '#fde047' : '#fbbf24';
+      ctx.shadowColor = '#f59e0b';
+      ctx.shadowBlur = ready ? 20 : 12;
+      ctx.lineWidth = ready ? 2.6 : 2.2;
+      ctx.stroke();
+
+      if (ready) {
+        // Standby pulse ring while waiting for a free shield slot
+        const pulse = 1 + Math.sin(Date.now() * 0.012) * 0.05;
+        ctx.beginPath();
+        ctx.arc(0, 0, 33 * pulse, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(253, 224, 71, 0.65)';
+        ctx.lineWidth = 1.2;
+        ctx.shadowBlur = 16;
+        ctx.stroke();
+      }
+      ctx.restore();
     }
 
     // 3. Sonic Damper Active Acoustic Absorption Cushion (PRO / EXTREME)

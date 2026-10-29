@@ -31,6 +31,9 @@ export interface GameHUDHandle {
   update: (stats: GameStats, ship: ShipState, launchGraceTimer?: number) => void;
 }
 
+/** Phase Shield display slots — matches PhysicsWorld.SHIELD_MAX_STOCK (v1.35.0) */
+const SHIELD_DISPLAY_SLOTS = 4;
+
 interface GameHUDProps {
   initialStats: GameStats;
   initialShip: ShipState;
@@ -62,6 +65,9 @@ export const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({
   const thrusterLLabelRef = useRef<HTMLSpanElement | null>(null);
   const thrusterRLabelRef = useRef<HTMLSpanElement | null>(null);
   const heartSlotRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const shieldSlotRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const genChargeBarRef = useRef<HTMLDivElement | null>(null);
+  const genChargeTextRef = useRef<HTMLSpanElement | null>(null);
 
   // Badges Refs
   const badgePenaltyRef = useRef<HTMLDivElement | null>(null);
@@ -89,7 +95,9 @@ export const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({
     progressPct: -1,
     leftPowerStep: -1,
     rightPowerStep: -1,
-    lives: -1
+    lives: -1,
+    shields: -1,
+    genChargePct: -1
   });
 
   useImperativeHandle(ref, () => ({
@@ -211,6 +219,42 @@ export const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({
             if (svgHeart) {
               svgHeart.setAttribute('class', `w-2.5 h-2.5 ${active ? 'fill-rose-400' : 'fill-transparent'}`);
             }
+          }
+        }
+      }
+
+      // 5.5 Phase Shields + Shield Generator charge (v1.35.0)
+      if (cache.shields !== ship.shields) {
+        cache.shields = ship.shields;
+        const displaySlots = SHIELD_DISPLAY_SLOTS;
+        for (let i = 0; i < displaySlots; i++) {
+          const slot = shieldSlotRefs.current[i];
+          if (slot) {
+            const active = i < ship.shields;
+            slot.className = `w-4 h-4 rounded flex items-center justify-center transition-all ${
+              active
+                ? 'bg-cyan-500/25 border border-cyan-400 text-cyan-300 shadow-[0_0_8px_rgba(6,182,212,0.85)] scale-105'
+                : 'bg-slate-900 border border-white/10 text-gray-700 opacity-40'
+            }`;
+            const svgShield = slot.querySelector('svg');
+            if (svgShield) {
+              svgShield.setAttribute('class', `w-2.5 h-2.5 ${active ? 'fill-cyan-400/80' : 'fill-transparent'}`);
+            }
+          }
+        }
+      }
+      {
+        const genPct = Math.min(100, Math.round(ship.shieldGeneratorCharge * 100));
+        if (cache.genChargePct !== genPct && genChargeBarRef.current) {
+          cache.genChargePct = genPct;
+          genChargeBarRef.current.style.width = `${genPct}%`;
+          if (genChargeTextRef.current) {
+            genChargeTextRef.current.textContent =
+              genPct >= 100 ? 'PRONTO! ESCUDO NO BANCO' : `GERADOR ${genPct}%`;
+            genChargeTextRef.current.className =
+              genPct >= 100
+                ? 'text-[9px] font-mono text-yellow-300 font-bold drop-shadow-[0_0_5px_rgba(253,224,71,0.9)] animate-pulse'
+                : 'text-[9px] font-mono text-amber-400/90';
           }
         }
       }
@@ -639,6 +683,48 @@ export const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({
                   );
                 })}
               </div>
+            </div>
+          </div>
+
+          <div className="w-px self-stretch bg-white/10" />
+
+          {/* Phase Shields + Shield Generator charge indicator (v1.35.0) */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="min-w-[92px]">
+              <div className="text-[10px] text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                <Shield className="w-3 h-3 text-cyan-400" />
+                <span>Escudos · Ger.</span>
+              </div>
+              <div className="flex items-center gap-1.5 mt-1">
+                {Array.from({ length: SHIELD_DISPLAY_SLOTS }).map((_, i) => {
+                  const active = i < (initialShip.shields || 0);
+                  return (
+                    <div
+                      key={i}
+                      ref={(el) => { shieldSlotRefs.current[i] = el; }}
+                      className={`w-4 h-4 rounded flex items-center justify-center transition-all ${
+                        active
+                          ? 'bg-cyan-500/25 border border-cyan-400 text-cyan-300 shadow-[0_0_8px_rgba(6,182,212,0.85)] scale-105'
+                          : 'bg-slate-900 border border-white/10 text-gray-700 opacity-40'
+                      }`}
+                      title={`Fase Shield ${i + 1}`}
+                    >
+                      <Shield className={`w-2.5 h-2.5 ${active ? 'fill-cyan-400/80' : 'fill-transparent'}`} />
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Shield Generator charge bar — fills with risky close-flight wall scrapes */}
+              <div className="mt-1 h-1 rounded-full bg-slate-800 border border-white/5 w-full overflow-hidden">
+                <div
+                  ref={genChargeBarRef}
+                  style={{ width: `${Math.min(100, Math.round((initialShip.shieldGeneratorCharge || 0) * 100))}%` }}
+                  className="h-full bg-gradient-to-r from-amber-500 via-yellow-400 to-yellow-300 rounded-full shadow-[0_0_6px_rgba(251,191,36,0.7)]"
+                />
+              </div>
+              <span ref={genChargeTextRef} className="text-[9px] font-mono text-amber-400/90">
+                GERADOR {Math.min(100, Math.round((initialShip.shieldGeneratorCharge || 0) * 100))}%
+              </span>
             </div>
           </div>
 

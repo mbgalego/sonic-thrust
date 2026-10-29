@@ -494,6 +494,29 @@ export default function App() {
         audio.updateRadarClicks(intensity);
       };
 
+      // Shield Generator v1.35.0: risky close-flight scraped a full charge into a free Phase Shield
+      newWorld.onShieldGenerated = () => {
+        audio.playPowerUpSfx('SHIELD');
+        if (rendererRef.current) {
+          rendererRef.current.emitGeneratorShieldCharged(newWorld.ship.x, newWorld.ship.y);
+        }
+        if (announcementTimerRef.current) {
+          clearTimeout(announcementTimerRef.current);
+        }
+        setActiveAnnouncement({
+          title: 'FASE SHIELD GERADA!',
+          subtitle: 'GERADOR CARREGADO pela pilotagem arriscada — voa perto das paredes para carregar!',
+          type: 'SHIELD',
+          color: 'text-amber-300',
+          borderColor: 'border-amber-400',
+          glowColor: 'rgba(251, 191, 36, 0.95)',
+          id: Date.now()
+        });
+        announcementTimerRef.current = setTimeout(() => {
+          setActiveAnnouncement(null);
+        }, 3000);
+      };
+
       newWorld.onShipDestroyed = () => {
         // Silence continuous thrusters immediately and fade out track as punishment
         const finalStats = { ...newWorld.stats, timeElapsed: missionElapsedRef.current + newWorld.stats.timePenalty };

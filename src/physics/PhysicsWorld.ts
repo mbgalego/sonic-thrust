@@ -104,6 +104,8 @@ export interface ShipState {
   damperActiveTimer: number; // 6s duration
   lowGActiveTimer: number;    // 5s duration
   etherealActiveTimer: number; // 0 = off, >0 = ghost mode
+  shieldGeneratorCharge: number; // 0..1 — charged by risky close-flight wall scrapes (v1.35.0)
+  generatorShieldNotifyTimer: number; // brief HUD notification after a generated phase shield
   sonicPulseNotifyTimer: number; // brief HUD notification after a Sonic Pulse pickup
   chronoDilationTimer: number; // 5s duration (slows world/obstacles by 45%)
   singularityNotifyTimer: number; // brief notification after Singularity EMP pickup
@@ -169,6 +171,7 @@ export class PhysicsWorld {
   public onShipDamaged?: (remainingLives: number, penaltySec: number) => void;
   public onPowerUpCollected?: (type: PowerUpType) => void;
   public onShieldAbsorbed?: () => void;
+  public onShieldGenerated?: () => void; // Shield Generator completed a charge cycle (v1.35.0)
   public onGoalReached?: () => void;
   public onWallScrape?: (scrapeX: number, scrapeY: number, shipVx: number, isCeiling: boolean, intensity: number) => void;
 
@@ -213,6 +216,8 @@ export class PhysicsWorld {
       maxLives: this.difficulty.initialLives,
       invulnerableTime: 0,
       etherealActiveTimer: 0,
+      shieldGeneratorCharge: 0,
+      generatorShieldNotifyTimer: 0,
       isDestroyed: false,
       reachedGoal: false,
       damperActiveTimer: 0,
@@ -651,7 +656,7 @@ export class PhysicsWorld {
     this.updatePowerUps(safeDt, audioFreq);
 
     // 5. Zero Contact Collision Detection
-    this.checkCollisions();
+    this.checkCollisions(safeDt);
 
     // 6. Check Goal / Finish Portal
     if (this.ship.x >= this.finishPortalX && !this.ship.reachedGoal) {
@@ -1029,7 +1034,13 @@ export class PhysicsWorld {
   /**
    * "Zero Contact" Golden Rule Collision Detection
    */
-  private checkCollisions(): void {
+  /** Seconds of sustained point-blank wall scrape to fully charge the Shield Generator. */
+  public static readonly SHIELD_GEN_CHARGE_TIME = 8.0;
+
+  /** Maximum phase shield stock the Shield Generator may fill up to. */
+  public static readonly SHIELD_MAX_STOCK = 4;
+
+  private checkCollisions(dt: number): void {
     const terrain = this.getTerrainAt(this.ship.x);
     const shipRadius = 14;
     const minSafeY = terrain.ceilY + shipRadius;
@@ -1135,6 +1146,34 @@ export class PhysicsWorld {
       if (this.onWallScrape) {
         this.onWallScrape(this.ship.x, 0, this.ship.vx, false, 0);
       }
+    }
+
+    // 5.5 Shield Generator — phase shield charged by risky close-flight (v1.35.0)
+    // The spark zone (radar) IS the charging zone: sustained scraping builds up
+    // shieldGeneratorCharge. Point-blank scrapes charge fastest (~8s full); grazing
+    // from further inside the 85px radar zone charges progressively slower.
+    // Charge is banked (no decay) and grants even after leaving the zone.
+    if (radarIntensity > 0 && dt > 0) {
+      const chargeRate = Math.pow(radarIntensity, 1.35) / PhysicsWorld.SHIELD_GEN_CHARGE_TIME;
+      this.ship.shieldGeneratorCharge = Math.min(1, this.ship.shieldGeneratorCharge + chargeRate * dt);
+    }
+    this.tryGrantGeneratorShield();
+  }
+
+  /**
+   * Grants a free generated phase shield when the generator charge is full.
+   * If the shield stock is at the cap, the charge stays at 100% ("PRONTO" standby)
+   * and the grant fires automatically as soon as a shield slot opens.
+   */
+  private tryGrantGeneratorShield(): void {
+    if (this.ship.shieldGeneratorCharge < 1) return;
+    if (this.ship.shields >= PhysicsWorld.SHIELD_MAX_STOCK) return;
+
+    this.ship.shields++;
+    this.ship.shieldGeneratorCharge = 0;
+    this.ship.generatorShieldNotifyTimer = 2.5;
+    if (this.onShieldGenerated) {
+      this.onShieldGenerated();
     }
   }
 
