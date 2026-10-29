@@ -739,6 +739,13 @@ export default function App() {
     };
   }, []);
 
+  // 9.5. Sync Graphic Performance Mode with GameRenderer
+  useEffect(() => {
+    if (rendererRef.current) {
+      rendererRef.current.setQuality(options.performanceMode ? 'low' : 'high');
+    }
+  }, [options.performanceMode]);
+
   // 10. Main 60FPS Game Loop
   useEffect(() => {
     let active = true;

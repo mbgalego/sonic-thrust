@@ -137,6 +137,7 @@ export interface GameOptions {
   driftCompensation: boolean; // neutralizes the ship's slight rightward drift when ON
   musicVolume: number; // 0.0 - 1.0
   sfxVolume: number;   // 0.0 - 1.0
+  performanceMode?: boolean; // locks DPR to 1.0 & optimizes VFX for ultra-high FPS on 1440p/4K
 }
 
 export interface GameStats {
