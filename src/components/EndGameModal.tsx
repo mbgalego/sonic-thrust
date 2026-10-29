@@ -5,7 +5,7 @@
  * and rock-solid layout with zero size jitter.
  */
 
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   RotateCcw,
   Home,
@@ -30,6 +30,77 @@ const VICTORY_QUOTES = [
   '"Yippee-ki-yay! Welcome to the party, pal."'
 ];
 
+const STORAGE_KEY = 'sonic_thrust_victory_quote_bag';
+
+/**
+ * Non-repeating Shuffle Bag (Fisher-Yates deck without replacement).
+ * Guarantees that ALL 8 quotes will appear in randomized order before
+ * any quote can repeat, with 0% chance of consecutive repeats across cycles.
+ */
+class VictoryQuoteBag {
+  private bag: number[] = [];
+  private lastQuoteIndex: number = -1;
+
+  constructor() {
+    this.load();
+  }
+
+  private load(): void {
+    try {
+      const data = sessionStorage.getItem(STORAGE_KEY);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed.bag) && parsed.bag.length > 0) {
+          this.bag = parsed.bag.filter((n: unknown) => typeof n === 'number' && n >= 0 && n < VICTORY_QUOTES.length);
+          this.lastQuoteIndex = typeof parsed.last === 'number' ? parsed.last : -1;
+          if (this.bag.length > 0) return;
+        }
+      }
+    } catch {
+      // Safe fallback
+    }
+    this.refill();
+  }
+
+  private save(): void {
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+        bag: this.bag,
+        last: this.lastQuoteIndex
+      }));
+    } catch {
+      // Safe fallback
+    }
+  }
+
+  private refill(): void {
+    const indices = Array.from({ length: VICTORY_QUOTES.length }, (_, i) => i);
+    // Fisher-Yates shuffle
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+    // Prevent consecutive repetition across bag boundaries:
+    // indices.pop() removes the last element, so ensure indices[indices.length - 1] != lastQuoteIndex
+    if (indices.length > 1 && indices[indices.length - 1] === this.lastQuoteIndex) {
+      [indices[indices.length - 1], indices[0]] = [indices[0], indices[indices.length - 1]];
+    }
+    this.bag = indices;
+  }
+
+  public next(): string {
+    if (this.bag.length === 0) {
+      this.refill();
+    }
+    const idx = this.bag.pop()!;
+    this.lastQuoteIndex = idx;
+    this.save();
+    return VICTORY_QUOTES[idx];
+  }
+}
+
+const quoteBag = new VictoryQuoteBag();
+
 interface EndGameModalProps {
   isVictory: boolean;
   outOfTime?: boolean;
@@ -52,10 +123,12 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
   const elapsedMin = Math.floor(stats.timeElapsed / 60);
   const elapsedSec = Math.floor(stats.timeElapsed % 60);
 
-  // Random victory quote chosen once per modal mount
-  const victoryQuote = useMemo(() => {
-    return VICTORY_QUOTES[Math.floor(Math.random() * VICTORY_QUOTES.length)];
-  }, []);
+  // Draw exactly one quote per modal mount from the non-repeating shuffle bag
+  const victoryQuoteRef = useRef<string>('');
+  if (isVictory && !victoryQuoteRef.current) {
+    victoryQuoteRef.current = quoteBag.next();
+  }
+  const victoryQuote = victoryQuoteRef.current;
 
   // Dedicated HTML5 Canvas References for 60FPS Reactive Graphics (Zero React State re-renders)
   const waveformCanvasRef = useRef<HTMLCanvasElement | null>(null);

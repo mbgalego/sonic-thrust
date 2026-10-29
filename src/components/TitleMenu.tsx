@@ -26,7 +26,8 @@ import {
   Touchpad,
   Plus,
   Trash2,
-  HardDrive
+  HardDrive,
+  Cpu
 } from 'lucide-react';
 import { LocalTrackLoader, LocalUploadResult } from '../audio/LocalTrackLoader';
 import {
@@ -860,7 +861,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                         CONFIGURAÇÕES
                       </span>
                       <span className="font-rajdhani text-xs sm:text-sm text-gray-200 font-medium truncate mt-0.5">
-                        Voo Manual (100% Reflexos) • Mús {Math.round(options.musicVolume * 100)}% • SFX {Math.round(options.sfxVolume * 100)}%
+                        {options.performanceMode ? 'Modo Desempenho' : 'Qualidade'} • Mús {Math.round(options.musicVolume * 100)}% • SFX {Math.round(options.sfxVolume * 100)}%
                       </span>
                     </div>
                   </div>
@@ -873,6 +874,33 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                 {/* Inline Scrollable Options Dropdown Panel */}
                 {isOptionsOpen && (
                   <div className="mt-3 pt-3 border-t border-cyan-500/25 flex flex-col gap-3 max-h-64 sm:max-h-72 overflow-y-auto pr-1 text-xs font-rajdhani">
+                    {/* Performance Mode (60 FPS) Toggle */}
+                    <div className="p-3 rounded-xl bg-slate-900/70 border border-white/10 flex items-center justify-between gap-2.5">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Cpu className="w-5 h-5 text-fuchsia-400 shrink-0" />
+                        <div>
+                          <div className="font-orbitron font-bold text-white text-sm">
+                            Modo Desempenho (60 FPS)
+                          </div>
+                          <div className="text-xs sm:text-sm text-gray-300 leading-snug mt-0.5">
+                            Otimiza resolução interna e efeitos néon para máxima fluidez em ecrãs grandes (1440p / 4K)
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => onOptionsChange({ ...options, performanceMode: !options.performanceMode })}
+                        className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-mono font-bold transition cursor-pointer shrink-0 ${
+                          options.performanceMode
+                            ? 'bg-fuchsia-500 text-white shadow-md shadow-fuchsia-500/30'
+                            : 'bg-white/10 text-gray-300 hover:bg-white/20'
+                        }`}
+                      >
+                        {options.performanceMode ? 'LIGADO' : 'DESLIGADO'}
+                      </button>
+                    </div>
+
                     {/* Drift Compensation Toggle */}
                     <div className="p-3 rounded-xl bg-slate-900/70 border border-white/10 flex items-center justify-between gap-2.5">
                       <div className="flex items-center gap-3 min-w-0">
@@ -1212,7 +1240,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
       {/* Footer: Version and Last Update Date on left, Author on right */}
       <footer className="relative z-10 flex items-center justify-between text-xs sm:text-sm font-mono text-cyan-400/90 pt-1.5 pb-1 sm:pt-3 sm:pb-2 border-t border-white/10 max-w-6xl w-full mx-auto px-2">
-        <span className="tracking-wide">v1.30.0 · 28/10/2026</span>
+        <span className="tracking-wide">v1.32.0 · 28/10/2026</span>
         <span className="tracking-wide font-semibold text-gray-200">Por Miguel Galego</span>
       </footer>
 

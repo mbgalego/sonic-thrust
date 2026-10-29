@@ -76,15 +76,44 @@ export class GameRenderer {
     this.initStars();
   }
 
+  public setQuality(quality: 'high' | 'low'): void {
+    if (this.quality !== quality) {
+      this.quality = quality;
+      this.particleSystem = new ParticleSystem(quality === 'low' ? 200 : 450);
+      this.resize();
+    }
+  }
+
   public resize(): void {
-    const dpr = this.quality === 'low' ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+    const rawDpr = window.devicePixelRatio || 1;
     const rect = this.canvas.getBoundingClientRect();
     this.width = rect.width || window.innerWidth;
     this.height = rect.height || window.innerHeight;
 
-    this.canvas.width = Math.floor(this.width * dpr);
-    this.canvas.height = Math.floor(this.height * dpr);
-    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // Smart Resolution & Fill-Rate Clamping for Large Screens:
+    // On high-res desktop displays (1440p, 4K, Ultrawides), scaling with DPR=2 creates an enormous
+    // 8M to 16M+ pixel canvas, which crushes Canvas 2D fill-rate.
+    // We cap total internal canvas pixels to ~2.85M pixels (the equivalent of crisp 1440p @ 1.0 or 1080p @ 1.25 DPR),
+    // and limit max DPR to 1.25 on desktop displays larger than 1280px wide.
+    let effectiveDpr = rawDpr;
+    if (this.quality === 'low') {
+      effectiveDpr = 1.0;
+    } else {
+      const isLargeScreen = this.width >= 1280 || this.height >= 800;
+      const maxAllowedDpr = isLargeScreen ? 1.25 : 1.75;
+      effectiveDpr = Math.min(rawDpr, maxAllowedDpr);
+
+      // Total pixel budget cap (max 2.85 Megapixels)
+      const MAX_CANVAS_PIXELS = 2850000;
+      const estimatedPixels = this.width * this.height * effectiveDpr * effectiveDpr;
+      if (estimatedPixels > MAX_CANVAS_PIXELS) {
+        effectiveDpr = Math.max(1.0, Math.sqrt(MAX_CANVAS_PIXELS / (this.width * this.height)));
+      }
+    }
+
+    this.canvas.width = Math.floor(this.width * effectiveDpr);
+    this.canvas.height = Math.floor(this.height * effectiveDpr);
+    this.ctx.setTransform(effectiveDpr, 0, 0, effectiveDpr, 0, 0);
 
     const isTouch = 'ontouchstart' in window || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0);
     const isSmall = Math.min(this.width, this.height) < 680;
@@ -354,18 +383,13 @@ export class GameRenderer {
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
 
-    // Core bloom from the viewport center
+    // Single consolidated radial gradient: core bloom + subtle ambient edge glow
     const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
-    core.addColorStop(0, `rgba(190, 240, 255, ${(0.16 * a).toFixed(3)})`);
-    core.addColorStop(1, 'rgba(190, 240, 255, 0)');
+    core.addColorStop(0, `rgba(190, 240, 255, ${(0.18 * a).toFixed(3)})`);
+    core.addColorStop(0.5, `rgba(160, 210, 255, ${(0.09 * a).toFixed(3)})`);
+    core.addColorStop(0.85, `rgba(150, 200, 255, ${(0.14 * a).toFixed(3)})`);
+    core.addColorStop(1, 'rgba(150, 200, 255, 0)');
     ctx.fillStyle = core;
-    ctx.fillRect(0, 0, w, h);
-
-    // Edge bloom: bedrock edges ignite outward-in
-    const edge = ctx.createRadialGradient(cx, cy, maxR * 0.45, cx, cy, maxR * 1.05);
-    edge.addColorStop(0, 'rgba(150, 200, 255, 0)');
-    edge.addColorStop(1, `rgba(150, 200, 255, ${(0.20 * a).toFixed(3)})`);
-    ctx.fillStyle = edge;
     ctx.fillRect(0, 0, w, h);
 
     ctx.restore();
@@ -559,7 +583,8 @@ export class GameRenderer {
     // Pass 2: Ceiling Neon Vector Line
     const beatColor = audioFreq.isBeat ? '#ffffff' : '#06b6d4';
     ctx.shadowColor = audioFreq.isBeat ? '#ffffff' : '#06b6d4';
-    ctx.shadowBlur = (audioFreq.isBeat ? 24 : 8) + (audioFreq.macroEnergy ?? audioFreq.energy) * 16 + audioFreq.bass * 10 + this.dropFlash * 26;
+    const rawGlowCeil = (audioFreq.isBeat ? 20 : 6) + (audioFreq.macroEnergy ?? audioFreq.energy) * 12 + audioFreq.bass * 8 + this.dropFlash * 18;
+    ctx.shadowBlur = Math.min(16, rawGlowCeil * 0.45);
     ctx.strokeStyle = beatColor;
     ctx.lineWidth = 3.5;
 
@@ -577,7 +602,8 @@ export class GameRenderer {
     // Pass 3: Floor Neon Vector Line
     const floorColor = audioFreq.isBeat ? '#ffffff' : '#a855f7';
     ctx.shadowColor = audioFreq.isBeat ? '#ffffff' : '#a855f7';
-    ctx.shadowBlur = (audioFreq.isBeat ? 24 : 8) + (audioFreq.macroEnergy ?? audioFreq.energy) * 16 + audioFreq.bass * 10 + this.dropFlash * 26;
+    const rawGlowFloor = (audioFreq.isBeat ? 20 : 6) + (audioFreq.macroEnergy ?? audioFreq.energy) * 12 + audioFreq.bass * 8 + this.dropFlash * 18;
+    ctx.shadowBlur = Math.min(16, rawGlowFloor * 0.45);
     ctx.strokeStyle = floorColor;
     ctx.lineWidth = 3.5;
 
@@ -709,17 +735,14 @@ export class GameRenderer {
       // Dynamic glow, thickness, and opacity reflecting vintage Hi-Fi equalizer LED meters
       const alpha = Math.max(0.30, Math.min(0.95, 0.35 + bandE * 0.55 + dropFlashBoost * 0.04 + (b === 0 ? 0.08 : 0)));
       const lineWidth = 1.4 + bandE * 2.4 + (b <= 1 ? beatPulseVal * 0.8 : 0) + dropFlashBoost * 0.25;
-      const shadowBlur = 4 + bandE * 18 + (audioFreq.isBeat && b <= 1 ? 14 : 0) + this.dropFlash * 24;
 
       const wavePhase = this.ripplePhase * band.speedMult + band.phaseOffset;
 
       // --- Ceiling Equalizer Wave (UPWARDS into bedrock above currentCeilY) ---
+      // High-performance Dual-Stroke Neon: 0 Gaussian blur kernel, silky smooth 60 FPS
       ctx.save();
       ctx.strokeStyle = band.ceilColor;
-      ctx.globalAlpha = alpha;
-      ctx.shadowColor = band.ceilColor;
-      ctx.shadowBlur = shadowBlur;
-      ctx.lineWidth = lineWidth;
+      ctx.shadowBlur = 0;
 
       ctx.beginPath();
       for (let i = firstVisibleIdx; i <= lastVisibleIdx; i++) {
@@ -748,16 +771,22 @@ export class GameRenderer {
           ctx.quadraticCurveTo(prev.x, prevY, midX, midY);
         }
       }
+
+      // 1. Luminous outer glow stroke
+      ctx.lineWidth = lineWidth * 2.4;
+      ctx.globalAlpha = alpha * 0.28;
+      ctx.stroke();
+
+      // 2. Sharp vibrant inner core stroke
+      ctx.lineWidth = lineWidth;
+      ctx.globalAlpha = alpha;
       ctx.stroke();
       ctx.restore();
 
       // --- Floor Equalizer Wave (DOWNWARDS into bedrock below currentFloorY) ---
       ctx.save();
       ctx.strokeStyle = band.floorColor;
-      ctx.globalAlpha = alpha;
-      ctx.shadowColor = band.floorColor;
-      ctx.shadowBlur = shadowBlur;
-      ctx.lineWidth = lineWidth;
+      ctx.shadowBlur = 0;
 
       ctx.beginPath();
       for (let i = firstVisibleIdx; i <= lastVisibleIdx; i++) {
@@ -785,6 +814,15 @@ export class GameRenderer {
           ctx.quadraticCurveTo(prev.x, prevY, midX, midY);
         }
       }
+
+      // 1. Luminous outer glow stroke
+      ctx.lineWidth = lineWidth * 2.4;
+      ctx.globalAlpha = alpha * 0.28;
+      ctx.stroke();
+
+      // 2. Sharp vibrant inner core stroke
+      ctx.lineWidth = lineWidth;
+      ctx.globalAlpha = alpha;
       ctx.stroke();
       ctx.restore();
     }
@@ -1983,11 +2021,10 @@ export class GameRenderer {
 
       const baseWidth = 2.8 + intensity * 2.2;
 
-      // Pass 1: Wide fiery plasma dissipation aura (diffuses outward as it ages)
+      // Pass 1: Wide fiery plasma dissipation aura (diffuses outward as it ages, 0 shadowBlur cost)
       ctx.strokeStyle = `rgba(255, 65, 0, ${alpha * 0.42})`;
       ctx.lineWidth = baseWidth * 3.4;
-      ctx.shadowBlur = 14 + intensity * 8;
-      ctx.shadowColor = progress < 0.45 ? '#ff4400' : '#ec4899';
+      ctx.shadowBlur = 0;
       ctx.beginPath();
       ctx.moveTo(p0.lx, p0.ly);
       ctx.lineTo(p1.lx, p1.ly);
@@ -1998,7 +2035,7 @@ export class GameRenderer {
       // Pass 2: Hot electric amber / incandescent body
       ctx.strokeStyle = `rgba(255, 175, 20, ${alpha * 0.85})`;
       ctx.lineWidth = baseWidth * 1.8;
-      ctx.shadowBlur = 8;
+      ctx.shadowBlur = 4;
       ctx.shadowColor = '#facc15';
       ctx.beginPath();
       ctx.moveTo(p0.lx, p0.ly);
@@ -2010,8 +2047,7 @@ export class GameRenderer {
       // Pass 3: Searing white-hot temporal core
       ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.95})`;
       ctx.lineWidth = Math.max(1.0, baseWidth * 0.7);
-      ctx.shadowBlur = 4;
-      ctx.shadowColor = '#ffffff';
+      ctx.shadowBlur = 0;
       ctx.beginPath();
       ctx.moveTo(p0.lx, p0.ly);
       ctx.lineTo(p1.lx, p1.ly);
