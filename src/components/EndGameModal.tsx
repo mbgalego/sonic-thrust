@@ -491,11 +491,80 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
     return () => cancelAnimationFrame(animId);
   }, []);
 
+  // Accessibility: Focus trap + Escape key handler + Auto-focus first button
+  const modalContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = modalContainerRef.current;
+    if (!container) return;
+
+    // Focus first focusable element on mount
+    const focusable = container.querySelector<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (focusable) focusable.focus();
+
+    // Focus trap
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Tab') {
+        const focusableElements = container.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const first = focusableElements[0];
+        const last = focusableElements[focusableElements.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onExitToMenu();
+      }
+    };
+    container.addEventListener('keydown', handleKeyDown);
+    return () => container.removeEventListener('keydown', handleKeyDown);
+  }, [onExitToMenu]);
+
+  // Canvas resize handler for responsive DPR and container size changes
+  const canvasRefs = [
+    waveformCanvasRef,
+    progressoWaveCanvasRef,
+    tempoWaveCanvasRef,
+    topVuLeftRef,
+    topVuRightRef,
+    bottomVuLeftRef,
+    bottomVuRightRef,
+  ];
+  useEffect(() => {
+    const resizeCanvases = () => {
+      const dpr = window.devicePixelRatio || 1;
+      canvasRefs.forEach((ref) => {
+        const canvas = ref.current;
+        if (!canvas) return;
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = Math.floor(rect.width * dpr);
+        canvas.height = Math.floor(rect.height * dpr);
+        const ctx = canvas.getContext('2d');
+        if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      });
+    };
+    const ro = new ResizeObserver(resizeCanvases);
+    canvasRefs.forEach((ref) => {
+      if (ref.current) ro.observe(ref.current);
+    });
+    // Initial resize
+    resizeCanvases();
+    return () => ro.disconnect();
+  }, []);
+
   const destructionLabels = {
     CEILING: 'Colisão Imediata com o Teto Vetorial',
     FLOOR: 'Impacto Severo com o Solo Néon',
     OBSTACLE: 'Colisão com Obstáculo Sonorreativo',
-    LASER: 'Desintegração por Barreira Laser (Agudos)'
+    LASER: 'Desintegração por Barreira Laser (Agudos)',
+    TIME_UP: 'Tempo Esgotado — A Faixa Terminou'
   };
 
   const reasonText = stats.destructionReason
@@ -503,7 +572,14 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
     : 'Contacto Ilegal com o Terreno';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-[#03010c]/90 backdrop-blur-xl overflow-y-auto select-none">
+    <div
+      ref={modalContainerRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="endgame-title"
+      aria-describedby="endgame-subtitle"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-[#03010c]/90 backdrop-blur-xl overflow-y-auto select-none"
+    >
       
       {/* Background Starfield Particles & Ambient Neon Glows */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -614,7 +690,9 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
           {isVictory ? 'MISSÃO CUMPRIDA!' : outOfTime ? 'TEMPO ESGOTADO' : 'GAME OVER'}
         </h1>
 
-        <p className="font-rajdhani font-medium text-xs sm:text-sm text-[#7dd3fc] tracking-wide text-center leading-relaxed mt-1 px-4 max-w-md shrink-0">
+        <p
+          id="endgame-subtitle"
+          className="font-rajdhani font-medium text-xs sm:text-sm text-[#7dd3fc] tracking-wide text-center leading-relaxed mt-1 px-4 max-w-md shrink-0">
           {isVictory ? (
             victoryQuote
           ) : outOfTime ? (
