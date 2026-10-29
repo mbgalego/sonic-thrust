@@ -151,5 +151,5 @@ export interface GameStats {
   shieldsUsed: number;
   powerUpsCollected: number;
   currentBpm: number;
-  destructionReason?: 'CEILING' | 'FLOOR' | 'OBSTACLE' | 'LASER';
+  destructionReason?: 'CEILING' | 'FLOOR' | 'OBSTACLE' | 'LASER' | 'TIME_UP';
 }
