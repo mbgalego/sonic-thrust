@@ -79,6 +79,11 @@
 ---
 
 ## 3. Changelog & Recent Fixes
+- **v1.33.1 (Fix: EndGameModal visualizers missing on hi-DPI screens)**:
+  1. *Root cause*: Regression from v1.32.1 — the ResizeObserver DPR-resize handler overwrote `canvas.width/height` with device-pixel sizes + applied a `dpr` scale transform, but the drawing code read `canvas.width/height` as logical (CSS px) coordinates. On screens with `devicePixelRatio ≠ 1` (e.g. Windows 125%/150% scaling) everything was drawn double-scaled: corner mini-VU segments landed off-canvas (invisible) and the central spectrum was zoomed/clipped.
+  2. *Fix*: Logical (CSS px) sizes are now stored in a `WeakMap` during resize and all canvas drawing (`drawMiniVU`, `drawDynamicWaveLine`, central spectrum) uses `getLogicalSize()` instead of `canvas.width/height` — crisp at any DPR, with degenerate 0-size measurements guarded.
+  3. *Visibility*: Mini-VU minimum level floor raised 0.1 → 0.3 so at least one segment is always lit (no "dead" equalizers during silence).
+  4. *Verified objectively* via Playwright at `deviceScaleFactor` 1 and 2: buffers ×dpr, CSS layout stable (no ResizeObserver feedback loop), all 7 canvases drawing, corner VUs lit, central visualizer rendered.
 - **v1.33.0 (Track Unlock System & Neo Dreams Secret Track)**:
   1. *Track Unlock System*: New persistent unlock system (`src/utils/trackUnlocks.ts`) using localStorage. Tracks with `unlockCondition` + `secret: true` are hidden until unlocked. Completing any track in PRO or EXTREME mode checks for and grants unlocks.
   2. *Neo Dreams Secret Track*: Added "Neo Dreams" (Dev's Secret Sound) to `tracks.json` — unlockable by completing any track in PRO mode. Dreamy synthwave at 122 BPM, 228s.
