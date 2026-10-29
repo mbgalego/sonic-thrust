@@ -79,11 +79,20 @@
 ---
 
 ## 3. Changelog & Recent Fixes
-- **v1.24.0 (Main Menu Visualizer Balanced Motion Sweet Spot)**:
-  1. *Lively Forward Wave Propagation*: Calibrated `targetPhaseSpeed` to ~1.35–3.2 rad/s with responsive `0.18` tracking, restoring clear, lively forward wave rolling across the menu canvas while avoiding frame stutter.
-  2. *Re-energized Dynamic Amplitudes*: Raised `maxAmp` (17–24px) and base amplitude (3.0–4.5px) with strong kick/beat bounces (+7.5px sub-bass / +4.5px others) so waves visibly swell and heave to drum kicks and basslines.
-  3. *Crisp Yet Smooth Ballistics*: Tuned attack to `0.30` (instantly feels kicks and chords) and decay to `0.15` (silky 6-frame release that prevents visual flutter or trembling).
-  4. *Living Idle Waveform*: Added natural multi-frequency breathing oscillation during quiet/standby states so the menu visualizer never looks motionless.
+- **v1.30.0 (Random Iconic Victory Quotes Pool)**:
+  1. *Random Iconic Quotes Pool*: Added randomized cycling through an 8-quote pool of pop-culture and Portuguese comedy classics (Duarte e Companhia, Diácono Remédios, Top Gun, Star Wars, Matrix, Terminator, Die Hard) whenever the player reaches the finish portal.
+- **v1.29.0 (Victory Screen Reimagined: Cyber Visualizer & Track Countdown)**:
+  1. *Track Time Left Countdown*: Added a real-time countdown (`TEMPO RESTANTE DA FAIXA`) below the visualizer on Victory so players can track remaining playback time to relax and listen to the song to completion.
+  2. *Next-Gen Cyberpunk Audio Visualizer*: Replaced the basic stroke lines with a multi-layered hardware audio analyzer featuring smooth glow area envelopes, 56 rounded neon frequency pillars, floating analog peak-hold meters, center laser oscilloscope core, and an ambient holographic standby wave.
+  3. *Meaningful Victory Phrasing*: Replaced the contradictory subtitle with pilot-celebratory copy acknowledging that the portal was crossed and encouraging the player to enjoy the remaining track.
+- **v1.28.0 (End of Game Menus Polish & Bugfixes)**:
+  1. *Factual Telemetry Metrics*: Fixed `stats.powerUpsCollected ?? 0` (preventing 0 orbes collected from defaulting to fake 20) and `stats.maxSpeed` (removed fallback to 197 km/h).
+  2. *Removed Penalty Badge (User Request)*: Removed the "Penalização" pill badge entirely from the end-game modal, balancing track name and difficulty.
+  3. *Accurate Defeat Progress Clamping*: Defeat progress is strictly clamped to `Math.min(99, Math.floor(stats.percentCompleted))` so failure near the end never displays 100%.
+  4. *Comprehensive Obstacle Label*: Updated destruction label from specific 'Plataforma Rotativa' to `'Colisão com Obstáculo Sonorreativo'` to accurately cover VU towers, resonance mines, and spinning hazard crosses.
+  5. *Timeout Ship Freeze*: In `App.tsx`, ship velocities and destruction are locked immediately when remaining track time reaches 0, preventing gravity from causing a secondary collision explosion during the transition.
+  6. *Keyboard Navigation in Modal*: Added `Enter`, `Space`, and `R` to restart, and `Escape` to return to menu from the Victory / Game Over modal.
+  7. *Responsive Sizing for Mobile*: Scaled modal emblems and padding for seamless fit on compact screens and mobile landscape.
 - **v1.27.0 (Menu Theme Lyrics Overlay — feature branch `feature/lyrics-overlay`)**:
   1. *Timed Lyrics Above the Equalizer Bars*: New `MenuLyrics.tsx` displays the spoken lines of "Sonic Thrust - Main Menu Theme" inside the visualizer box (≈16% from the canvas top — above the equalizer mountain peaks). Only shown while the menu theme itself is playing (hidden during track previews).
   2. *Playback Position Getter*: `AudioEngine.getMenuMusicPosition()` exposes the looping theme's current time (`(ctx.currentTime - startTime) % bufferDuration`), also reporting the pause offset when paused, so lyric windows follow the track even across pause/resume.

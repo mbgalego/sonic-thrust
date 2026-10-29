@@ -554,7 +554,7 @@ export default function App() {
       newWorld.onGoalReached = () => {
         setHudStats({ ...newWorld.stats });
         audio.silenceAllContinuous();
-        audio.setLoopTrack(true);
+        audio.setLoopTrack(false);
         audio.playVictorySfx();
         setTimeout(() => {
           setGameState('VICTORY');
@@ -631,7 +631,11 @@ export default function App() {
         keysHeld.current.right = true;
       }
 
-      if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
+      if (e.key === 'Escape') {
+        if (gameState === 'PLAYING') handlePause();
+        else if (gameState === 'PAUSED') handleResume();
+        else if (gameState === 'GAMEOVER' || gameState === 'VICTORY') handleExitToMenu();
+      } else if (e.key === 'p' || e.key === 'P') {
         if (gameState === 'PLAYING') handlePause();
         else if (gameState === 'PAUSED') handleResume();
       }
@@ -640,7 +644,7 @@ export default function App() {
         startMissionRef.current();
       }
 
-      if ((e.key === 'r' || e.key === 'R') && (gameState === 'GAMEOVER' || gameState === 'VICTORY')) {
+      if ((e.key === 'r' || e.key === 'R' || e.key === 'Enter' || e.key === ' ') && (gameState === 'GAMEOVER' || gameState === 'VICTORY')) {
         handleRestart();
       }
     };
@@ -782,6 +786,12 @@ export default function App() {
           // Time's up: the song ended before the ship reached the goal portal → defeat
           if (remainingWholeSec <= 0 && !timeUpRef.current) {
             timeUpRef.current = true;
+            // Freeze ship immediately to prevent gravity floor impact collision during timeout transition
+            world.ship.isDestroyed = true;
+            world.ship.leftThrusterPower = 0;
+            world.ship.rightThrusterPower = 0;
+            world.ship.vx = 0;
+            world.ship.vy = 0;
             audio.silenceAllContinuous();
             audio.playTimeUpSfx();
             setOutOfTime(true);
