@@ -2254,6 +2254,11 @@ export class GameRenderer {
     const ctx = this.ctx;
     const isMobilePortrait = this.width < 520;
 
+    // v1.36.0: removed on small screens — on phones this overlay sat in the bottom-right
+    // corner and crowded/overflowed the compacted bottom HUD cluster. The full-screen
+    // audio-reactive terrain & visualizer already carries the music feedback there.
+    if (isMobilePortrait) return;
+
     const barCount = isMobilePortrait ? 8 : (this.width < 720 ? 10 : 16);
     const barWidth = isMobilePortrait ? 3 : 4;
     const barGap = isMobilePortrait ? 2 : 3;
