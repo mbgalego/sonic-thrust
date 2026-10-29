@@ -79,6 +79,11 @@
 ---
 
 ## 3. Changelog & Recent Fixes
+- **v1.36.0 (Mobile HUD Compaction + Removed HI-FI EQ Overlay on Phones)**:
+  1. *Bug report*: on phone screens the bottom HUD footer didn't fully fit — it overflowed viewport (speed + thrusters + lives + shields ≈ 432px vs 390px), plus the canvas-drawn "HI-FI EQUALIZER" mini-overlay sat bottom-right, crowding the corner.
+  2. *HI-FI EQ removed on phones* (`GameRenderer.ts`): `renderAudioSpectrumMini` now returns early for portrait-width canvases (<520px) — the full-screen audio-reactive terrain/visualizer already carries music feedback there. Desktop-sized screens keep the equalizer (bottom-left).
+  3. *Compacted bottom HUD* (`GameHUD.tsx`): footer gaps/paddings/gaps responsive (`gap-2 sm:gap-4`, `px-2 py-2 sm:px-3.5 sm:py-2.5`); speed/lives/shield clusters get responsive min-widths (`64/56/80px` on phones vs `82/68/92px` on `sm+`) and 9px labels; dual-thruster gauge cluster hidden on phones (`hidden sm:flex`) — thruster feedback stays available via the ship's flame cones and L/R gauges on `sm+`.
+  4. *Verified objectively* in real device viewports via Playwright (390×844, 320×568, 768×1024, dpr 2): no footer overflow at any size (phone chassis now 294px wide, fits even 320px screens); screenshots confirm phone layout shows Velocidade | Vidas | Escudos·Ger complete, tablet keeps all clusters + HI-FI EQ. Lint + build pass.
 - **v1.35.0 (Shield Generator — Risk Pays: close-flight charges Phase Shields)**:
   1. *Concept*: the wall-scrape spark zone (85px radar proximity) is no longer just cosmetic — sustained risky close-flight now charges a **Shield Generator** that forges a free Phase Shield on each full charge cycle (≈8s point-blank, `intensity^1.35` falloff further out). Charge is banked (no decay) and keeps working after leaving the zone.
   2. *Physics* (`PhysicsWorld.ts`): `ShipState.shieldGeneratorCharge` (0..1) accumulates while inside the radar zone (`checkCollisions(dt)`); `tryGrantGeneratorShield()` grants a shield when full and capped at `SHIELD_MAX_STOCK = 4` — at cap the charge freezes at 100% (PRONTO standby) and grants instantly when a slot opens. Callback `onShieldGenerated` + `generatorShieldNotifyTimer` (2.5s).

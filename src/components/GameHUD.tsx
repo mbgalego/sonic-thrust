@@ -575,25 +575,27 @@ export const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({
       </div>
 
       {/* Bottom Perimeter Cluster: Speed + Dual-Thruster pressure bars + Lives */}
-      <footer className="flex items-end justify-start gap-4 max-w-5xl w-full mx-auto shrink-0">
-        <div className="flex items-end gap-4 bg-black/60 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-white/10 font-mono text-xs">
+      <footer className="flex items-end justify-start gap-2 sm:gap-4 max-w-5xl w-full mx-auto shrink-0">
+        <div className="flex items-end gap-2 sm:gap-4 bg-black/60 backdrop-blur-md px-2 py-2 sm:px-3.5 sm:py-2.5 rounded-xl border border-white/10 font-mono text-xs">
           
           {/* Speed */}
-          <div className="flex items-center gap-2 shrink-0">
-            <Gauge className="w-4 h-4 text-cyan-400 shrink-0" />
-            <div className="min-w-[82px] shrink-0">
-              <div className="text-[10px] text-gray-400 uppercase tracking-wider">Velocidade</div>
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <Gauge className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-400 shrink-0" />
+            <div className="min-w-[64px] sm:min-w-[82px] shrink-0">
+              <div className="text-[9px] sm:text-[10px] text-gray-400 uppercase tracking-wider">Velocidade</div>
               <div className="font-orbitron font-bold text-sm text-white tabular-nums whitespace-nowrap flex items-baseline gap-1">
                 <span ref={speedTextRef}>{initialSpeedKmh}</span>
-                <span className="text-[10px] font-normal text-gray-400">km/h</span>
+                <span className="text-[9px] sm:text-[10px] font-normal text-gray-400">km/h</span>
               </div>
             </div>
           </div>
 
-          <div className="w-px self-stretch bg-white/10" />
+          <div className="w-px self-stretch bg-white/10 hidden sm:block" />
 
-          {/* Dual-Thruster pressure gauges — segmented vertical bars */}
-          <div className="flex items-end gap-3.5">
+          {/* Dual-Thruster pressure gauges — segmented vertical bars (hidden on phones
+              to keep every bottom HUD cluster visible; thruster feedback lives on the
+              ship's flame cones and L/R gauges remain on sm+ screens) */}
+          <div className="hidden sm:flex items-end gap-3.5">
             <div className="flex items-end gap-1.5">
               <span
                 ref={thrusterLLabelRef}
@@ -659,8 +661,8 @@ export const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({
 
           {/* Lives (Vidas) indicator */}
           <div className="flex items-center gap-2 shrink-0">
-            <div className="min-w-[68px]">
-              <div className="text-[10px] text-gray-400 uppercase tracking-wider flex items-center gap-1">
+            <div className="min-w-[56px] sm:min-w-[68px]">
+              <div className="text-[9px] sm:text-[10px] text-gray-400 uppercase tracking-wider flex items-center gap-1">
                 <Heart className="w-3 h-3 text-rose-400 fill-rose-400/80" />
                 <span>Vidas</span>
               </div>
@@ -690,8 +692,8 @@ export const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({
 
           {/* Phase Shields + Shield Generator charge indicator (v1.35.0) */}
           <div className="flex items-center gap-2 shrink-0">
-            <div className="min-w-[92px]">
-              <div className="text-[10px] text-gray-400 uppercase tracking-wider flex items-center gap-1">
+            <div className="min-w-[80px] sm:min-w-[92px]">
+              <div className="text-[9px] sm:text-[10px] text-gray-400 uppercase tracking-wider flex items-center gap-1">
                 <Shield className="w-3 h-3 text-cyan-400" />
                 <span>Escudos · Ger.</span>
               </div>
