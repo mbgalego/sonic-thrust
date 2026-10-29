@@ -79,6 +79,13 @@
 ---
 
 ## 3. Changelog & Recent Fixes
+- **v1.33.0 (Track Unlock System & Neo Dreams Secret Track)**:
+  1. *Track Unlock System*: New persistent unlock system (`src/utils/trackUnlocks.ts`) using localStorage. Tracks with `unlockCondition` + `secret: true` are hidden until unlocked. Completing any track in PRO or EXTREME mode checks for and grants unlocks.
+  2. *Neo Dreams Secret Track*: Added "Neo Dreams" (Dev's Secret Sound) to `tracks.json` — unlockable by completing any track in PRO mode. Dreamy synthwave at 122 BPM, 228s.
+  3. *Unlock Notification Toast*: Animated slide-down toast appears when tracks are unlocked, showing track title(s) and confirmation.
+  4. *Locked Track UI*: Secret tracks appear in the catalog with lock icon, disabled state, and tooltip showing unlock requirement (e.g., "Completa qualquer faixa no modo PRO para desbloquear").
+  4. *Extensible Design*: System ready for future EXTREME-mode unlocks — just add `unlockCondition: { mode: 'EXTREME', description: '...' }` to new tracks.
+  5. *Cleanup*: Removed 2 unlicensed MP3s (CARL POPPA, Kosmonova). Added Neon Dreams MP3 to `public/tracks/`.
 - **v1.32.0 (High-Resolution Performance & Smart DPR Clamping)**:
   1. *Smart Resolution & DPR Budget*: Clamped maximum canvas internal pixel budget to 2.85 Megapixels (equivalent to 1440p @ 1.0 or 1080p @ 1.25 DPR) on large displays (1440p / 4K / Ultrawides), eliminating memory bandwidth and fill-rate stall.
   2. *Dual-Stroke Neon Glow (Zero Gaussian Blur on Bedrock)*: Replaced expensive `ctx.shadowBlur` (up to 40px across 10 waves) on bedrock equalizer waves with instant dual-stroke neon halos, cutting 20–30ms of GPU raster overhead per frame while preserving vibrant neon aesthetics.

@@ -1299,7 +1299,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
       {/* Footer: Version and Last Update Date on left, Author on right */}
       <footer className="relative z-10 flex items-center justify-between text-xs sm:text-sm font-mono text-cyan-400/90 pt-1.5 pb-1 sm:pt-3 sm:pb-2 border-t border-white/10 max-w-6xl w-full mx-auto px-2">
-        <span className="tracking-wide">v1.32.0 · 28/10/2026</span>
+        <span className="tracking-wide">v1.33.0 · 29/10/2026</span>
         <span className="tracking-wide font-semibold text-gray-200">Por Miguel Galego</span>
       </footer>
 
