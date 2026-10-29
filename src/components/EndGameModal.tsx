@@ -5,7 +5,7 @@
  * and rock-solid layout with zero size jitter.
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   RotateCcw,
   Home,
@@ -18,6 +18,17 @@ import {
 } from 'lucide-react';
 import { GameStats, DifficultyLevel } from '../types/game';
 import { audio } from '../audio/AudioEngine';
+
+const VICTORY_QUOTES = [
+  '"Estás a ver este estilo? Isto não é para quem quer, é para quem pode!" (Duarte e Companhia)',
+  '"Ó Chinês, traz a metralhadora que esmagámos o recorde!" (Duarte e Companhia)',
+  '"Não havia necessidade nenhuma de humilhar o túnel desta maneira!" (Diácono Remédios)',
+  '"I feel the need... the need for speed!"',
+  '"Great shot, kid! You made the run in less than 12 parsecs."',
+  '"He\'s beginning to believe. You are The One!"',
+  '"Hasta la vista, obstacles. Mission accomplished!"',
+  '"Yippee-ki-yay! Welcome to the party, pal."'
+];
 
 interface EndGameModalProps {
   isVictory: boolean;
@@ -41,6 +52,11 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
   const elapsedMin = Math.floor(stats.timeElapsed / 60);
   const elapsedSec = Math.floor(stats.timeElapsed % 60);
 
+  // Random victory quote chosen once per modal mount
+  const victoryQuote = useMemo(() => {
+    return VICTORY_QUOTES[Math.floor(Math.random() * VICTORY_QUOTES.length)];
+  }, []);
+
   // Dedicated HTML5 Canvas References for 60FPS Reactive Graphics (Zero React State re-renders)
   const waveformCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const progressoWaveCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -49,6 +65,9 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
   const topVuRightRef = useRef<HTMLCanvasElement | null>(null);
   const bottomVuLeftRef = useRef<HTMLCanvasElement | null>(null);
   const bottomVuRightRef = useRef<HTMLCanvasElement | null>(null);
+  const musicCountdownTextRef = useRef<HTMLSpanElement | null>(null);
+  const musicProgressBarRef = useRef<HTMLDivElement | null>(null);
+  const peakBarsRef = useRef<number[]>(new Array(56).fill(0));
 
   // 60FPS Hardware-Accelerated Animation Loop
   // Updates canvas pixels directly without triggering ANY React component layout recalculations!
@@ -64,7 +83,30 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
       const midsVal = Math.max(0.1, freqData.mids);
       const trebleVal = Math.max(0.1, freqData.treble);
 
-      // 1. Draw Central Mirrored Audio Waveform
+      // Track Time Left Countdown Update (Victory only, zero React state re-renders)
+      if (isVictory) {
+        const totalDuration = audio.getTrackDuration();
+        const currentPlaybackTime = audio.getCurrentTime();
+        const remaining = Math.max(0, totalDuration - currentPlaybackTime);
+        const remMin = Math.floor(remaining / 60);
+        const remSec = Math.floor(remaining % 60);
+
+        if (musicCountdownTextRef.current) {
+          if (remaining <= 0.4 && totalDuration > 0) {
+            musicCountdownTextRef.current.textContent = 'FAIXA CONCLUÍDA';
+            musicCountdownTextRef.current.className = 'font-orbitron font-bold text-[10px] sm:text-xs text-emerald-400 uppercase tracking-wider drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]';
+          } else {
+            musicCountdownTextRef.current.textContent = `${String(remMin).padStart(2, '0')}:${String(remSec).padStart(2, '0')}`;
+            musicCountdownTextRef.current.className = 'font-orbitron font-black text-xs sm:text-sm text-[#00f0ff] tabular-nums tracking-wider drop-shadow-[0_0_8px_#00f0ff]';
+          }
+        }
+        if (musicProgressBarRef.current && totalDuration > 0) {
+          const pct = Math.min(100, Math.max(0, (currentPlaybackTime / totalDuration) * 100));
+          musicProgressBarRef.current.style.width = `${pct}%`;
+        }
+      }
+
+      // 1. Draw High-Tech Cyberpunk Audio Spectrum & Oscilloscope Waveform
       const waveCanvas = waveformCanvasRef.current;
       if (waveCanvas) {
         const ctx = waveCanvas.getContext('2d');
@@ -75,58 +117,161 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
 
           ctx.clearRect(0, 0, w, h);
 
-          // Center Horizontal Baseline
-          ctx.beginPath();
-          ctx.strokeStyle = 'rgba(0, 240, 255, 0.22)';
+          // Subtle Sci-Fi Grid lines & Center Baseline
           ctx.lineWidth = 1;
+          ctx.strokeStyle = isVictory ? 'rgba(0, 240, 255, 0.08)' : 'rgba(244, 63, 94, 0.08)';
+          ctx.beginPath();
+          ctx.moveTo(0, centerY - h * 0.32);
+          ctx.lineTo(w, centerY - h * 0.32);
+          ctx.moveTo(0, centerY + h * 0.32);
+          ctx.lineTo(w, centerY + h * 0.32);
+          ctx.stroke();
+
+          // Center Zero-Axis line with tick marks
+          ctx.strokeStyle = isVictory ? 'rgba(0, 240, 255, 0.28)' : 'rgba(244, 63, 94, 0.28)';
+          ctx.beginPath();
           ctx.moveTo(0, centerY);
           ctx.lineTo(w, centerY);
           ctx.stroke();
 
-          // Live audio spectrum bars (mirrored top and bottom)
-          const barCount = 76;
-          const barWidth = Math.max(2, (w / barCount) - 1.5);
+          // Tick marks along center
+          ctx.fillStyle = isVictory ? 'rgba(0, 240, 255, 0.35)' : 'rgba(244, 63, 94, 0.35)';
+          for (let tx = 20; tx < w; tx += 30) {
+            ctx.fillRect(tx, centerY - 2.5, 1, 5);
+          }
+
+          const isAudioActive = audio.isTrackPlaying();
+          const barCount = 56;
+          const barStep = w / barCount;
+          const barWidth = Math.max(2.5, barStep - 2.2);
+
+          const amplitudes: number[] = [];
 
           for (let i = 0; i < barCount; i++) {
-            const x = i * (w / barCount);
             const distFromCenter = Math.abs(i - barCount / 2) / (barCount / 2);
-            
             let sampleVal = 0;
-            if (rawFreq && rawFreq.length > 0) {
-              const binIndex = Math.floor(Math.pow(1 - distFromCenter, 1.5) * 60) + 2;
+
+            if (isAudioActive && rawFreq && rawFreq.length > 0) {
+              const binIndex = Math.floor(Math.pow(1 - distFromCenter, 1.4) * 64) + 2;
               sampleVal = (rawFreq[binIndex % rawFreq.length] || 0) / 255;
             } else {
-              sampleVal = Math.sin(time * 3 + i * 0.2) * 0.25 + 0.3;
+              // Living Holographic Standby Wave (ambient rhythmic breathing, never a dead line!)
+              const ambientPhase = time * 2.2 + i * 0.22;
+              sampleVal = (Math.sin(ambientPhase) * 0.20 + Math.cos(ambientPhase * 0.5) * 0.15 + 0.38) * 0.5;
             }
 
-            const centerBoost = 1 - Math.pow(distFromCenter, 1.8);
-            const amplitude = Math.max(2, sampleVal * (h * 0.44) * (0.35 + centerBoost * 0.85));
+            const centerEnvelope = Math.cos(distFromCenter * (Math.PI / 2.2));
+            const amp = Math.max(
+              2,
+              sampleVal * (h * 0.44) * (0.45 + centerEnvelope * 0.75)
+            );
+            amplitudes.push(amp);
 
-            const isCenter = distFromCenter < 0.35;
-            const isMid = distFromCenter >= 0.35 && distFromCenter < 0.65;
-
-            ctx.lineWidth = barWidth;
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-
-            if (isCenter) {
-              ctx.strokeStyle = '#ec4899';
-              ctx.shadowColor = '#ff007f';
-              ctx.shadowBlur = 6;
-            } else if (isMid) {
-              ctx.strokeStyle = '#a855f7';
-              ctx.shadowColor = '#c084fc';
-              ctx.shadowBlur = 4;
+            // Update peak hold meters
+            if (amp > (peakBarsRef.current[i] || 0)) {
+              peakBarsRef.current[i] = amp;
             } else {
-              ctx.strokeStyle = '#00f0ff';
-              ctx.shadowColor = '#00f0ff';
-              ctx.shadowBlur = 4;
+              peakBarsRef.current[i] = Math.max(0, (peakBarsRef.current[i] || 0) - 0.38);
+            }
+          }
+
+          // Layer A: Smooth Glow Area Backdrop (Continuous Curvature)
+          ctx.beginPath();
+          ctx.moveTo(0, centerY);
+          for (let i = 0; i < barCount; i++) {
+            const x = i * barStep + barStep / 2;
+            ctx.lineTo(x, centerY - amplitudes[i] * 0.85);
+          }
+          ctx.lineTo(w, centerY);
+          for (let i = barCount - 1; i >= 0; i--) {
+            const x = i * barStep + barStep / 2;
+            ctx.lineTo(x, centerY + amplitudes[i] * 0.85);
+          }
+          ctx.closePath();
+
+          const areaGrad = ctx.createLinearGradient(0, 0, 0, h);
+          if (isVictory) {
+            areaGrad.addColorStop(0, 'rgba(0, 240, 255, 0.22)');
+            areaGrad.addColorStop(0.5, 'rgba(168, 85, 247, 0.12)');
+            areaGrad.addColorStop(1, 'rgba(255, 0, 127, 0.22)');
+          } else {
+            areaGrad.addColorStop(0, 'rgba(244, 63, 94, 0.24)');
+            areaGrad.addColorStop(0.5, 'rgba(190, 18, 60, 0.12)');
+            areaGrad.addColorStop(1, 'rgba(126, 34, 206, 0.22)');
+          }
+          ctx.fillStyle = areaGrad;
+          ctx.fill();
+
+          // Layer B: Symmetrical High-Precision Neon Spectrum Pillars
+          for (let i = 0; i < barCount; i++) {
+            const x = i * barStep + (barStep - barWidth) / 2;
+            const distFromCenter = Math.abs(i - barCount / 2) / (barCount / 2);
+            const amp = amplitudes[i];
+
+            const barGrad = ctx.createLinearGradient(x, centerY - amp, x, centerY + amp);
+            if (isVictory) {
+              if (distFromCenter < 0.35) {
+                barGrad.addColorStop(0, '#ff007f');
+                barGrad.addColorStop(0.5, '#ec4899');
+                barGrad.addColorStop(1, '#ff007f');
+              } else if (distFromCenter < 0.7) {
+                barGrad.addColorStop(0, '#a855f7');
+                barGrad.addColorStop(0.5, '#c084fc');
+                barGrad.addColorStop(1, '#a855f7');
+              } else {
+                barGrad.addColorStop(0, '#00f0ff');
+                barGrad.addColorStop(0.5, '#38bdf8');
+                barGrad.addColorStop(1, '#00f0ff');
+              }
+            } else {
+              if (distFromCenter < 0.4) {
+                barGrad.addColorStop(0, '#f43f5e');
+                barGrad.addColorStop(0.5, '#fda4af');
+                barGrad.addColorStop(1, '#f43f5e');
+              } else {
+                barGrad.addColorStop(0, '#fb7185');
+                barGrad.addColorStop(0.5, '#c084fc');
+                barGrad.addColorStop(1, '#fb7185');
+              }
             }
 
-            ctx.moveTo(x + barWidth / 2, centerY - amplitude);
-            ctx.lineTo(x + barWidth / 2, centerY + amplitude);
-            ctx.stroke();
+            ctx.fillStyle = barGrad;
+            ctx.shadowColor = isVictory ? (distFromCenter < 0.4 ? '#ff007f' : '#00f0ff') : '#f43f5e';
+            ctx.shadowBlur = 5;
+
+            // Draw rounded bar top and bottom
+            const barH = amp * 2;
+            const barTop = centerY - amp;
+            const r = Math.min(barWidth / 2, 2);
+            ctx.beginPath();
+            ctx.roundRect(x, barTop, barWidth, Math.max(3, barH), r);
+            ctx.fill();
+
+            // Layer C: Floating Peak Hold Markers
+            const peakVal = peakBarsRef.current[i] || amp;
+            if (peakVal > amp + 1) {
+              ctx.fillStyle = isVictory ? '#ffffff' : '#ffd1d9';
+              ctx.shadowColor = isVictory ? '#00f0ff' : '#f43f5e';
+              ctx.shadowBlur = 4;
+              ctx.fillRect(x, centerY - peakVal - 1.5, barWidth, 1.5);
+              ctx.fillRect(x, centerY + peakVal, barWidth, 1.5);
+            }
           }
+
+          // Layer D: Center Laser Oscilloscope Core Line
+          ctx.beginPath();
+          ctx.lineWidth = 1.6;
+          ctx.strokeStyle = isVictory ? '#ffffff' : '#fecdd3';
+          ctx.shadowColor = isVictory ? '#00f0ff' : '#f43f5e';
+          ctx.shadowBlur = 7;
+          for (let i = 0; i < barCount; i++) {
+            const x = i * barStep + barStep / 2;
+            const osc = Math.sin(time * 6 + i * 0.45) * Math.min(6, amplitudes[i] * 0.25);
+            const y = centerY + osc;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
 
           ctx.shadowBlur = 0;
         }
@@ -276,7 +421,7 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
   const destructionLabels = {
     CEILING: 'Colisão Imediata com o Teto Vetorial',
     FLOOR: 'Impacto Severo com o Solo Néon',
-    OBSTACLE: 'Colisão com Plataforma Rotativa (Médios)',
+    OBSTACLE: 'Colisão com Obstáculo Sonorreativo',
     LASER: 'Desintegração por Barreira Laser (Agudos)'
   };
 
@@ -300,12 +445,12 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
         {isVictory ? (
           <div className="relative flex items-center justify-center mb-1 shrink-0">
             {/* Concentric Neon Rings */}
-            <div className="absolute w-36 h-36 sm:w-44 sm:h-44 rounded-full border border-cyan-400/35 shadow-[0_0_30px_rgba(0,240,255,0.25)] pointer-events-none animate-pulse" />
-            <div className="absolute w-32 h-32 sm:w-40 sm:h-40 rounded-full border border-fuchsia-500/35 shadow-[0_0_20px_rgba(217,70,239,0.3)] pointer-events-none" />
-            <div className="absolute w-28 h-28 sm:w-36 sm:h-36 rounded-full border border-cyan-300/40 shadow-[0_0_15px_rgba(0,240,255,0.35)] pointer-events-none" />
+            <div className="absolute w-32 h-32 sm:w-44 sm:h-44 rounded-full border border-cyan-400/35 shadow-[0_0_30px_rgba(0,240,255,0.25)] pointer-events-none animate-pulse" />
+            <div className="absolute w-28 h-28 sm:w-40 sm:h-40 rounded-full border border-fuchsia-500/35 shadow-[0_0_20px_rgba(217,70,239,0.3)] pointer-events-none" />
+            <div className="absolute w-24 h-24 sm:w-36 sm:h-36 rounded-full border border-cyan-300/40 shadow-[0_0_15px_rgba(0,240,255,0.35)] pointer-events-none" />
 
             {/* Orbiting Stardust Sparkles */}
-            <div className="absolute w-36 h-36 sm:w-44 sm:h-44 pointer-events-none animate-spin" style={{ animationDuration: '30s' }}>
+            <div className="absolute w-32 h-32 sm:w-44 sm:h-44 pointer-events-none animate-spin" style={{ animationDuration: '30s' }}>
               <div className="absolute top-2 left-10 w-1.5 h-1.5 rounded-full bg-cyan-300 shadow-[0_0_8px_#00f0ff]" />
               <div className="absolute bottom-3 right-10 w-1.5 h-1.5 rounded-full bg-pink-400 shadow-[0_0_8px_#ff007f]" />
               <div className="absolute top-1/2 -left-1 w-1 h-1 rounded-full bg-white shadow-[0_0_4px_#fff]" />
@@ -314,9 +459,9 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
             </div>
 
             {/* Glowing Core with Neon Trophy */}
-            <div className="relative z-10 w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-[#0a0522]/90 border border-cyan-400/60 flex items-center justify-center shadow-[0_0_25px_rgba(0,240,255,0.45)]">
+            <div className="relative z-10 w-20 h-20 sm:w-28 sm:h-28 rounded-full bg-[#0a0522]/90 border border-cyan-400/60 flex items-center justify-center shadow-[0_0_25px_rgba(0,240,255,0.45)]">
               <svg
-                className="w-14 h-14 sm:w-16 sm:h-16 drop-shadow-[0_0_12px_#00f0ff] drop-shadow-[0_0_8px_#ff007f]"
+                className="w-11 h-11 sm:w-16 sm:h-16 drop-shadow-[0_0_12px_#00f0ff] drop-shadow-[0_0_8px_#ff007f]"
                 viewBox="0 0 64 64"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
@@ -379,8 +524,8 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
         ) : (
           /* Game Over Skull Emblem */
           <div className="relative flex items-center justify-center mb-1 shrink-0">
-            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-[#180309]/90 border border-rose-500/60 flex items-center justify-center shadow-[0_0_25px_rgba(244,63,94,0.45)]">
-              <Skull className="w-12 h-12 text-rose-500 drop-shadow-[0_0_12px_#f43f5e] animate-pulse" />
+            <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-full bg-[#180309]/90 border border-rose-500/60 flex items-center justify-center shadow-[0_0_25px_rgba(244,63,94,0.45)]">
+              <Skull className="w-10 h-10 sm:w-12 sm:h-12 text-rose-500 drop-shadow-[0_0_12px_#f43f5e] animate-pulse" />
             </div>
           </div>
         )}
@@ -398,11 +543,7 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
 
         <p className="font-rajdhani font-medium text-xs sm:text-sm text-[#7dd3fc] tracking-wide text-center leading-relaxed mt-1 px-4 max-w-md shrink-0">
           {isVictory ? (
-            <>
-              Atingiste o Portal de Meta no exato compasso
-              <br />
-              de encerramento da faixa!
-            </>
+            victoryQuote
           ) : outOfTime ? (
             'A faixa musical terminou antes de alcançares o Portal de Meta — a missão expirou.'
           ) : (
@@ -451,7 +592,7 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
                   </span>
                 </div>
                 <span className="font-orbitron font-black text-2xl sm:text-3xl text-white mt-1 tabular-nums tracking-wide">
-                  {isVictory ? '100%' : `${Math.round(stats.percentCompleted)}%`}
+                  {isVictory ? '100%' : `${Math.min(99, Math.floor(stats.percentCompleted))}%`}
                 </span>
                 
                 {/* 60FPS Dynamic Cyan Soundwave Canvas Line */}
@@ -500,7 +641,7 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
                   </span>
                 </div>
                 <div className="font-orbitron font-black text-xl sm:text-2xl text-white mt-1 flex items-baseline gap-1.5">
-                  <span className="tabular-nums">{Math.round(stats.maxSpeed * 0.7) || 197}</span>
+                  <span className="tabular-nums">{Math.round(stats.maxSpeed * 0.7)}</span>
                   <span className="text-xs font-rajdhani font-semibold text-gray-400">km/h</span>
                 </div>
               </div>
@@ -514,7 +655,7 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
                   </span>
                 </div>
                 <span className="font-orbitron font-black text-xl sm:text-2xl text-white mt-1 tabular-nums">
-                  {stats.powerUpsCollected || 20}
+                  {stats.powerUpsCollected ?? 0}
                 </span>
               </div>
             </div>
@@ -522,20 +663,13 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
             {/* Horizontal Cyber Separator */}
             <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent my-0.5 shrink-0" />
 
-            {/* Row 3: Music Badge, Penalização, Difficulty */}
+            {/* Row 3: Music Badge & Difficulty */}
             <div className="flex items-center justify-between gap-2 text-xs shrink-0">
               {/* Left: Music Note & Track Name */}
               <div className="flex items-center gap-1.5 min-w-0">
                 <Music className="w-4 h-4 text-cyan-400 shrink-0" />
                 <span className="font-rajdhani font-bold text-sm text-white truncate drop-shadow-[0_0_6px_rgba(255,255,255,0.4)]">
                   {trackTitle || 'Redux Abyssum'}
-                </span>
-              </div>
-
-              {/* Center: Penalização Pill Badge */}
-              <div className="px-2.5 py-0.5 rounded-lg bg-[#380614]/90 border border-rose-500/50 shadow-[0_0_8px_rgba(244,63,94,0.3)] shrink-0">
-                <span className="font-rajdhani font-bold text-xs text-rose-300 tracking-wide">
-                  Penalização: {stats.timePenalty > 0 ? `-${stats.timePenalty}s` : '-20s'}
                 </span>
               </div>
 
@@ -546,14 +680,48 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
             </div>
 
             {/* ================= Live Dynamic Audio Waveform Visualizer ================= */}
-            <div className="w-full h-14 relative mt-0.5 shrink-0 overflow-hidden">
+            <div className="w-full h-16 sm:h-20 relative mt-1 shrink-0 overflow-hidden rounded-xl border border-cyan-500/25 bg-[#050212]/90 shadow-[inset_0_0_20px_rgba(0,240,255,0.06),0_0_15px_rgba(0,0,0,0.5)]">
               <canvas
                 ref={waveformCanvasRef}
                 width={480}
-                height={56}
-                className="w-full h-14 block"
+                height={80}
+                className="w-full h-full block"
               />
             </div>
+
+            {/* Victory Track Time Left (Countdown to listen to the rest of the song) */}
+            {isVictory && (
+              <div className="w-full flex flex-col gap-1 px-3 py-1.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30 shadow-[0_0_15px_rgba(0,240,255,0.12)] shrink-0">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
+                    </span>
+                    <span className="font-orbitron font-semibold text-[10px] sm:text-xs text-cyan-200 uppercase tracking-wider">
+                      TEMPO RESTANTE DA FAIXA
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Music className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                    <span
+                      ref={musicCountdownTextRef}
+                      className="font-orbitron font-black text-xs sm:text-sm text-[#00f0ff] tabular-nums tracking-wider drop-shadow-[0_0_8px_#00f0ff]"
+                    >
+                      --:--
+                    </span>
+                  </div>
+                </div>
+                {/* Mini progress bar of track completion */}
+                <div className="w-full h-1 rounded-full bg-white/10 overflow-hidden relative">
+                  <div
+                    ref={musicProgressBarRef}
+                    className="h-full bg-gradient-to-r from-cyan-400 via-sky-300 to-fuchsia-400 rounded-full transition-all duration-200 shadow-[0_0_8px_rgba(0,240,255,0.6)]"
+                    style={{ width: '0%' }}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Bottom Corner Decorative Mini Equalizers (Canvas based, 0 layout shifts) */}
             <div className="flex items-center justify-between pt-0.5 h-4 shrink-0">
