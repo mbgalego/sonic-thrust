@@ -138,5 +138,20 @@
     "duration": 84,
     "description": "Ondas subsónicas profundas com fortes oscilações no teto e chão.",
     "isProcedural": true
+  },
+  {
+    "id": "neo-dreams",
+    "title": "Neo Dreams",
+    "artist": "miguelius",
+    "filename": "Neon Dreams (Dev's Secret Sound).mp3",
+    "estimatedBpm": 122,
+    "duration": 228,
+    "description": "Faixa secreta desbloqueada ao completar qualquer faixa no modo PRO. Sintetizadores oníricos, graves suaves e melodia que flutua como memórias de neon.",
+    "isProcedural": false,
+    "unlockCondition": {
+      "mode": "PRO",
+      "description": "Completa qualquer faixa no modo PRO para desbloquear"
+    },
+    "secret": true
   }
 ]

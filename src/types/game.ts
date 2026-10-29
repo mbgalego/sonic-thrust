@@ -30,6 +30,12 @@ export interface TrackMetadata {
   isProcedural?: boolean;
   audioBuffer?: AudioBuffer;
   isLocal?: boolean;
+  // Unlock system fields
+  unlockCondition?: {
+    mode: 'PRO' | 'EXTREME';
+    description: string;
+  };
+  secret?: boolean; // Hidden from list until unlocked
 }
 
 export type PowerUpType = 
