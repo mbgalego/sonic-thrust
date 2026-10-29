@@ -383,7 +383,7 @@ export default function App() {
 
     const handleUserInteraction = (e: Event) => {
       const target = e.target as HTMLElement | null;
-      if (target && target.closest('button[title*="escuta"], button[title*="Pré-escutar"], button[title*="Parar"]')) {
+      if (target && target.closest('button[title*="escuta"], button[title*="Pré-escutar"], button[title*="Parar"], button[title*="música"]')) {
         return;
       }
       tryStartMenuMusic();
