@@ -79,6 +79,12 @@
 ---
 
 ## 3. Changelog & Recent Fixes
+- **v1.37.0 (Menu Theme Autoplay Hint — "Why is the menu silent?")**:
+  1. *Investigation*: menu theme correctly does NOT play on load — every browser blocks new `AudioContext`s (autoplay policy) until the first user gesture; the existing `pointerdown`/`keydown` handlers in App already start it on the first gesture, but the silent menu gave the player zero feedback ("waiting for action or loading?").
+  2. *Fix (Transparency)*: TitleMenu now shows a small cyan pill under the top bar — "Clica ou prime uma tecla para ativar a música" — exactly while the `AudioContext` isn't running and menu music isn't playing (checked on mount + every pointerdown/keydown/visibilitychange; `pointer-events-none` so the activating click passes straight through). It vanishes the instant audio starts.
+  3. *AudioEngine*: new public `isContextReady()` (ctx exists && state === 'running').
+  4. *Trigger hygiene* (App.tsx): first-gesture music-start handler now also ignores the mute toggle button (avoids start-then-immediately-mute).
+  5. *Verified objectively* in headless Chromium with `--autoplay-policy=document-user-activation-required`: hint visible before first gesture, gone after one click anywhere (music starts). Lint + build pass.
 - **v1.36.0 (Mobile HUD Compaction + Removed HI-FI EQ Overlay on Phones)**:
   1. *Bug report*: on phone screens the bottom HUD footer didn't fully fit — it overflowed viewport (speed + thrusters + lives + shields ≈ 432px vs 390px), plus the canvas-drawn "HI-FI EQUALIZER" mini-overlay sat bottom-right, crowding the corner.
   2. *HI-FI EQ removed on phones* (`GameRenderer.ts`): `renderAudioSpectrumMini` now returns early for portrait-width canvases (<520px) — the full-screen audio-reactive terrain/visualizer already carries music feedback there. Desktop-sized screens keep the equalizer (bottom-left).

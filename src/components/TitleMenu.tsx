@@ -233,6 +233,30 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
   const [isMuted, setIsMuted] = useState(audio.isMenuMusicMuted());
   const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement));
 
+  // Browser autoplay policy hint (v1.37.0): AudioContexts start suspended until the
+  // first user gesture, so the menu theme "waits" silently. Show a subtle one-line
+  // hint while blocked; it vanishes the moment the context starts running.
+  const [showAudioHint, setShowAudioHint] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    const evaluate = async () => {
+      await audio.ensureRunning().catch(() => {});
+      if (cancelled) return;
+      const blocked = !audio.isContextReady() && !audio.getIsMenuMusicPlaying() && !audio.isMenuMusicMuted();
+      setShowAudioHint(blocked);
+    };
+    evaluate();
+    window.addEventListener('pointerdown', evaluate);
+    window.addEventListener('keydown', evaluate);
+    window.addEventListener('visibilitychange', evaluate);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('pointerdown', evaluate);
+      window.removeEventListener('keydown', evaluate);
+      window.removeEventListener('visibilitychange', evaluate);
+    };
+  }, []);
+
   const handleToggleMenuMusic = () => {
     const newMuted = audio.toggleMenuMusicMute();
     setIsMuted(newMuted);
@@ -277,6 +301,19 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
       {/* Background Radial Glows */}
       <div className="absolute top-1/4 left-1/4 w-[450px] h-[450px] bg-cyan-500/10 rounded-full blur-[110px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-fuchsia-500/15 rounded-full blur-[130px] pointer-events-none" />
+
+      {/* Audio autoplay-policy hint (v1.37.0): browsers hold the menu theme silenced
+          until the first user gesture; make that state explicit instead of confusing. */}
+      {showAudioHint && (
+        <div className="fixed top-12 sm:top-14 left-1/2 -translate-x-1/2 z-40 animate-in fade-in duration-300 pointer-events-none">
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-950/95 border border-cyan-400/60 shadow-[0_0_20px_rgba(6,182,212,0.4)]">
+            <Volume2 className="w-4 h-4 text-cyan-300 animate-pulse shrink-0" />
+            <span className="font-mono text-[10px] sm:text-xs text-cyan-200 tracking-wide whitespace-nowrap">
+              Clica ou prime uma tecla para ativar a música
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Track Unlock Notification Toast */}
       {unlockNotification && (
@@ -1299,7 +1336,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
       {/* Footer: Version and Last Update Date on left, Author on right */}
       <footer className="relative z-10 flex items-center justify-between text-xs sm:text-sm font-mono text-cyan-400/90 pt-1.5 pb-1 sm:pt-3 sm:pb-2 border-t border-white/10 max-w-6xl w-full mx-auto px-2">
-        <span className="tracking-wide">v1.36.0 · 29/10/2026</span>
+        <span className="tracking-wide">v1.37.0 · 29/10/2026</span>
         <span className="tracking-wide font-semibold text-gray-200">Por Miguel Galego</span>
       </footer>
 

@@ -81,6 +81,15 @@ export class AudioEngine {
   }
 
   /**
+   * True once the AudioContext exists AND reached the running state.
+   * While false, the browser's autoplay policy is holding all audio silent
+   * until the first user gesture (v1.37.0 — enables the "click for sound" hint).
+   */
+  public isContextReady(): boolean {
+    return !!this.ctx && this.ctx.state === 'running';
+  }
+
+  /**
    * Resumes AudioContext if suspended or interrupted (WebKit/iOS Safari state)
    */
   public async ensureRunning(): Promise<void> {
