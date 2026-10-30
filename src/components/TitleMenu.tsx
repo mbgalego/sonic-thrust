@@ -1176,10 +1176,10 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                         
                         {/* 1. SHIELD */}
                         <div className="p-3 rounded-xl border border-cyan-400/40 bg-cyan-950/35 flex items-center gap-3">
-                          <PowerUpGraphic type="SHIELD" size={48} />
+                          <PowerUpGraphic type="SHIELD" size={40} />
                           <div className="flex flex-col min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="font-orbitron font-bold text-sm text-cyan-300">ESCUDO DE FASE</span>
+                              <span className="min-w-0 break-words font-orbitron font-bold text-sm text-cyan-300">ESCUDO DE FASE</span>
                             </div>
                             <p className="font-rajdhani text-xs sm:text-sm text-gray-200 leading-snug mt-0.5">
                               Absorve 1 colisão contra o túnel ou obstáculos com repulsão segura.
@@ -1189,10 +1189,10 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
                         {/* 2. DAMPER */}
                         <div className="p-3 rounded-xl border border-emerald-400/40 bg-emerald-950/35 flex items-center gap-3">
-                          <PowerUpGraphic type="DAMPER" size={48} />
+                          <PowerUpGraphic type="DAMPER" size={40} />
                           <div className="flex flex-col min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="font-orbitron font-bold text-sm text-emerald-300">AMORTECEDOR SÓNICO</span>
+                              <span className="min-w-0 break-words font-orbitron font-bold text-sm text-emerald-300">AMORTECEDOR SÓNICO</span>
                             </div>
                             <p className="font-rajdhani text-xs sm:text-sm text-gray-200 leading-snug mt-0.5">
                               Acalma o túnel: a deformação que «respira» com o bass da música reduz em 78% durante 6s — corredor estável mesmo nos drops.
@@ -1202,10 +1202,10 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
                         {/* 3. LOW_G */}
                         <div className="p-3 rounded-xl border border-yellow-400/40 bg-yellow-950/35 flex items-center gap-3">
-                          <PowerUpGraphic type="LOW_G" size={48} />
+                          <PowerUpGraphic type="LOW_G" size={40} />
                           <div className="flex flex-col min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="font-orbitron font-bold text-sm text-yellow-300">GRAVIDADE REDUZIDA</span>
+                              <span className="min-w-0 break-words font-orbitron font-bold text-sm text-yellow-300">GRAVIDADE REDUZIDA</span>
                             </div>
                             <p className="font-rajdhani text-xs sm:text-sm text-gray-200 leading-snug mt-0.5">
                               Surto de microgravidade com 50% menos gravidade durante 5s de voo ultra-leve.
@@ -1215,10 +1215,10 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
                         {/* 4. PULSE */}
                         <div className="p-3 rounded-xl border border-cyan-400/40 bg-cyan-950/35 flex items-center gap-3">
-                          <PowerUpGraphic type="PULSE" size={48} />
+                          <PowerUpGraphic type="PULSE" size={40} />
                           <div className="flex flex-col min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="font-orbitron font-bold text-sm text-cyan-300">PULSO SÓNICO</span>
+                              <span className="min-w-0 break-words font-orbitron font-bold text-sm text-cyan-300">PULSO SÓNICO</span>
                             </div>
                             <p className="font-rajdhani text-xs sm:text-sm text-gray-200 leading-snug mt-0.5">
                               Onda de choque que desativa lasers de energia e destrói minas de ressonância.
@@ -1228,10 +1228,10 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
                         {/* 5. ETHEREAL */}
                         <div className="p-3 rounded-xl border border-purple-400/40 bg-purple-950/35 flex items-center gap-3">
-                          <PowerUpGraphic type="ETHEREAL" size={48} />
+                          <PowerUpGraphic type="ETHEREAL" size={40} />
                           <div className="flex flex-col min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="font-orbitron font-bold text-sm text-purple-300">MODO FANTASMA</span>
+                              <span className="min-w-0 break-words font-orbitron font-bold text-sm text-purple-300">MODO FANTASMA</span>
                             </div>
                             <p className="font-rajdhani text-xs sm:text-sm text-gray-200 leading-snug mt-0.5">
                               Transforma a nave em fantasma durante 6s, atravessando todos os obstáculos.
@@ -1241,10 +1241,10 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
                         {/* 6. INVULNERABLE */}
                         <div className="p-3 rounded-xl border border-rose-400/40 bg-rose-950/35 flex items-center gap-3">
-                          <PowerUpGraphic type="INVULNERABLE" size={48} />
+                          <PowerUpGraphic type="INVULNERABLE" size={40} />
                           <div className="flex flex-col min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="font-orbitron font-bold text-sm text-rose-300">INVULNERABILIDADE</span>
+                              <span className="min-w-0 break-words font-orbitron font-bold text-sm text-rose-300">INVULNERÁVEL</span>
                             </div>
                             <p className="font-rajdhani text-xs sm:text-sm text-gray-200 leading-snug mt-0.5">
                               Imunidade total contra todos os danos e obstáculos durante 3.5 segundos.
@@ -1254,10 +1254,10 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
                         {/* 7. CHRONO_DILATION */}
                         <div className="p-3 rounded-xl border border-teal-400/40 bg-teal-950/35 flex items-center gap-3">
-                          <PowerUpGraphic type="CHRONO_DILATION" size={48} />
+                          <PowerUpGraphic type="CHRONO_DILATION" size={40} />
                           <div className="flex flex-col min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="font-orbitron font-bold text-sm text-teal-300">DISTORÇÃO TEMPORAL</span>
+                              <span className="min-w-0 break-words font-orbitron font-bold text-sm text-teal-300">DISTORÇÃO TEMPORAL</span>
                             </div>
                             <p className="font-rajdhani text-xs sm:text-sm text-gray-200 leading-snug mt-0.5">
                               Câmara lenta a 50% por 5 segundos com reflexos hiper-acelerados.
@@ -1267,10 +1267,10 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
                         {/* 8. SINGULARITY */}
                         <div className="p-3 rounded-xl border border-fuchsia-400/40 bg-fuchsia-950/35 flex items-center gap-3">
-                          <PowerUpGraphic type="SINGULARITY" size={48} />
+                          <PowerUpGraphic type="SINGULARITY" size={40} />
                           <div className="flex flex-col min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="font-orbitron font-bold text-sm text-fuchsia-300">SINGULARIDADE</span>
+                              <span className="min-w-0 break-words font-orbitron font-bold text-sm text-fuchsia-300">SINGULARIDADE</span>
                             </div>
                             <p className="font-rajdhani text-xs sm:text-sm text-gray-200 leading-snug mt-0.5">
                               Vórtice cósmico que atrai e absorve automaticamente orbes de ressonância.
@@ -1336,7 +1336,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
       {/* Footer: Version and Last Update Date on left, Author on right */}
       <footer className="relative z-10 flex items-center justify-between text-xs sm:text-sm font-mono text-cyan-400/90 pt-1.5 pb-1 sm:pt-3 sm:pb-2 border-t border-white/10 max-w-6xl w-full mx-auto px-2">
-        <span className="tracking-wide">v1.37.0 · 29/10/2026</span>
+        <span className="tracking-wide">v1.38.0 · 30/10/2026</span>
         <span className="tracking-wide font-semibold text-gray-200">Por Miguel Galego</span>
       </footer>
 
