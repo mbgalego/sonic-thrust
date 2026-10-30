@@ -79,6 +79,9 @@
 ---
 
 ## 3. Changelog & Recent Fixes
+- **v1.38.0 (Info panel: power-up names no longer overflow)**:
+  1. *Bug*: `INVULNERABILIDADE` transbordava 44px para além da caixa do card e `SINGULARIDADE` 5px — reproduzido objetivamente em 640–900px (playwright).
+  2. *Fix*: renomeado para `INVULNERÁVEL` (idêntico ao mostrado em jogo na HUD: `INVULNERÁVEL: 3.5s`); todos os 8 nomes dos power-ups ganharam guardas `min-w-0 break-words` para nunca rebentar a caixa do card, mesmo em colunas estreitas do menu; gráficos dos power-ups ajustados 48→40px.
 - **v1.37.0 (Menu Theme Autoplay Hint — "Why is the menu silent?")**:
   1. *Investigation*: menu theme correctly does NOT play on load — every browser blocks new `AudioContext`s (autoplay policy) until the first user gesture; the existing `pointerdown`/`keydown` handlers in App already start it on the first gesture, but the silent menu gave the player zero feedback ("waiting for action or loading?").
   2. *Fix (Transparency)*: TitleMenu now shows a small cyan pill under the top bar — "Clica ou prime uma tecla para ativar a música" — exactly while the `AudioContext` isn't running and menu music isn't playing (checked on mount + every pointerdown/keydown/visibilitychange; `pointer-events-none` so the activating click passes straight through). It vanishes the instant audio starts.
