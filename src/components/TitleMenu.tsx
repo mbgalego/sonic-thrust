@@ -1091,18 +1091,18 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                           <button
                             type="button"
                             onClick={() => {
-                              const next = !options.oasisMode;
-                              onOptionsChange({ ...options, oasisMode: next });
-                              setEasterSave({ ...easterSave, oasisMode: next });
-                              setEasterEggSave({ ...easterSave, oasisMode: next });
+                              const next = !easterSave.oasisMode;
+                              const save = { ...easterSave, oasisMode: next };
+                              setEasterSave(save);
+                              setEasterEggSave(save);
                             }}
                             className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-mono font-bold transition cursor-pointer shrink-0 ${
-                              options.oasisMode
+                              easterSave.oasisMode
                                 ? 'bg-purple-500 text-white shadow-md shadow-purple-500/30'
                                 : 'bg-white/10 text-gray-300 hover:bg-white/20'
                             }`}
                           >
-                            {options.oasisMode ? 'LIGADO' : 'DESLIGADO'}
+                            {easterSave.oasisMode ? 'LIGADO' : 'DESLIGADO'}
                           </button>
                         </div>
 
@@ -1124,18 +1124,18 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                           <button
                             type="button"
                             onClick={() => {
-                              const next = !options.deloreanSkin;
-                              onOptionsChange({ ...options, deloreanSkin: next });
-                              setEasterSave({ ...easterSave, deloreanSkin: next });
-                              setEasterEggSave({ ...easterSave, deloreanSkin: next });
+                              const next = !easterSave.deloreanSkin;
+                              const save = { ...easterSave, deloreanSkin: next };
+                              setEasterSave(save);
+                              setEasterEggSave(save);
                             }}
                             className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-mono font-bold transition cursor-pointer shrink-0 ${
-                              options.deloreanSkin
+                              easterSave.deloreanSkin
                                 ? 'bg-amber-500 text-black shadow-md shadow-amber-500/30'
                                 : 'bg-white/10 text-gray-300 hover:bg-white/20'
                             }`}
                           >
-                            {options.deloreanSkin ? 'LIGADO' : 'DESLIGADO'}
+                            {easterSave.deloreanSkin ? 'LIGADO' : 'DESLIGADO'}
                           </button>
                         </div>
                       </>

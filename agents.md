@@ -87,7 +87,8 @@
   5. *Audio/UX* (`App.tsx`): fragment collection SFX + announcements ("FRAGMENTO DE CÓDIGO ENCONTRADO!" / "OASIS DESBLOQUEADO!").
   6. *Visuals* (`GameRenderer.ts`): amber Matrix-code-cube fragment renderer; DeLorean ship model (stainless steel body, gull wings, flux capacitor, twin rocket thrusters); `renderOasisOverlay` (scanlines + magenta/cyan CRT brackets + tint).
   7. *UI* (`TitleMenu.tsx`): fragment progress counter (0/3) + OASIS / DeLorean toggles in the options panel (shown only after unlocking).
-  8. *Verified*: lint ✅ build ✅ (v1.39.0)
+  8. *DeLorean sprite (v1.39.0 addendum)*: user-provided pixel-art side view (green-screen JPG in `public/assets/skins/`) processed to transparent PNG (`delorean.png`, 512×173) via border flood-fill chroma-key (interior reactor greens preserved); drawn nose-up (rotated -90°) to match the hull rocket orientation, engine flame FX + flux capacitor glow on top, vector DeLorean kept as load-fallback; easter-egg persistent save is now the single source of truth for OASIS/DeLorean toggles (options no longer carry these flags).
+  9. *Verified*: lint ✅ build ✅ (v1.39.0)
 - **v1.38.0 (Info panel: power-up names no longer overflow)**:
   1. *Bug*: `INVULNERABILIDADE` transbordava 44px para além da caixa do card e `SINGULARIDADE` 5px — reproduzido objetivamente em 640–900px (playwright).
   2. *Fix*: renomeado para `INVULNERÁVEL` (idêntico ao mostrado em jogo na HUD: `INVULNERÁVEL: 3.5s`); todos os 8 nomes dos power-ups ganharam guardas `min-w-0 break-words` para nunca rebentar a caixa do card, mesmo em colunas estreitas do menu; gráficos dos power-ups ajustados 48→40px.

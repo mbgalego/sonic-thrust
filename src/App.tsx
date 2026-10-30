@@ -9,6 +9,7 @@ import { LocalTrackLoader, LocalUploadResult } from './audio/LocalTrackLoader';
 import { PhysicsWorld } from './physics/PhysicsWorld';
 import { GameRenderer } from './graphics/GameRenderer';
 import { checkAndUnlockTracks } from './utils/trackUnlocks';
+import { getEasterEggSave } from './utils/easterEgg';
 import {
   GameState,
   DifficultyLevel,
@@ -481,9 +482,11 @@ export default function App() {
         options.driftCompensation
       );
       newWorld.stats.currentBpm = trackBpm;
-      // Easter Egg toggles (v1.39.0): carry unlocked OASIS / DeLorean into the ship
-      newWorld.ship.oasisMode = options.oasisMode ?? false;
-      newWorld.ship.deloreanSkin = options.deloreanSkin ?? false;
+      // Easter Egg (v1.39.0): the persisted easter-egg save is the single source
+      // of truth for OASIS / DeLorean toggles (menu toggles also write to it)
+      const easterSave = getEasterEggSave();
+      newWorld.ship.oasisMode = easterSave.oasisMode;
+      newWorld.ship.deloreanSkin = easterSave.deloreanSkin;
       countTickLastSecRef.current = -1; // reset countdown tick state for the new mission
       timeUpRef.current = false;
       missionElapsedRef.current = 0;
