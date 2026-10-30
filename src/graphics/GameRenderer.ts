@@ -74,6 +74,21 @@ export class GameRenderer {
 
     this.resize();
     this.initStars();
+    this.loadDeloreanSprite();
+  }
+
+  /**
+   * Easter Egg Left Tunnel — DeLorean skin sprite (v1.39.0).
+   * Loaded once; if it fails to load the vector-drawn DeLorean fallback remains.
+   */
+  private deloreanImg: HTMLImageElement | null = null;
+
+  private loadDeloreanSprite(): void {
+    if (typeof window === 'undefined') return;
+    const img = new Image();
+    img.onload = () => { this.deloreanImg = img; };
+    img.onerror = () => { this.deloreanImg = null; };
+    img.src = encodeURI('/assets/skins/delorean.png');
   }
 
   public setQuality(quality: 'high' | 'low'): void {
@@ -2414,6 +2429,66 @@ export class GameRenderer {
    */
   private renderDelorean(ship: PhysicsWorld['ship'], _isPaused: boolean, _audioFreq?: AudioFrequencyData): void {
     const ctx = this.ctx;
+
+    // --- Sprite path: pixel-art DeLorean loaded from /assets/skins/delorean.png ---
+    if (this.deloreanImg) {
+      const img = this.deloreanImg;
+      // Length matches the wedge footprint a bit larger for presence
+      const len = ship.width * 1.65;               // car length along local Y (nose-up)
+      const wid = len * (img.naturalHeight / img.naturalWidth);
+      const t = Date.now();
+
+      ctx.save();
+
+      // Ambient cyan neon glow behind the car (matches arena palette)
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 16;
+
+      // Rotate the car so its front (+X in image space) points to local -Y (hull nose)
+      ctx.rotate(-Math.PI / 2);
+      ctx.drawImage(img, -len / 2, -wid / 2, len, wid);
+
+      ctx.restore();
+
+      // Engine flames at the rear (local +Y = car tail) — syncs with thruster FX
+      if (ship.leftThrusterPower > 0.08 || ship.rightThrusterPower > 0.08) {
+        const flick = 1.0 + Math.sin(t * 0.02) * 0.25;
+        const flameLen = (10 + Math.max(ship.leftThrusterPower, ship.rightThrusterPower) * 16) * flick;
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        for (const side of [-1, 1]) {
+          const fx = side * wid * 0.28;
+          const grad = ctx.createLinearGradient(fx, len / 2 - 4, fx, len / 2 + flameLen);
+          grad.addColorStop(0, 'rgba(56, 189, 248, 0.75)');
+          grad.addColorStop(0.5, 'rgba(239, 68, 68, 0.5)');
+          grad.addColorStop(1, 'rgba(239, 68, 68, 0)');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.moveTo(fx - 3, len / 2 - 4);
+          ctx.lineTo(fx + 3, len / 2 - 4);
+          ctx.lineTo(fx, len / 2 + flameLen);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      // Flux Capacitor glow (amber pulse at the tail)
+      const fcPulse = 1.0 + Math.sin(t * 0.01) * 0.3;
+      ctx.save();
+      ctx.fillStyle = '#fbbf24';
+      ctx.shadowColor = '#fbbf24';
+      ctx.shadowBlur = 10 * fcPulse;
+      ctx.beginPath();
+      ctx.arc(0, len * 0.46, 3.5 * fcPulse, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      ctx.shadowBlur = 0;
+      return;
+    }
+
+    // --- Fallback: vector-drawn DeLorean (sprite not loaded yet / failed to load) ---
     const w = ship.width * 1.15;
     const h = ship.height * 0.9;
 

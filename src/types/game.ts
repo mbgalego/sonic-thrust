@@ -161,9 +161,6 @@ export interface GameOptions {
   musicVolume: number; // 0.0 - 1.0
   sfxVolume: number;   // 0.0 - 1.0
   performanceMode?: boolean; // locks DPR to 1.0 & optimizes VFX for ultra-high FPS on 1440p/4K
-  // Easter Egg toggles (v1.39.0) — unlocked via Left Tunnel code fragments
-  oasisMode?: boolean;
-  deloreanSkin?: boolean;
 }
 
 export interface GameStats {
