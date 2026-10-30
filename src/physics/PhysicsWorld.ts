@@ -12,8 +12,10 @@ import {
   ObstaclePlatform,
   LaserGate,
   AudioFrequencyData,
-  GameStats
+  GameStats,
+  CodeFragmentItem
 } from '../types/game';
+import { getEasterEggSave, setEasterEggSave, unlockEasterEggRewards } from '../utils/easterEgg';
 
 export const DIFFICULTY_PRESETS: Record<DifficultyLevel, DifficultyConfig> = {
   NORMAL: {
@@ -110,6 +112,10 @@ export interface ShipState {
   chronoDilationTimer: number; // 5s duration (slows world/obstacles by 45%)
   singularityNotifyTimer: number; // brief notification after Singularity EMP pickup
   timePenaltyNotifyTimer: number; // brief notification after taking damage (-20s)
+  // Easter Egg "Left Tunnel" (v1.39.0)
+  codeFragmentsCollected: number;   // 0..3 collected code fragments in the left tunnel
+  oasisMode: boolean;               // retro 80s OASIS visual mode (scanlines, magenta/cyan)
+  deloreanSkin: boolean;            // DeLorean flying car skin
 }
 
 export interface TerrainVertex {
@@ -156,6 +162,9 @@ export class PhysicsWorld {
   public singularityWave: { x: number; y: number; r: number; speed: number; maxR: number } | null = null;
   public laserGates: LaserGate[] = [];
 
+  // Easter Egg Left Tunnel code fragments (v1.39.0) — 3 fragments spawned at x < 0
+  public codeFragments: CodeFragmentItem[] = [];
+
   // Persistent continuous terrain phase accumulator (monotonic, eliminates audio jitter)
   public terrainPhase: number = 0;
 
@@ -174,6 +183,7 @@ export class PhysicsWorld {
   public onShieldGenerated?: () => void; // Shield Generator completed a charge cycle (v1.35.0)
   public onGoalReached?: () => void;
   public onWallScrape?: (scrapeX: number, scrapeY: number, shipVx: number, isCeiling: boolean, intensity: number) => void;
+  public onCodeFragmentCollected?: (fragmentId: string, totalCollected: number) => void; // v1.39.0
 
   constructor(
     difficultyLevel: DifficultyLevel,
@@ -225,7 +235,11 @@ export class PhysicsWorld {
       sonicPulseNotifyTimer: 0,
       chronoDilationTimer: 0,
       singularityNotifyTimer: 0,
-      timePenaltyNotifyTimer: 0
+      timePenaltyNotifyTimer: 0,
+      // Easter Egg Left Tunnel (v1.39.0)
+      codeFragmentsCollected: 0,
+      oasisMode: false,
+      deloreanSkin: false
     };
 
     this.stats = {
@@ -243,6 +257,14 @@ export class PhysicsWorld {
 
     this.generateTerrainSpine();
     this.spawnEntities();
+
+    // Easter Egg Left Tunnel (v1.39.0): spawn 3 code fragments in the hidden left tunnel (x < 0)
+    // and restore any previously collected progress from localStorage.
+    const saved = getEasterEggSave();
+    this.ship.codeFragmentsCollected = saved.codeFragmentsCollected;
+    this.ship.oasisMode = saved.oasisMode;
+    this.ship.deloreanSkin = saved.deloreanSkin;
+    this.spawnCodeFragments();
   }
 
   /**
@@ -572,6 +594,43 @@ export class PhysicsWorld {
     }
   }
 
+  /**
+   * Easter Egg Left Tunnel (v1.39.0):
+   * Spawns 3 Code Fragments at x < 0 — the invisible left tunnel.
+   * Terrain there is flat/empty (getTerrainAt returns defaults), so flying left
+   * beyond the spawn runway looks like an empty void / bug — exactly the bait.
+   * Fragments are placed at staggered depths so the player must venture further
+   * left to find them all.
+   */
+  private spawnCodeFragments(): void {
+    this.codeFragments = [];
+    const fragmentYs = [
+      this.worldHeight / 2 - 120, // upper lane
+      this.worldHeight / 2,       // center lane
+      this.worldHeight / 2 + 120  // lower lane
+    ];
+    const fragmentXs = [-600, -1200, -1800]; // increasingly far left
+    const fragmentIds = ['fragment-a', 'fragment-b', 'fragment-c'];
+
+    for (let i = 0; i < 3; i++) {
+      const alreadyCollected = this.codeFragments.some(
+        (f) => f.id === fragmentIds[i] && f.collected
+      );
+      this.codeFragments.push({
+        id: fragmentIds[i],
+        x: fragmentXs[i],
+        y: fragmentYs[i],
+        baseY: fragmentYs[i],
+        collected: alreadyCollected,
+        radius: 14,
+        color: '#fbbf24', // amber code-fragment glow
+        pulsePhase: i * 2.1,
+        orbitAngle: 0,
+        rhythmBounce: 1.0
+      });
+    }
+  }
+
   public getTerrainAt(worldX: number): { ceilY: number; floorY: number } {
     if (this.terrainPoints.length === 0) {
       return { ceilY: 150, floorY: this.worldHeight - 150 };
@@ -657,6 +716,35 @@ export class PhysicsWorld {
 
     // 5. Zero Contact Collision Detection
     this.checkCollisions(safeDt);
+
+    // 5.5 Easter Egg Left Tunnel — Code Fragment collection (v1.39.0)
+    // Fragments live at x < 0 (invisible left tunnel). Proximity collects them.
+    const shipRadius = 16;
+    for (const frag of this.codeFragments) {
+      if (frag.collected) continue;
+      const dx = this.ship.x - frag.x;
+      const dy = this.ship.y - frag.y;
+      if (Math.hypot(dx, dy) < shipRadius + frag.radius) {
+        frag.collected = true;
+        this.ship.codeFragmentsCollected = Math.min(3, this.ship.codeFragmentsCollected + 1);
+        const newTotal = this.ship.codeFragmentsCollected;
+        // Persist progress immediately
+        setEasterEggSave({
+          codeFragmentsCollected: newTotal,
+          oasisMode: this.ship.oasisMode,
+          deloreanSkin: this.ship.deloreanSkin
+        });
+        // If all 3 collected -> unlock both Easter Egg rewards
+        if (newTotal >= 3) {
+          const rewards = unlockEasterEggRewards(newTotal);
+          this.ship.oasisMode = rewards.oasisMode;
+          this.ship.deloreanSkin = rewards.deloreanSkin;
+        }
+        if (this.onCodeFragmentCollected) {
+          this.onCodeFragmentCollected(frag.id, newTotal);
+        }
+      }
+    }
 
     // 6. Check Goal / Finish Portal
     if (this.ship.x >= this.finishPortalX && !this.ship.reachedGoal) {

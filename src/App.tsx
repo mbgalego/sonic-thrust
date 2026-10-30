@@ -481,6 +481,9 @@ export default function App() {
         options.driftCompensation
       );
       newWorld.stats.currentBpm = trackBpm;
+      // Easter Egg toggles (v1.39.0): carry unlocked OASIS / DeLorean into the ship
+      newWorld.ship.oasisMode = options.oasisMode ?? false;
+      newWorld.ship.deloreanSkin = options.deloreanSkin ?? false;
       countTickLastSecRef.current = -1; // reset countdown tick state for the new mission
       timeUpRef.current = false;
       missionElapsedRef.current = 0;
@@ -576,6 +579,29 @@ export default function App() {
           };
           rendererRef.current.emitPowerUpCollect(newWorld.ship.x, newWorld.ship.y, colorMap[type]);
         }
+      };
+
+      // Easter Egg Left Tunnel (v1.39.0): code fragment collected
+      newWorld.onCodeFragmentCollected = (_fragmentId, totalCollected) => {
+        audio.playPowerUpSfx('SHIELD'); // fragment collection chime
+        if (announcementTimerRef.current) {
+          clearTimeout(announcementTimerRef.current);
+        }
+        const isFinal = totalCollected >= 3;
+        setActiveAnnouncement({
+          title: isFinal ? 'OASIS DESBLOQUEADO!' : 'FRAGMENTO DE CÓDIGO ENCONTRADO!',
+          subtitle: isFinal
+            ? 'Modo OASIS + Skin DeLorean disponíveis no menu'
+            : `Fragmento ${totalCollected}/3 — voa mais à esquerda para encontrar os restantes`,
+          type: 'SHIELD',
+          color: 'text-amber-300',
+          borderColor: 'border-amber-400',
+          glowColor: 'rgba(251, 191, 36, 0.95)',
+          id: Date.now()
+        });
+        announcementTimerRef.current = setTimeout(() => {
+          setActiveAnnouncement(null);
+        }, 3500);
       };
 
       newWorld.onGoalReached = () => {

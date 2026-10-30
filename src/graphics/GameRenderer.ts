@@ -5,7 +5,7 @@
  */
 
 import { PhysicsWorld } from '../physics/PhysicsWorld';
-import { AudioFrequencyData, PowerUpItem, ObstaclePlatform, LaserGate } from '../types/game';
+import { AudioFrequencyData, PowerUpItem, ObstaclePlatform, LaserGate, CodeFragmentItem } from '../types/game';
 import { ParticleSystem } from './ParticleSystem';
 
 export interface TemporalTrailSegment {
@@ -332,6 +332,9 @@ export class GameRenderer {
     // 4. Power-ups (Holographic celestial beacons pulsing to music)
     this.renderPowerUps(world.powerUps, audioFreq, world);
 
+    // 4.5 Easter Egg Left Tunnel — Code Fragments (invisible left tunnel, x < 0)
+    this.renderCodeFragments(world.codeFragments, audioFreq, world);
+
     // 5. Obstacles & Laser Gates (Dynamic ejector blocks, sonic spikes, resonance mines, laser curtains)
     this.renderObstacles(world.obstacles, world.laserGates, audioFreq, world);
 
@@ -370,6 +373,13 @@ export class GameRenderer {
     if (world.ship.chronoDilationTimer > 0) {
       this.renderChronoDilationScreenOverlay(world);
     }
+
+    // 12. Easter Egg — OASIS Mode overlay (v1.39.0):
+    // Retro 80s look: magenta/cyan scanlines + subtle CRT grid.
+    // Applied when oasisMode is unlocked via the Left Tunnel code fragments.
+    if (world.ship.oasisMode) {
+      this.renderOasisOverlay(w, h);
+    }
   }
 
   /**
@@ -395,6 +405,63 @@ export class GameRenderer {
     core.addColorStop(0.85, `rgba(150, 200, 255, ${(0.14 * a).toFixed(3)})`);
     core.addColorStop(1, 'rgba(150, 200, 255, 0)');
     ctx.fillStyle = core;
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.restore();
+  }
+
+  /**
+   * Easter Egg — OASIS Mode overlay (v1.39.0):
+   * Retro 80s look: horizontal scanlines + magenta/cyan CRT grid + subtle glow.
+   * Drawn on top of everything when oasisMode is unlocked.
+   */
+  private renderOasisOverlay(w: number, h: number): void {
+    const ctx = this.ctx;
+    const time = Date.now() * 0.001;
+
+    ctx.save();
+
+    // Scanlines — horizontal lines that pulse slightly
+    ctx.fillStyle = 'rgba(20, 0, 40, 0.18)';
+    const lineHeight = 4;
+    const lineGap = 2;
+    const offset = (time * 60) % (lineHeight + lineGap);
+    for (let y = -lineHeight + offset; y < h; y += lineHeight + lineGap) {
+      ctx.fillRect(0, y, w, lineHeight);
+    }
+
+    // Magenta/Cyan corner CRT brackets
+    ctx.strokeStyle = '#fbcfe8'; // magenta soft
+    ctx.shadowColor = '#e879f9';
+    ctx.shadowBlur = 8;
+    ctx.lineWidth = 2;
+    const bracket = 60;
+    ctx.beginPath();
+    // Top-left
+    ctx.moveTo(15, 15 + bracket);
+    ctx.lineTo(15, 15);
+    ctx.lineTo(15 + bracket, 15);
+    // Top-right
+    ctx.moveTo(w - 15, 15);
+    ctx.lineTo(w - 15 - bracket, 15);
+    ctx.lineTo(w - 15 - bracket, 15 + bracket);
+    // Bottom-left
+    ctx.moveTo(15, h - 15 - bracket);
+    ctx.lineTo(15, h - 15);
+    ctx.lineTo(15 + bracket, h - 15);
+    // Bottom-right
+    ctx.moveTo(w - 15, h - 15);
+    ctx.lineTo(w - 15 - bracket, h - 15);
+    ctx.lineTo(w - 15 - bracket, h - 15 - bracket);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Subtle vignette + color tint overlay (magenta/cyan split)
+    const grad = ctx.createLinearGradient(0, 0, w, h);
+    grad.addColorStop(0, 'rgba(232, 121, 249, 0.06)');
+    grad.addColorStop(0.5, 'rgba(6, 182, 212, 0.04)');
+    grad.addColorStop(1, 'rgba(232, 121, 249, 0.06)');
+    ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
 
     ctx.restore();
@@ -1193,6 +1260,92 @@ export class GameRenderer {
   }
 
   /**
+   * Easter Egg Left Tunnel — Code Fragments (v1.39.0):
+   * Renders each uncollected fragment as a glowing amber "Matrix code cube"
+   * (wireframe box with falling code glyphs). Lives at x < 0 in the invisible
+   * left tunnel — no terrain is drawn there, so only the fragments betray that
+   * something exists beyond the spawn runway.
+   */
+  private renderCodeFragments(
+    fragments: CodeFragmentItem[],
+    audioFreq: AudioFrequencyData,
+    _world: PhysicsWorld
+  ): void {
+    const ctx = this.ctx;
+    const visibleW = this.width / this.cameraZoom;
+    ctx.save();
+
+    for (const f of fragments) {
+      if (f.collected) continue;
+      if (f.x < this.cameraX - 160 || f.x > this.cameraX + visibleW + 160) continue;
+
+      const beatPulse = 1.0 + Math.sin(Date.now() * 0.005 + f.pulsePhase) * 0.4;
+      const rad = f.radius * beatPulse;
+
+      ctx.save();
+      ctx.translate(f.x, f.y);
+
+      // Rotate slowly for a 3D feel
+      const rot = Date.now() * 0.001 + f.orbitAngle;
+      ctx.rotate(rot);
+
+      // Amber neon cube wireframe
+      ctx.strokeStyle = f.color;
+      ctx.shadowColor = f.color;
+      ctx.shadowBlur = 12 + (audioFreq.isBeat ? 10 : 0);
+      ctx.lineWidth = 1.5;
+
+      const s = rad * 0.9;
+      ctx.beginPath();
+      // Front face
+      ctx.moveTo(-s, -s);
+      ctx.lineTo(s, -s);
+      ctx.lineTo(s, s);
+      ctx.lineTo(-s, s);
+      ctx.closePath();
+      // Back face offset
+      const off = rad * 0.35;
+      ctx.moveTo(-s + off, -s - off);
+      ctx.lineTo(s + off, -s - off);
+      ctx.lineTo(s + off, s - off);
+      ctx.lineTo(-s + off, s - off);
+      ctx.closePath();
+      // Connecting edges
+      ctx.moveTo(-s, -s);
+      ctx.lineTo(-s + off, -s - off);
+      ctx.moveTo(s, -s);
+      ctx.lineTo(s + off, -s - off);
+      ctx.moveTo(s, s);
+      ctx.lineTo(s + off, s - off);
+      ctx.moveTo(-s, s);
+      ctx.lineTo(-s + off, s - off);
+      ctx.stroke();
+
+      // Falling code glyphs inside the cube (Matrix style)
+      const glyphs = '01';
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 8px monospace';
+      ctx.shadowBlur = 0;
+      for (let g = 0; g < 6; g++) {
+        const gy = ((Date.now() * 0.05 + g * 12) % (rad * 4)) - rad * 2;
+        const gx = (Math.sin(g * 1.7 + Date.now() * 0.003) * rad * 0.6);
+        ctx.fillText(glyphs[g % glyphs.length], gx, gy);
+      }
+
+      // Pulse ring
+      ctx.beginPath();
+      ctx.arc(0, 0, rad * 1.25, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.35)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    ctx.restore();
+  }
+
+  /**
    * Render Multi-Archetype Obstacles:
    * Ejector Blocks (emerging from wall with hazard pistons),
    * Sonic Spikes (sharp stalactites/stalagmites bursting to bass),
@@ -1723,6 +1876,14 @@ export class GameRenderer {
       ctx.restore();
     }
 
+    // Easter Egg Left Tunnel — DeLorean Skin (v1.39.0):
+    // When unlocked, the ship becomes the flying DeLorean from Back to the Future.
+    if (ship.deloreanSkin) {
+      this.renderDelorean(ship, isPaused, _audioFreq);
+      ctx.restore();
+      return;
+    }
+
     // Ship Aerodynamic Neon Geometry (Wedge Dart)
     const w = ship.width;
     const h = ship.height;
@@ -2243,6 +2404,102 @@ export class GameRenderer {
         this.particleSystem.emitExhaust(wx, wy, exhaustAngle, ship.vx, ship.vy, color);
       }
     }
+  }
+
+  /**
+   * Easter Egg Left Tunnel — DeLorean Skin (v1.39.0):
+   * Draws the flying DeLorean from Back to the Future: stainless-steel body,
+   * gull-wing doors, flux capacitor glow at the rear, and twin rocket thrusters.
+   * Replaces the default ship when deloreanSkin is unlocked.
+   */
+  private renderDelorean(ship: PhysicsWorld['ship'], _isPaused: boolean, _audioFreq?: AudioFrequencyData): void {
+    const ctx = this.ctx;
+    const w = ship.width * 1.15;
+    const h = ship.height * 0.9;
+
+    // Stainless steel body
+    ctx.fillStyle = '#e2e8f0';
+    ctx.shadowColor = '#94a3b8';
+    ctx.shadowBlur = 14;
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#cbd5e1';
+
+    ctx.beginPath();
+    // Nose cone
+    ctx.moveTo(0, -h * 0.55);
+    // Roof line to gull wings
+    ctx.lineTo(w * 0.42, -h * 0.15);
+    ctx.lineTo(w * 0.42, h * 0.25);
+    // Rear upper
+    ctx.lineTo(w * 0.28, h * 0.55);
+    // Rear lower
+    ctx.lineTo(-w * 0.28, h * 0.55);
+    // Front lower
+    ctx.lineTo(-w * 0.42, h * 0.25);
+    ctx.lineTo(-w * 0.42, -h * 0.15);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Gull-wing door lines
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(w * 0.42, -h * 0.15);
+    ctx.lineTo(w * 0.30, h * 0.35);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-w * 0.42, -h * 0.15);
+    ctx.lineTo(-w * 0.30, h * 0.35);
+    ctx.stroke();
+
+    // Flux Capacitor glow (rear center)
+    const fcPulse = 1.0 + Math.sin(Date.now() * 0.01) * 0.3;
+    ctx.fillStyle = '#fbbf24';
+    ctx.shadowColor = '#fbbf24';
+    ctx.shadowBlur = 14 * fcPulse;
+    ctx.beginPath();
+    ctx.arc(0, h * 0.42, 5 * fcPulse, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(-4, h * 0.38, 3 * fcPulse, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(4, h * 0.38, 3 * fcPulse, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Cockpit windshield (tinted blue)
+    ctx.fillStyle = '#38bdf8';
+    ctx.globalAlpha = 0.55;
+    ctx.beginPath();
+    ctx.ellipse(0, -h * 0.2, 5, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1.0;
+
+    // Twin rocket thrusters (rear)
+    const thrusterPulse = 1.0 + Math.sin(Date.now() * 0.015) * 0.25;
+    const leftThrX = -w * 0.30;
+    const rightThrX = w * 0.30;
+    const thrY = h * 0.30;
+
+    ctx.shadowColor = '#ef4444';
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.moveTo(leftThrX - 3, thrY);
+    ctx.lineTo(leftThrX + 3, thrY);
+    ctx.lineTo(leftThrX, thrY + 14 * thrusterPulse);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(rightThrX - 3, thrY);
+    ctx.lineTo(rightThrX + 3, thrY);
+    ctx.lineTo(rightThrX, thrY + 14 * thrusterPulse);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
   }
 
   private renderParticlesAndShockwaves(dt: number): void {

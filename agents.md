@@ -79,6 +79,15 @@
 ---
 
 ## 3. Changelog & Recent Fixes
+- **v1.39.0 (Easter Egg: Left Tunnel / "OASIS" + DeLorean)**:
+  1. *Concept*: flying LEFT beyond the spawn runway (x < 0) leads into an invisible, empty tunnel that looks like a bug — bait for curious explorers.
+  2. *Code Fragments* (`PhysicsWorld.ts`): 3 code fragments spawn at x = -600, -1200, -1800 in the left tunnel. Proximity collects them; progress is banked (no decay) and persisted to `localStorage` (`sonic_thrust_easter_egg`).
+  3. *Unlocks* (once all 3 collected): **Modo OASIS** (retro 80s visuals: scanlines + magenta/cyan CRT overlay) and **Skin DeLorean** (flying car from Back to the Future, replaces the ship).
+  4. *Physics*: `ShipState.codeFragmentsCollected`, `oasisMode`, `deloreanSkin`; callback `onCodeFragmentCollected`; `spawnCodeFragments()`; `GameOptions.oasisMode` / `deloreanSkin` toggles.
+  5. *Audio/UX* (`App.tsx`): fragment collection SFX + announcements ("FRAGMENTO DE CÓDIGO ENCONTRADO!" / "OASIS DESBLOQUEADO!").
+  6. *Visuals* (`GameRenderer.ts`): amber Matrix-code-cube fragment renderer; DeLorean ship model (stainless steel body, gull wings, flux capacitor, twin rocket thrusters); `renderOasisOverlay` (scanlines + magenta/cyan CRT brackets + tint).
+  7. *UI* (`TitleMenu.tsx`): fragment progress counter (0/3) + OASIS / DeLorean toggles in the options panel (shown only after unlocking).
+  8. *Verified*: lint ✅ build ✅ (v1.39.0)
 - **v1.38.0 (Info panel: power-up names no longer overflow)**:
   1. *Bug*: `INVULNERABILIDADE` transbordava 44px para além da caixa do card e `SINGULARIDADE` 5px — reproduzido objetivamente em 640–900px (playwright).
   2. *Fix*: renomeado para `INVULNERÁVEL` (idêntico ao mostrado em jogo na HUD: `INVULNERÁVEL: 3.5s`); todos os 8 nomes dos power-ups ganharam guardas `min-w-0 break-words` para nunca rebentar a caixa do card, mesmo em colunas estreitas do menu; gráficos dos power-ups ajustados 48→40px.
