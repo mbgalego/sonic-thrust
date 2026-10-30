@@ -7,6 +7,7 @@
 import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { AudioFrequencyData, PowerUpItem, ObstaclePlatform, LaserGate, CodeFragmentItem } from '../types/game';
 import { ParticleSystem } from './ParticleSystem';
+import { PrehistoricCreature, spawnRandomCreature, Camera3D } from '../easterEgg/prehistoricWireframe';
 
 export interface TemporalTrailSegment {
   lx: number;
@@ -64,6 +65,12 @@ export class GameRenderer {
 
   // Quality setting: 'high' (full effects) or 'low' (reduced particles, lower blur)
   public quality: 'high' | 'low' = 'high';
+
+  // Prehistoric wireframe creatures (OASIS Easter Egg, v1.39.0 addendum)
+  private prehistoricCreatures: PrehistoricCreature[] = [];
+  private lastCreatureSpawnTime = 0;
+  private readonly MAX_CREATURES = 4;
+  private readonly CREATURE_SPAWN_INTERVAL = 5; // segundos entre spawns
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -212,6 +219,12 @@ export class GameRenderer {
     // OASIS mode: full-scene synthwave palette shift via GPU canvas filter.
     // Coherent color shift for the whole arena (cyan -> magenta/pink), zero JS cost per frame.
     const oasisMode = !!world.ship.oasisMode;
+
+    // Prehistoric wireframe creatures — only in OASIS mode
+    if (oasisMode) {
+      this.updatePrehistoricCreatures(dt, audioFreq.isBeat ?? false);
+    }
+
     if (oasisMode) {
       this.canvas.style.filter = 'hue-rotate(120deg) saturate(1.35) contrast(1.03)';
     } else if (this.canvas.style.filter) {
@@ -303,9 +316,24 @@ export class GameRenderer {
     ctx.fillStyle = '#06070c';
     ctx.fillRect(0, 0, w, h);
 
-    // OASIS synthwave sun — fixed screen-space sun behind the tunnel (classic retro sunset)
-    if (oasisMode) {
-      this.renderOasisSun(w, h);
+    // Prehistoric wireframe creatures — drawn behind the tunnel (background layer), OASIS only
+    if (oasisMode && this.prehistoricCreatures.length > 0) {
+      const cam3D: Camera3D = {
+        x: this.cameraX,
+        y: 0, // nível da criatura (projeção em espaço de ecrã)
+        z: 0,
+        rotY: 0,
+      };
+      for (const creature of this.prehistoricCreatures) {
+        creature.render(
+          ctx,
+          cam3D,
+          120, // focalLength
+          w,
+          h,
+          audioFreq.isBeat ?? false
+        );
+      }
     }
 
     // Advance gravitational ripple phase monotonically (strictly forward in time, synced to music tempo & beat impulses)
@@ -519,58 +547,29 @@ export class GameRenderer {
   }
 
   /**
-   * Easter Egg — OASIS synthwave sun (v1.39.0):
-   * Classic retro sunset behind the tunnel. Fixed in screen space so it stays
-   * behind the camera-tracked arena like a distant horizon element.
+   * Easter Egg — Prehistoric wireframe creatures (v1.39.0 addendum):
+   * Updates and spawns T-Rex / King Kong wireframe creatures in OASIS mode.
+   * They appear in the left tunnel (x < 0), roaring / chest-pounding to the beat.
    */
-  private renderOasisSun(w: number, h: number): void {
-    const ctx = this.ctx;
-    const time = Date.now() * 0.001;
-
-    ctx.save();
-
-    const cx = w * 0.78;
-    const cy = h * 0.62;
-    const baseR = Math.min(w, h) * 0.42;
-    const pulse = 1.0 + Math.sin(time * 2.5) * 0.05;
-
-    // Sun rays — alternating magenta/cyan stripes radiating outward
-    const rayCount = 16;
-    const rayLen = baseR * 1.15;
-    ctx.lineWidth = 3;
-    for (let i = 0; i < rayCount; i++) {
-      const angle = (i / rayCount) * Math.PI * 2;
-      const color = i % 2 === 0 ? '#e879f9' : '#22d3ee';
-      ctx.strokeStyle = color;
-      ctx.globalAlpha = 0.35 + 0.15 * Math.sin(time * 3 + i);
-      ctx.shadowColor = color;
-      ctx.shadowBlur = 10;
-      ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(angle) * baseR * 0.55, cy + Math.sin(angle) * baseR * 0.55);
-      ctx.lineTo(cx + Math.cos(angle) * rayLen * pulse, cy + Math.sin(angle) * rayLen * pulse);
-      ctx.stroke();
+  private updatePrehistoricCreatures(dt: number, isBeat: boolean): void {
+    // Spawn new creatures at intervals
+    this.lastCreatureSpawnTime += dt;
+    if (
+      this.lastCreatureSpawnTime >= this.CREATURE_SPAWN_INTERVAL &&
+      this.prehistoricCreatures.length < this.MAX_CREATURES
+    ) {
+      this.lastCreatureSpawnTime = 0;
+      const type: 'trex' | 'kong' = Math.random() < 0.5 ? 'trex' : 'kong';
+      this.prehistoricCreatures.push(spawnRandomCreature(type, 8, this.cameraX, 0));
     }
 
-    // Sun body — layered gradients (magenta core, cyan rim)
-    const sunGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, baseR * pulse);
-    sunGrad.addColorStop(0, 'rgba(244, 114, 182, 0.95)');
-    sunGrad.addColorStop(0.45, 'rgba(236, 72, 153, 0.75)');
-    sunGrad.addColorStop(1, 'rgba(56, 189, 248, 0.15)');
-    ctx.fillStyle = sunGrad;
-    ctx.shadowColor = '#e879f9';
-    ctx.shadowBlur = 40 * pulse;
-    ctx.beginPath();
-    ctx.arc(cx, cy, baseR * pulse, 0, Math.PI * 2);
-    ctx.fill();
+    // Update existing creatures
+    for (const c of this.prehistoricCreatures) {
+      c.update(dt, isBeat);
+    }
 
-    // Inner bright core
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-    ctx.shadowBlur = 0;
-    ctx.beginPath();
-    ctx.arc(cx, cy, baseR * pulse * 0.18, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.restore();
+    // Remove inactive ones
+    this.prehistoricCreatures = this.prehistoricCreatures.filter((c) => c.active);
   }
 
   private renderBackgroundGrid(world: PhysicsWorld, audioFreq: AudioFrequencyData): void {
