@@ -30,7 +30,6 @@ import {
   Cpu,
   Lock,
   Music,
-  Code,
   Monitor,
   Car
 } from 'lucide-react';
@@ -1031,27 +1030,9 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                       </button>
                     </div>
 
-                    {/* Easter Egg Left Tunnel — Code Fragment progress + reward toggles (v1.39.0) */}
-                    {easterSave.codeFragmentsCollected < 3 && (
-                      <div className="p-3 rounded-xl bg-slate-900/70 border border-amber-500/30 flex items-center justify-between gap-2.5">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
-                            <Code className="w-3 h-3 text-amber-400 shrink-0" />
-                          </div>
-                          <div>
-                            <div className="font-orbitron font-bold text-amber-300 text-sm">
-                              Túnel Esquerdo — Fragmentos
-                            </div>
-                            <div className="text-xs sm:text-sm text-amber-200 leading-snug mt-0.5">
-                              Voa para a ESQUERDA além do spawn para encontrar fragmentos de código
-                            </div>
-                          </div>
-                        </div>
-                        <div className="font-mono font-bold text-amber-400 text-sm tabular-nums">
-                          {easterSave.codeFragmentsCollected}/3
-                        </div>
-                      </div>
-                    )}
+                    {/* Easter Egg — reward toggles (v1.39.0):
+                        HIDDEN until all 3 code fragments are collected — no hints,
+                        no counters. The left tunnel must be discovered by the player. */}
                     {easterSave.codeFragmentsCollected >= 3 && (
                       <>
                         <div className="p-3 rounded-xl bg-slate-900/70 border border-amber-500/30 flex items-center justify-between gap-2.5">
