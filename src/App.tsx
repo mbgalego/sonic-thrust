@@ -849,7 +849,7 @@ export default function App() {
   useEffect(() => {
     let active = true;
 
-    const loop = (timestamp: number) => {
+    const loop = async (timestamp: number) => {
       if (!active) return;
 
       const rawDt = (timestamp - lastTimeRef.current) / 1000;
@@ -923,7 +923,7 @@ export default function App() {
 
         // Render Frame
         const renderFreq = audio.getFrequencyData(0.24, clampedDt);
-        renderer.render(world, renderFreq, clampedDt, gameState === 'PAUSED');
+        await renderer.render(world, renderFreq, clampedDt, gameState === 'PAUSED');
       }
 
       animationFrameIdRef.current = requestAnimationFrame(loop);

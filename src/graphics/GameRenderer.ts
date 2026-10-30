@@ -7,7 +7,6 @@
 import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { AudioFrequencyData, PowerUpItem, ObstaclePlatform, LaserGate, CodeFragmentItem } from '../types/game';
 import { ParticleSystem } from './ParticleSystem';
-import { PrehistoricCreature, spawnRandomCreature, Camera3D } from '../easterEgg/prehistoricWireframe';
 
 export interface TemporalTrailSegment {
   lx: number;
@@ -66,12 +65,6 @@ export class GameRenderer {
   // Quality setting: 'high' (full effects) or 'low' (reduced particles, lower blur)
   public quality: 'high' | 'low' = 'high';
 
-  // Prehistoric wireframe creatures (OASIS Easter Egg, v1.39.0 addendum)
-  private prehistoricCreatures: PrehistoricCreature[] = [];
-  private lastCreatureSpawnTime = 0;
-  private readonly MAX_CREATURES = 4;
-  private readonly CREATURE_SPAWN_INTERVAL = 5; // segundos entre spawns
-
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     const context = canvas.getContext('2d', { alpha: false });
@@ -82,6 +75,25 @@ export class GameRenderer {
     this.resize();
     this.initStars();
     this.loadDeloreanSprite();
+    this.loadCreatureFrames();
+  }
+
+  // Prehistoric creatures (OASIS Easter Egg, v1.39.0 addendum)
+  private creatureFrames: Record<'trex' | 'kong', any> | null = null;
+  private creatureInstances: any[] = []
+  private creaturesLoaded = false
+
+  private async loadCreatureFrames(): Promise<void> {
+    if (typeof window === 'undefined') return;
+    try {
+      const { loadCreatureFrames } = await import('../easterEgg/creatureSprites');
+      this.creatureFrames = await loadCreatureFrames();
+      // Instances will be created when first needed in render (need world reference)
+      this.creaturesLoaded = true;
+      console.log('[OASIS] Prehistoric creature frames loaded');
+    } catch (e) {
+      console.warn('[OASIS] Failed to load creature frames:', e);
+    }
   }
 
   /**
@@ -206,12 +218,12 @@ export class GameRenderer {
   /**
    * Main Render Frame
    */
-  public render(
+  public async render(
     world: PhysicsWorld,
     audioFreq: AudioFrequencyData,
     dt: number,
     isPaused: boolean
-  ): void {
+  ): Promise<void> {
     const ctx = this.ctx;
     const w = this.width;
     const h = this.height;
@@ -219,11 +231,6 @@ export class GameRenderer {
     // OASIS mode: full-scene synthwave palette shift via GPU canvas filter.
     // Coherent color shift for the whole arena (cyan -> magenta/pink), zero JS cost per frame.
     const oasisMode = !!world.ship.oasisMode;
-
-    // Prehistoric wireframe creatures — only in OASIS mode
-    if (oasisMode) {
-      this.updatePrehistoricCreatures(dt, audioFreq.isBeat ?? false);
-    }
 
     if (oasisMode) {
       this.canvas.style.filter = 'hue-rotate(120deg) saturate(1.35) contrast(1.03)';
@@ -316,26 +323,6 @@ export class GameRenderer {
     ctx.fillStyle = '#06070c';
     ctx.fillRect(0, 0, w, h);
 
-    // Prehistoric wireframe creatures — drawn behind the tunnel (background layer), OASIS only
-    if (oasisMode && this.prehistoricCreatures.length > 0) {
-      const cam3D: Camera3D = {
-        x: this.cameraX,
-        y: 0, // nível da criatura (projeção em espaço de ecrã)
-        z: 0,
-        rotY: 0,
-      };
-      for (const creature of this.prehistoricCreatures) {
-        creature.render(
-          ctx,
-          cam3D,
-          120, // focalLength
-          w,
-          h,
-          audioFreq.isBeat ?? false
-        );
-      }
-    }
-
     // Advance gravitational ripple phase monotonically (strictly forward in time, synced to music tempo & beat impulses)
     const animDt = isPaused ? 0 : dt;
     const macroE = audioFreq.macroEnergy ?? audioFreq.energy;
@@ -397,6 +384,29 @@ export class GameRenderer {
 
     // 6. Vector Neon Terrain (Ceiling and Floor)
     this.renderTerrain(world, audioFreq, dt);
+
+    // 6.5. Prehistoric creatures (OASIS Easter Egg) — right side of tunnel, watching player
+    if (oasisMode && this.creaturesLoaded && this.creatureFrames) {
+      // Lazy-create instances on first OASIS render
+      if (this.creatureInstances.length === 0) {
+        const { createCreatureInstances } = await import('../easterEgg/creatureSprites');
+        this.creatureInstances = createCreatureInstances(this.creatureFrames, world);
+      }
+      // Update animations
+      const { updateCreatures } = await import('../easterEgg/creatureSprites');
+      updateCreatures(this.creatureInstances, dt);
+      // Render creatures (they're in world space, drawn with camera transform)
+      const { renderCreatures } = await import('../easterEgg/creatureSprites');
+      renderCreatures(
+        ctx,
+        this.creatureInstances,
+        this.cameraX,
+        this.cameraY,
+        zoom,
+        w,
+        h
+      );
+    }
 
     // 7. Particles & Shockwaves (frozen while paused)
     this.renderParticlesAndShockwaves(isPaused ? 0 : dt);
@@ -544,32 +554,6 @@ export class GameRenderer {
     ctx.fillRect(0, 0, w, h);
 
     ctx.restore();
-  }
-
-  /**
-   * Easter Egg — Prehistoric wireframe creatures (v1.39.0 addendum):
-   * Updates and spawns T-Rex / King Kong wireframe creatures in OASIS mode.
-   * They appear in the left tunnel (x < 0), roaring / chest-pounding to the beat.
-   */
-  private updatePrehistoricCreatures(dt: number, isBeat: boolean): void {
-    // Spawn new creatures at intervals
-    this.lastCreatureSpawnTime += dt;
-    if (
-      this.lastCreatureSpawnTime >= this.CREATURE_SPAWN_INTERVAL &&
-      this.prehistoricCreatures.length < this.MAX_CREATURES
-    ) {
-      this.lastCreatureSpawnTime = 0;
-      const type: 'trex' | 'kong' = Math.random() < 0.5 ? 'trex' : 'kong';
-      this.prehistoricCreatures.push(spawnRandomCreature(type, 8, this.cameraX, 0));
-    }
-
-    // Update existing creatures
-    for (const c of this.prehistoricCreatures) {
-      c.update(dt, isBeat);
-    }
-
-    // Remove inactive ones
-    this.prehistoricCreatures = this.prehistoricCreatures.filter((c) => c.active);
   }
 
   private renderBackgroundGrid(world: PhysicsWorld, audioFreq: AudioFrequencyData): void {
