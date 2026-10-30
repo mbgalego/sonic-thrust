@@ -9,7 +9,7 @@ import { LocalTrackLoader, LocalUploadResult } from './audio/LocalTrackLoader';
 import { PhysicsWorld } from './physics/PhysicsWorld';
 import { GameRenderer } from './graphics/GameRenderer';
 import { checkAndUnlockTracks } from './utils/trackUnlocks';
-import { getEasterEggSave } from './utils/easterEgg';
+import { getEasterEggSave, type EasterEggSave } from './utils/easterEgg';
 import {
   GameState,
   DifficultyLevel,
@@ -280,6 +280,10 @@ export default function App() {
   const previewRequestRef = useRef(0);
   const [outOfTime, setOutOfTime] = useState(false);
   const [isStartingMission, setIsStartingMission] = useState(false);
+  // Easter Egg persistent save — read once at mount; single source of truth
+  // for OASIS / DeLorean toggles across menu, HUD and PhysicsWorld.
+  const [easterSave] = useState<EasterEggSave>(getEasterEggSave);
+
   const touchesHeld = useRef<{ left: boolean; right: boolean }>({ left: false, right: false });
   const touchMapRef = useRef<Map<number, 'left' | 'right'>>(new Map());
 
@@ -963,6 +967,7 @@ export default function App() {
           onPause={handlePause}
           initialLaunchGraceTimer={worldRef.current.launchGraceTimer}
           announcement={activeAnnouncement}
+          oasisMode={easterSave.oasisMode}
         />
       )}
 
@@ -988,6 +993,7 @@ export default function App() {
           isStartingMission={isStartingMission}
           onAddLocalTracks={handleAddLocalTracks}
           onDeleteLocalTrack={handleDeleteLocalTrack}
+          oasisMode={easterSave.oasisMode}
         />
       )}
 

@@ -209,6 +209,15 @@ export class GameRenderer {
     const w = this.width;
     const h = this.height;
 
+    // OASIS mode: full-scene synthwave palette shift via GPU canvas filter.
+    // Coherent color shift for the whole arena (cyan -> magenta/pink), zero JS cost per frame.
+    const oasisMode = !!world.ship.oasisMode;
+    if (oasisMode) {
+      this.canvas.style.filter = 'hue-rotate(120deg) saturate(1.35) contrast(1.03)';
+    } else if (this.canvas.style.filter) {
+      this.canvas.style.filter = '';
+    }
+
     // Decay shake
     let shakeX = 0;
     let shakeY = 0;
@@ -293,6 +302,11 @@ export class GameRenderer {
     // Clear background
     ctx.fillStyle = '#06070c';
     ctx.fillRect(0, 0, w, h);
+
+    // OASIS synthwave sun — fixed screen-space sun behind the tunnel (classic retro sunset)
+    if (oasisMode) {
+      this.renderOasisSun(w, h);
+    }
 
     // Advance gravitational ripple phase monotonically (strictly forward in time, synced to music tempo & beat impulses)
     const animDt = isPaused ? 0 : dt;
@@ -393,7 +407,7 @@ export class GameRenderer {
     // Retro 80s look: magenta/cyan scanlines + subtle CRT grid.
     // Applied when oasisMode is unlocked via the Left Tunnel code fragments.
     if (world.ship.oasisMode) {
-      this.renderOasisOverlay(w, h);
+      this.renderOasisOverlay(w, h, audioFreq);
     }
   }
 
@@ -427,28 +441,50 @@ export class GameRenderer {
 
   /**
    * Easter Egg — OASIS Mode overlay (v1.39.0):
-   * Retro 80s look: horizontal scanlines + magenta/cyan CRT grid + subtle glow.
+   * Retro 80s synthwave look: animated scanlines that pulse to the beat,
+   * a rolling CRT glow band, corner brackets, vignette, and a magenta/cyan tint.
    * Drawn on top of everything when oasisMode is unlocked.
    */
-  private renderOasisOverlay(w: number, h: number): void {
+  private renderOasisOverlay(w: number, h: number, audioFreq: AudioFrequencyData): void {
     const ctx = this.ctx;
     const time = Date.now() * 0.001;
+    const isBeat = audioFreq.isBeat ?? false;
+    const bass = audioFreq.bass ?? 0;
 
     ctx.save();
 
-    // Scanlines — horizontal lines that pulse slightly
-    ctx.fillStyle = 'rgba(20, 0, 40, 0.18)';
+    // --- CRT vignette (darker corners, focused center) ---
+    const vignette = ctx.createRadialGradient(w * 0.5, h * 0.35, 0, w * 0.5, h * 0.35, Math.max(w, h) * 0.85);
+    vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    vignette.addColorStop(0.55, 'rgba(0, 0, 0, 0.12)');
+    vignette.addColorStop(1, 'rgba(0, 0, 0, 0.45)');
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, w, h);
+
+    // --- Scanlines with beat pulse ---
     const lineHeight = 4;
     const lineGap = 2;
-    const offset = (time * 60) % (lineHeight + lineGap);
+    const beatBoost = isBeat ? 0.10 : 0;
+    const lineAlpha = 0.18 + beatBoost + 0.05 * Math.sin(time * 12);
+    ctx.fillStyle = `rgba(10, 0, 25, ${Math.min(0.45, lineAlpha)})`;
+    const offset = (time * 70) % (lineHeight + lineGap);
     for (let y = -lineHeight + offset; y < h; y += lineHeight + lineGap) {
       ctx.fillRect(0, y, w, lineHeight);
     }
 
-    // Magenta/Cyan corner CRT brackets
+    // --- Rolling CRT glow band (travels top -> bottom) ---
+    const rollY = (time * 40) % (h + 120) - 60;
+    const rollGrad = ctx.createLinearGradient(0, rollY - 40, 0, rollY + 40);
+    rollGrad.addColorStop(0, 'rgba(232, 121, 249, 0)');
+    rollGrad.addColorStop(0.5, `rgba(232, 121, 249, ${0.10 + bass * 0.10 + (isBeat ? 0.12 : 0)})`);
+    rollGrad.addColorStop(1, 'rgba(232, 121, 249, 0)');
+    ctx.fillStyle = rollGrad;
+    ctx.fillRect(0, rollY - 40, w, 80);
+
+    // --- Magenta/Cyan corner CRT brackets ---
     ctx.strokeStyle = '#fbcfe8'; // magenta soft
     ctx.shadowColor = '#e879f9';
-    ctx.shadowBlur = 8;
+    ctx.shadowBlur = 8 + (isBeat ? 6 : 0);
     ctx.lineWidth = 2;
     const bracket = 60;
     ctx.beginPath();
@@ -471,13 +507,68 @@ export class GameRenderer {
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // Subtle vignette + color tint overlay (magenta/cyan split)
-    const grad = ctx.createLinearGradient(0, 0, w, h);
-    grad.addColorStop(0, 'rgba(232, 121, 249, 0.06)');
-    grad.addColorStop(0.5, 'rgba(6, 182, 212, 0.04)');
-    grad.addColorStop(1, 'rgba(232, 121, 249, 0.06)');
-    ctx.fillStyle = grad;
+    // --- Magenta/Cyan tint overlay ---
+    const tintGrad = ctx.createLinearGradient(0, 0, w, h);
+    tintGrad.addColorStop(0, 'rgba(232, 121, 249, 0.08)');
+    tintGrad.addColorStop(0.5, 'rgba(6, 182, 212, 0.05)');
+    tintGrad.addColorStop(1, 'rgba(232, 121, 249, 0.08)');
+    ctx.fillStyle = tintGrad;
     ctx.fillRect(0, 0, w, h);
+
+    ctx.restore();
+  }
+
+  /**
+   * Easter Egg — OASIS synthwave sun (v1.39.0):
+   * Classic retro sunset behind the tunnel. Fixed in screen space so it stays
+   * behind the camera-tracked arena like a distant horizon element.
+   */
+  private renderOasisSun(w: number, h: number): void {
+    const ctx = this.ctx;
+    const time = Date.now() * 0.001;
+
+    ctx.save();
+
+    const cx = w * 0.78;
+    const cy = h * 0.62;
+    const baseR = Math.min(w, h) * 0.42;
+    const pulse = 1.0 + Math.sin(time * 2.5) * 0.05;
+
+    // Sun rays — alternating magenta/cyan stripes radiating outward
+    const rayCount = 16;
+    const rayLen = baseR * 1.15;
+    ctx.lineWidth = 3;
+    for (let i = 0; i < rayCount; i++) {
+      const angle = (i / rayCount) * Math.PI * 2;
+      const color = i % 2 === 0 ? '#e879f9' : '#22d3ee';
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = 0.35 + 0.15 * Math.sin(time * 3 + i);
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(angle) * baseR * 0.55, cy + Math.sin(angle) * baseR * 0.55);
+      ctx.lineTo(cx + Math.cos(angle) * rayLen * pulse, cy + Math.sin(angle) * rayLen * pulse);
+      ctx.stroke();
+    }
+
+    // Sun body — layered gradients (magenta core, cyan rim)
+    const sunGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, baseR * pulse);
+    sunGrad.addColorStop(0, 'rgba(244, 114, 182, 0.95)');
+    sunGrad.addColorStop(0.45, 'rgba(236, 72, 153, 0.75)');
+    sunGrad.addColorStop(1, 'rgba(56, 189, 248, 0.15)');
+    ctx.fillStyle = sunGrad;
+    ctx.shadowColor = '#e879f9';
+    ctx.shadowBlur = 40 * pulse;
+    ctx.beginPath();
+    ctx.arc(cx, cy, baseR * pulse, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Inner bright core
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+    ctx.shadowBlur = 0;
+    ctx.beginPath();
+    ctx.arc(cx, cy, baseR * pulse * 0.18, 0, Math.PI * 2);
+    ctx.fill();
 
     ctx.restore();
   }

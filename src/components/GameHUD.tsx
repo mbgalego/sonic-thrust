@@ -42,6 +42,7 @@ interface GameHUDProps {
   onPause: () => void;
   initialLaunchGraceTimer?: number;
   announcement?: PowerUpAnnouncement | null;
+  oasisMode?: boolean; // OASIS retro 80s skin — shifts chrome to magenta/pink
 }
 
 export const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({
@@ -51,7 +52,8 @@ export const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({
   trackTitle,
   onPause,
   initialLaunchGraceTimer = 0,
-  announcement = null
+  announcement = null,
+  oasisMode = false
 }, ref) => {
   const [isFullscreen, setIsFullscreen] = React.useState(Boolean(document.fullscreenElement));
 
@@ -100,10 +102,18 @@ export const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({
     genChargePct: -1
   });
 
+  // OASIS retro 80s chrome: shift cyan accents to magenta/pink.
+  // Semantic colors (rose hearts, amber generator) stay untouched.
+  const isOasis = oasisMode === true;
+  const A = isOasis ? 'fuchsia-400' : 'cyan-400';      // accent 400
+  const A3 = isOasis ? 'fuchsia-300' : 'cyan-300';     // accent 300
+  const AG = isOasis ? 'rgba(232,121,249,0.9)' : 'rgba(6,182,212,0.9)'; // glow
+
   useImperativeHandle(ref, () => ({
     update: (stats: GameStats, ship: ShipState, launchGraceTimer: number = 0) => {
       const cache = lastStateRef.current;
 
+      // OASIS retro 80s chrome: shift cyan accents to magenta/pink.
       // 1. Progress Bar
       const pct = Math.max(1, Math.min(100, stats.percentCompleted));
       if (cache.progressPct !== pct && progressBarRef.current) {
@@ -141,9 +151,9 @@ export const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({
               'text-[9px] sm:text-[10px] font-mono tracking-[0.25em] sm:tracking-[0.3em] uppercase transition-colors duration-300 text-amber-400/80';
           } else {
             countdownTextRef.current.className =
-              'text-3xl sm:text-5xl md:text-6xl font-black font-orbitron tracking-tighter whitespace-nowrap leading-none transition-colors duration-300 text-cyan-300 drop-shadow-[0_0_20px_rgba(6,182,212,0.9)]';
+              'text-3xl sm:text-5xl md:text-6xl font-black font-orbitron tracking-tighter whitespace-nowrap leading-none transition-colors duration-300 text-' + A3 + ' drop-shadow-[0_0_20px_' + AG + ']';
             countdownLabelRef.current.className =
-              'text-[9px] sm:text-[10px] font-mono tracking-[0.25em] sm:tracking-[0.3em] uppercase transition-colors duration-300 text-cyan-400/70';
+              'text-[9px] sm:text-[10px] font-mono tracking-[0.25em] sm:tracking-[0.3em] uppercase transition-colors duration-300 text-' + A + '/70';
           }
         }
       }
@@ -165,7 +175,9 @@ export const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({
             const active = ship.leftThrusterPower >= (i + 1) / 6;
             bar.className = `w-2.5 rounded-sm transition-all duration-75 ${
               active
-                ? 'bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.9)]'
+                ? isOasis
+                  ? 'bg-fuchsia-400 shadow-[0_0_6px_rgba(232,121,249,0.9)]'
+                  : 'bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.9)]'
                 : 'bg-slate-800 border border-white/5'
             }`;
           }
@@ -173,7 +185,9 @@ export const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({
         if (thrusterLLabelRef.current) {
           thrusterLLabelRef.current.className = `text-[9px] font-bold pb-1 ${
             ship.leftThrusterPower > 0.1
-              ? 'text-cyan-400 drop-shadow-[0_0_5px_rgba(6,182,212,0.9)]'
+              ? isOasis
+                ? 'text-fuchsia-400 drop-shadow-[0_0_5px_rgba(232,121,249,0.9)]'
+                : 'text-cyan-400 drop-shadow-[0_0_5px_rgba(6,182,212,0.9)]'
               : 'text-gray-600'
           }`;
         }
@@ -188,7 +202,9 @@ export const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({
             const active = ship.rightThrusterPower >= (i + 1) / 6;
             bar.className = `w-2.5 rounded-sm transition-all duration-75 ${
               active
-                ? 'bg-fuchsia-400 shadow-[0_0_6px_rgba(232,121,249,0.9)]'
+                ? isOasis
+                  ? 'bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.9)]'
+                  : 'bg-fuchsia-400 shadow-[0_0_6px_rgba(232,121,249,0.9)]'
                 : 'bg-slate-800 border border-white/5'
             }`;
           }
@@ -196,7 +212,9 @@ export const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({
         if (thrusterRLabelRef.current) {
           thrusterRLabelRef.current.className = `text-[9px] font-bold pb-1 ${
             ship.rightThrusterPower > 0.1
-              ? 'text-fuchsia-400 drop-shadow-[0_0_5px_rgba(232,121,249,0.9)]'
+              ? isOasis
+                ? 'text-cyan-400 drop-shadow-[0_0_5px_rgba(6,182,212,0.9)]'
+                : 'text-fuchsia-400 drop-shadow-[0_0_5px_rgba(232,121,249,0.9)]'
               : 'text-gray-600'
           }`;
         }
@@ -233,12 +251,14 @@ export const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({
             const active = i < ship.shields;
             slot.className = `w-4 h-4 rounded flex items-center justify-center transition-all ${
               active
-                ? 'bg-cyan-500/25 border border-cyan-400 text-cyan-300 shadow-[0_0_8px_rgba(6,182,212,0.85)] scale-105'
+                ? isOasis
+                  ? 'bg-fuchsia-500/25 border border-fuchsia-400 text-fuchsia-300 shadow-[0_0_8px_rgba(232,121,249,0.85)] scale-105'
+                  : 'bg-cyan-500/25 border border-cyan-400 text-cyan-300 shadow-[0_0_8px_rgba(6,182,212,0.85)] scale-105'
                 : 'bg-slate-900 border border-white/10 text-gray-700 opacity-40'
             }`;
             const svgShield = slot.querySelector('svg');
             if (svgShield) {
-              svgShield.setAttribute('class', `w-2.5 h-2.5 ${active ? 'fill-cyan-400/80' : 'fill-transparent'}`);
+              svgShield.setAttribute('class', `w-2.5 h-2.5 ${active ? (isOasis ? 'fill-fuchsia-400/80' : 'fill-cyan-400/80') : 'fill-transparent'}`);
             }
           }
         }
@@ -397,11 +417,11 @@ export const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({
             
             {/* Track and Difficulty cluster */}
             <div className="flex items-center gap-1.5 sm:gap-2 bg-black/60 backdrop-blur-md px-2.5 sm:px-3 py-1.5 rounded-lg border border-white/10 pointer-events-auto">
-              <Activity className="w-3.5 h-3.5 text-cyan-400 animate-pulse shrink-0" />
+              <Activity className={`w-3.5 h-3.5 ${A} animate-pulse shrink-0`} />
               <span className="font-orbitron font-semibold text-white truncate max-w-[110px] sm:max-w-[180px] md:max-w-[260px] text-[11px] sm:text-xs">
                 {trackTitle}
               </span>
-              <span className="text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-500/30 uppercase font-bold">
+              <span className={`text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded ${isOasis ? 'bg-fuchsia-950/80' : 'bg-cyan-950/80'} ${isOasis ? 'text-fuchsia-300' : 'text-cyan-300'} border ${isOasis ? 'border-fuchsia-500/30' : 'border-cyan-500/30'} uppercase font-bold`}>
                 {difficulty}
               </span>
             </div>
@@ -410,22 +430,22 @@ export const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({
             <div className="flex items-center gap-1.5 sm:gap-2 pointer-events-auto">
               <button
                 onClick={toggleFullscreen}
-                className="bg-black/60 hover:bg-slate-900 border border-white/20 hover:border-cyan-400 text-white p-1.5 sm:p-2 rounded-lg transition cursor-pointer flex items-center gap-1 active:scale-95 shadow-sm"
+                className={`bg-black/60 hover:bg-slate-900 border border-white/20 hover:border-${A} text-white p-1.5 sm:p-2 rounded-lg transition cursor-pointer flex items-center gap-1 active:scale-95 shadow-sm`}
                 title={isFullscreen ? 'Sair de Ecrã Inteiro (F11)' : 'Ecrã Inteiro (F11)'}
               >
                 {isFullscreen ? (
-                  <Minimize className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-cyan-400" />
+                  <Minimize className={`w-3.5 sm:w-4 h-3.5 sm:h-4 ${isOasis ? 'text-fuchsia-400' : 'text-cyan-400'}`} />
                 ) : (
-                  <Maximize className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-cyan-400" />
+                  <Maximize className={`w-3.5 sm:w-4 h-3.5 sm:h-4 ${isOasis ? 'text-fuchsia-400' : 'text-cyan-400'}`} />
                 )}
               </button>
 
               <button
                 onClick={onPause}
-                className="bg-black/60 hover:bg-slate-900 border border-white/20 hover:border-cyan-400 text-white p-1.5 sm:p-2 rounded-lg transition cursor-pointer flex items-center gap-1 active:scale-95 shadow-sm"
+                className={`bg-black/60 hover:bg-slate-900 border border-white/20 hover:border-${A} text-white p-1.5 sm:p-2 rounded-lg transition cursor-pointer flex items-center gap-1 active:scale-95 shadow-sm`}
                 title="Pausar jogo (ESC)"
               >
-                <Pause className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-cyan-400" />
+                <Pause className={`w-3.5 sm:w-4 h-3.5 sm:h-4 ${isOasis ? 'text-fuchsia-400' : 'text-cyan-400'}`} />
                 <span className="hidden sm:inline font-orbitron text-xs">PAUSA</span>
               </button>
             </div>
@@ -435,7 +455,7 @@ export const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({
           <div className="relative w-full h-2 sm:h-2.5 bg-slate-900/80 rounded-full border border-white/15 overflow-hidden backdrop-blur-sm">
             <div
               ref={progressBarRef}
-              className="h-full bg-gradient-to-r from-cyan-500 via-sky-400 to-fuchsia-500 rounded-full shadow-[0_0_12px_rgba(6,182,212,0.8)]"
+              className={`h-full bg-gradient-to-r ${isOasis ? 'from-fuchsia-500 via-purple-600 to-rose-500' : 'from-cyan-500 via-sky-400 to-fuchsia-500'} rounded-full shadow-[0_0_12px_rgba(${isOasis ? '232,121,249' : '6,182,212'},0.8)]`}
               style={{ width: `${Math.max(1, Math.min(100, initialStats.percentCompleted))}%` }}
             />
             {/* Finish Portal Pin marker */}
