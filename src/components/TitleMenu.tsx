@@ -165,6 +165,7 @@ interface TitleMenuProps {
   isStartingMission?: boolean;
   onAddLocalTracks?: (files: File[]) => Promise<LocalUploadResult>;
   onDeleteLocalTrack?: (id: string) => void;
+  oasisMode?: boolean; // OASIS retro 80s skin — shifts option card accents to magenta/pink
 }
 
 export const TitleMenu: React.FC<TitleMenuProps> = ({
@@ -181,7 +182,8 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
   loadingTrackId,
   isStartingMission = false,
   onAddLocalTracks,
-  onDeleteLocalTrack
+  onDeleteLocalTrack,
+  oasisMode = false
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isDifficultyOpen, setIsDifficultyOpen] = useState(false);
@@ -975,9 +977,9 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
                 {/* Inline Scrollable Options Dropdown Panel */}
                 {isOptionsOpen && (
-                  <div className="mt-3 pt-3 border-t border-cyan-500/25 flex flex-col gap-3 max-h-64 sm:max-h-72 overflow-y-auto pr-1 text-xs font-rajdhani">
+                  <div className={`mt-3 pt-3 border-t ${oasisMode ? 'border-fuchsia-500/30' : 'border-cyan-500/25'} flex flex-col gap-3 max-h-64 sm:max-h-72 overflow-y-auto pr-1 text-xs font-rajdhani`}>
                     {/* Performance Mode (60 FPS) Toggle */}
-                    <div className="p-3 rounded-xl bg-slate-900/70 border border-white/10 flex items-center justify-between gap-2.5">
+                    <div className={`p-3 rounded-xl bg-slate-900/70 border ${oasisMode ? 'border-fuchsia-500/30' : 'border-white/10'} flex items-center justify-between gap-2.5`}>
                       <div className="flex items-center gap-3 min-w-0">
                         <Cpu className="w-5 h-5 text-fuchsia-400 shrink-0" />
                         <div>
@@ -1004,9 +1006,9 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                     </div>
 
                     {/* Drift Compensation Toggle */}
-                    <div className="p-3 rounded-xl bg-slate-900/70 border border-white/10 flex items-center justify-between gap-2.5">
+                    <div className={`p-3 rounded-xl bg-slate-900/70 border ${oasisMode ? 'border-fuchsia-500/30' : 'border-white/10'} flex items-center justify-between gap-2.5`}>
                       <div className="flex items-center gap-3 min-w-0">
-                        <Activity className="w-5 h-5 text-cyan-400 shrink-0" />
+                        <Activity className={`w-5 h-5 ${oasisMode ? 'text-fuchsia-400' : 'text-cyan-400'} shrink-0`} />
                         <div>
                           <div className="font-orbitron font-bold text-white text-sm">
                             Compensação de Deriva
@@ -1022,7 +1024,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                         onClick={() => onOptionsChange({ ...options, driftCompensation: !options.driftCompensation })}
                         className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-mono font-bold transition cursor-pointer shrink-0 ${
                           options.driftCompensation
-                            ? 'bg-cyan-500 text-black shadow-md shadow-cyan-500/30'
+                            ? `${oasisMode ? 'bg-fuchsia-500 text-white shadow-md shadow-fuchsia-500/30' : 'bg-cyan-500 text-black shadow-md shadow-cyan-500/30'}`
                             : 'bg-white/10 text-gray-300 hover:bg-white/20'
                         }`}
                       >
