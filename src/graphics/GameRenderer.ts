@@ -228,15 +228,9 @@ export class GameRenderer {
     const w = this.width;
     const h = this.height;
 
-    // OASIS mode: full-scene synthwave palette shift via GPU canvas filter.
-    // Coherent color shift for the whole arena (cyan -> magenta/pink), zero JS cost per frame.
+    // OASIS mode: synthwave palette shift applied to world-space rendering only
+    // (terrain, background, obstacles, creatures). Ship/DeLorean keeps original colors.
     const oasisMode = !!world.ship.oasisMode;
-
-    if (oasisMode) {
-      this.canvas.style.filter = 'hue-rotate(120deg) saturate(1.35) contrast(1.03)';
-    } else if (this.canvas.style.filter) {
-      this.canvas.style.filter = '';
-    }
 
     // Decay shake
     let shakeX = 0;
@@ -364,6 +358,12 @@ export class GameRenderer {
     ctx.scale(zoom, zoom);
     ctx.translate(-this.cameraX + shakeX / zoom, -this.cameraY + shakeY / zoom);
 
+    // OASIS: apply hue-rotate to world-space rendering (terrain, obstacles, background, creatures)
+    // Ship/DeLorean will be rendered after ctx.restore() without this filter
+    if (oasisMode) {
+      ctx.filter = 'hue-rotate(120deg) saturate(1.35) contrast(1.03)';
+    }
+
     // 1. Cyber Grid & Parallax Starfield
     this.renderBackgroundGrid(world, audioFreq);
 
@@ -421,8 +421,10 @@ export class GameRenderer {
       this.chronoEchoes = [];
     }
 
-    // 8. Player Ship & Jet Exhausts
+    // 8. Player Ship & Jet Exhausts — render WITHOUT OASIS hue filter
+    // 8. Player Ship & Jet Exhausts — render WITHIN camera transform, WITHOUT OASIS hue filter
     if (!world.ship.isDestroyed) {
+      ctx.filter = 'none';
       this.renderShip(world, isPaused, audioFreq);
     }
 
