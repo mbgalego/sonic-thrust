@@ -2433,58 +2433,39 @@ export class GameRenderer {
     // --- Sprite path: pixel-art DeLorean loaded from /assets/skins/delorean.png ---
     if (this.deloreanImg) {
       const img = this.deloreanImg;
-      // Length matches the wedge footprint a bit larger for presence
-      const len = ship.width * 1.65;               // car length along local Y (nose-up)
+      // Horizontal car (BTTF hover mode): length along local X (nose = travel
+      // direction), thruster flames burn under the wheels (local +Y = underside)
+      const len = ship.width * 1.7;               // car length along local X
       const wid = len * (img.naturalHeight / img.naturalWidth);
       const t = Date.now();
 
-      ctx.save();
-
-      // Ambient cyan neon glow behind the car (matches arena palette)
-      ctx.shadowColor = '#38bdf8';
-      ctx.shadowBlur = 16;
-
-      // Rotate the car so its front (+X in image space) points to local -Y (hull nose)
-      ctx.rotate(-Math.PI / 2);
+      // Clean sprite: NO neon glow/shadow — the skin must read as itself
       ctx.drawImage(img, -len / 2, -wid / 2, len, wid);
 
-      ctx.restore();
-
-      // Engine flames at the rear (local +Y = car tail) — syncs with thruster FX
-      if (ship.leftThrusterPower > 0.08 || ship.rightThrusterPower > 0.08) {
+      // Wheel thrusters (hover mode): flickering jet flames under both wheels,
+      // gated on thruster input so they breathe with the player's thrust
+      const thrust = Math.max(ship.leftThrusterPower, ship.rightThrusterPower);
+      if (thrust > 0.08) {
         const flick = 1.0 + Math.sin(t * 0.02) * 0.25;
-        const flameLen = (10 + Math.max(ship.leftThrusterPower, ship.rightThrusterPower) * 16) * flick;
+        const flameLen = (12 + thrust * 22) * flick;
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
-        for (const side of [-1, 1]) {
-          const fx = side * wid * 0.28;
-          const grad = ctx.createLinearGradient(fx, len / 2 - 4, fx, len / 2 + flameLen);
-          grad.addColorStop(0, 'rgba(56, 189, 248, 0.75)');
-          grad.addColorStop(0.5, 'rgba(239, 68, 68, 0.5)');
+        for (const wx of [-len * 0.27, len * 0.27]) { // rear / front wheel x positions
+          const fy = wid * 0.36;                      // underside (~wheel contact)
+          const grad = ctx.createLinearGradient(wx, fy, wx, fy + flameLen);
+          grad.addColorStop(0, 'rgba(125, 211, 252, 0.9)');
+          grad.addColorStop(0.5, 'rgba(251, 146, 60, 0.65)');
           grad.addColorStop(1, 'rgba(239, 68, 68, 0)');
           ctx.fillStyle = grad;
           ctx.beginPath();
-          ctx.moveTo(fx - 3, len / 2 - 4);
-          ctx.lineTo(fx + 3, len / 2 - 4);
-          ctx.lineTo(fx, len / 2 + flameLen);
+          ctx.moveTo(wx - 4, fy);
+          ctx.lineTo(wx + 4, fy);
+          ctx.lineTo(wx, fy + flameLen);
           ctx.closePath();
           ctx.fill();
         }
         ctx.restore();
       }
-
-      // Flux Capacitor glow (amber pulse at the tail)
-      const fcPulse = 1.0 + Math.sin(t * 0.01) * 0.3;
-      ctx.save();
-      ctx.fillStyle = '#fbbf24';
-      ctx.shadowColor = '#fbbf24';
-      ctx.shadowBlur = 10 * fcPulse;
-      ctx.beginPath();
-      ctx.arc(0, len * 0.46, 3.5 * fcPulse, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-
-      ctx.shadowBlur = 0;
       return;
     }
 
