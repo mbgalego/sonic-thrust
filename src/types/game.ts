@@ -48,6 +48,23 @@ export type PowerUpType =
   | 'CHRONO_DILATION' 
   | 'SINGULARITY';
 
+/**
+ * Code Fragment collected in the hidden Left Tunnel Easter Egg.
+ * Collecting all 3 unlocks OASIS mode + DeLorean skin.
+ */
+export interface CodeFragmentItem {
+  id: string;           // 'fragment-a' | 'fragment-b' | 'fragment-c'
+  x: number;            // world X (negative, in the left tunnel)
+  y: number;            // world Y
+  baseY: number;        // original Y for bobbing animation
+  collected: boolean;
+  radius: number;       // collection hit radius
+  color: string;        // neon glow color
+  pulsePhase: number;   // animation phase
+  orbitAngle: number;   // orbital rotation angle
+  rhythmBounce: number; // beat-sync bounce factor
+}
+
 export interface PowerUpAnnouncement {
   title: string;
   subtitle: string;
@@ -144,6 +161,9 @@ export interface GameOptions {
   musicVolume: number; // 0.0 - 1.0
   sfxVolume: number;   // 0.0 - 1.0
   performanceMode?: boolean; // locks DPR to 1.0 & optimizes VFX for ultra-high FPS on 1440p/4K
+  // Easter Egg toggles (v1.39.0) — unlocked via Left Tunnel code fragments
+  oasisMode?: boolean;
+  deloreanSkin?: boolean;
 }
 
 export interface GameStats {

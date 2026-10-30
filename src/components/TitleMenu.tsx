@@ -29,7 +29,10 @@ import {
   HardDrive,
   Cpu,
   Lock,
-  Music
+  Music,
+  Code,
+  Monitor,
+  Car
 } from 'lucide-react';
 import { LocalTrackLoader, LocalUploadResult } from '../audio/LocalTrackLoader';
 import {
@@ -44,6 +47,7 @@ import { MiniEqualizer } from './MiniEqualizer';
 import { MenuLyrics } from './MenuLyrics';
 import { audio } from '../audio/AudioEngine';
 import { isTrackUnlocked } from '../utils/trackUnlocks';
+import { getEasterEggSave, setEasterEggSave, type EasterEggSave } from '../utils/easterEgg';
 
 /**
  * Pixel-accurate vector representation of each in-game power-up beacon
@@ -232,6 +236,9 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
   };
   const [isMuted, setIsMuted] = useState(audio.isMenuMusicMuted());
   const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement));
+
+  // Easter Egg Left Tunnel progress (v1.39.0)
+  const [easterSave, setEasterSave] = useState<EasterEggSave>(getEasterEggSave);
 
   // Browser autoplay policy hint (v1.37.0): AudioContexts start suspended until the
   // first user gesture, so the menu theme "waits" silently. Show a subtle one-line
@@ -1024,6 +1031,116 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                       </button>
                     </div>
 
+                    {/* Easter Egg Left Tunnel — Code Fragment progress + reward toggles (v1.39.0) */}
+                    {easterSave.codeFragmentsCollected < 3 && (
+                      <div className="p-3 rounded-xl bg-slate-900/70 border border-amber-500/30 flex items-center justify-between gap-2.5">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                            <Code className="w-3 h-3 text-amber-400 shrink-0" />
+                          </div>
+                          <div>
+                            <div className="font-orbitron font-bold text-amber-300 text-sm">
+                              Túnel Esquerdo — Fragmentos
+                            </div>
+                            <div className="text-xs sm:text-sm text-amber-200 leading-snug mt-0.5">
+                              Voa para a ESQUERDA além do spawn para encontrar fragmentos de código
+                            </div>
+                          </div>
+                        </div>
+                        <div className="font-mono font-bold text-amber-400 text-sm tabular-nums">
+                          {easterSave.codeFragmentsCollected}/3
+                        </div>
+                      </div>
+                    )}
+                    {easterSave.codeFragmentsCollected >= 3 && (
+                      <>
+                        <div className="p-3 rounded-xl bg-slate-900/70 border border-amber-500/30 flex items-center justify-between gap-2.5">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                              <CheckCircle2 className="w-3 h-3 text-amber-400 shrink-0" />
+                            </div>
+                            <div>
+                              <div className="font-orbitron font-bold text-amber-300 text-sm">
+                                Fragmentos de Código — COMPLETO
+                              </div>
+                              <div className="text-xs sm:text-sm text-amber-200 leading-snug mt-0.5">
+                                OASIS + DeLorean desbloqueados
+                              </div>
+                            </div>
+                          </div>
+                          <div className="font-mono font-bold text-amber-400 text-sm tabular-nums">
+                            3/3
+                          </div>
+                        </div>
+
+                        {/* OASIS Mode Toggle */}
+                        <div className="p-3 rounded-xl bg-slate-900/70 border border-purple-500/30 flex items-center justify-between gap-2.5">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-5 h-5 rounded-full bg-purple-500/20 flex items-center justify-center shrink-0">
+                              <Monitor className="w-3 h-3 text-purple-400 shrink-0" />
+                            </div>
+                            <div>
+                              <div className="font-orbitron font-bold text-purple-300 text-sm">
+                                Modo OASIS (Retrô 80s)
+                              </div>
+                              <div className="text-xs sm:text-sm text-purple-200 leading-snug mt-0.5">
+                                Scanlines + paleta magenta/ciano no ecrã
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = !options.oasisMode;
+                              onOptionsChange({ ...options, oasisMode: next });
+                              setEasterSave({ ...easterSave, oasisMode: next });
+                              setEasterEggSave({ ...easterSave, oasisMode: next });
+                            }}
+                            className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-mono font-bold transition cursor-pointer shrink-0 ${
+                              options.oasisMode
+                                ? 'bg-purple-500 text-white shadow-md shadow-purple-500/30'
+                                : 'bg-white/10 text-gray-300 hover:bg-white/20'
+                            }`}
+                          >
+                            {options.oasisMode ? 'LIGADO' : 'DESLIGADO'}
+                          </button>
+                        </div>
+
+                        {/* DeLorean Skin Toggle */}
+                        <div className="p-3 rounded-xl bg-slate-900/70 border border-amber-500/30 flex items-center justify-between gap-2.5">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                              <Car className="w-3 h-3 text-amber-400 shrink-0" />
+                            </div>
+                            <div>
+                              <div className="font-orbitron font-bold text-amber-300 text-sm">
+                                Skin DeLorean (Voador)
+                              </div>
+                              <div className="text-xs sm:text-sm text-amber-200 leading-snug mt-0.5">
+                                A nave vira o DeLorean de Volta para o Futuro
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = !options.deloreanSkin;
+                              onOptionsChange({ ...options, deloreanSkin: next });
+                              setEasterSave({ ...easterSave, deloreanSkin: next });
+                              setEasterEggSave({ ...easterSave, deloreanSkin: next });
+                            }}
+                            className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-mono font-bold transition cursor-pointer shrink-0 ${
+                              options.deloreanSkin
+                                ? 'bg-amber-500 text-black shadow-md shadow-amber-500/30'
+                                : 'bg-white/10 text-gray-300 hover:bg-white/20'
+                            }`}
+                          >
+                            {options.deloreanSkin ? 'LIGADO' : 'DESLIGADO'}
+                          </button>
+                        </div>
+                      </>
+                    )}
+
                     {/* Volume Controls */}
                     <div className="p-3 rounded-xl bg-slate-900/70 border border-white/10 space-y-3">
                       <div className="flex items-center gap-2 text-cyan-400 font-orbitron font-bold text-sm">
@@ -1336,7 +1453,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
       {/* Footer: Version and Last Update Date on left, Author on right */}
       <footer className="relative z-10 flex items-center justify-between text-xs sm:text-sm font-mono text-cyan-400/90 pt-1.5 pb-1 sm:pt-3 sm:pb-2 border-t border-white/10 max-w-6xl w-full mx-auto px-2">
-        <span className="tracking-wide">v1.38.0 · 30/10/2026</span>
+        <span className="tracking-wide">v1.39.0 · 30/10/2026</span>
         <span className="tracking-wide font-semibold text-gray-200">Por Miguel Galego</span>
       </footer>
 
