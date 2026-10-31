@@ -264,6 +264,7 @@ export class PhysicsWorld {
     this.ship.codeFragmentsCollected = saved.codeFragmentsCollected;
     this.ship.oasisMode = saved.oasisMode;
     this.ship.deloreanSkin = saved.deloreanSkin;
+    console.log('[DEBUG] PhysicsWorld constructor: easterSave =', JSON.stringify(saved), 'ship.deloreanSkin =', this.ship.deloreanSkin);
     this.spawnCodeFragments();
   }
 

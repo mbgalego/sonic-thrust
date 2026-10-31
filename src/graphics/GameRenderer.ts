@@ -64,7 +64,6 @@ export class GameRenderer {
 
   // Quality setting: 'high' (full effects) or 'low' (reduced particles, lower blur)
   public quality: 'high' | 'low' = 'high';
-  private dpr: number = 1;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -84,9 +83,6 @@ export class GameRenderer {
   private creatureInstances: any[] = []
   private creaturesLoaded = false
 
-  // Offscreen canvas for OASIS world rendering — keeps ship/DeLorean unfiltered
-  private offscreenCanvas: HTMLCanvasElement | null = null;
-  private offscreenCtx: CanvasRenderingContext2D | null = null;
 
   private async loadCreatureFrames(): Promise<void> {
     if (typeof window === 'undefined') return;
@@ -153,14 +149,6 @@ export class GameRenderer {
     this.canvas.width = Math.floor(this.width * effectiveDpr);
     this.canvas.height = Math.floor(this.height * effectiveDpr);
     this.ctx.setTransform(effectiveDpr, 0, 0, effectiveDpr, 0, 0);
-    this.dpr = effectiveDpr;
-
-    if (!this.offscreenCanvas) {
-      this.offscreenCanvas = document.createElement('canvas');
-      this.offscreenCtx = this.offscreenCanvas.getContext('2d', { alpha: false })!;
-    }
-    this.offscreenCanvas.width = this.canvas.width;
-    this.offscreenCanvas.height = this.canvas.height;
 
     const isTouch = 'ontouchstart' in window || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0);
     const isSmall = Math.min(this.width, this.height) < 680;
@@ -366,27 +354,39 @@ export class GameRenderer {
     this.currentSpeedRatio += (targetSpeedRatio - this.currentSpeedRatio) * (isPaused ? 0 : 0.22);
     this.updateTemporalTrail(world, isPaused ? 0 : dt);
 
-    // --- WORLD rendered into offscreen canvas (with OASIS hue filter) ---
-    const off = this.offscreenCanvas!;
-    const offCtx = this.offscreenCtx!;
+    // --- WORLD + SHIP single pass ---
+    ctx.save();
+    ctx.scale(zoom, zoom);
+    ctx.translate(-this.cameraX + shakeX / zoom, -this.cameraY + shakeY / zoom);
 
-    offCtx.save();
-    offCtx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    offCtx.scale(zoom, zoom);
-    offCtx.translate(-this.cameraX + shakeX / zoom, -this.cameraY + shakeY / zoom);
-    offCtx.filter = 'none';
-    offCtx.fillStyle = '#06070c';
-    offCtx.fillRect(0, 0, w, h);
+    // OASIS: apply hue-rotate to world ONLY (terrain, obstacles, background, creatures).
+    // Ship/DeLorean drawn after ctx.restore() without this filter.
+    if (oasisMode) {
+      ctx.filter = 'hue-rotate(120deg) saturate(1.35) contrast(1.03)';
+    }
 
-    // Draw entire world into offscreen
+    // 1. Cyber Grid & Parallax Starfield
     this.renderBackgroundGrid(world, audioFreq);
+
+    // 2. Launchpad (Plataforma de Descolagem)
     this.renderLaunchpad(world);
+
+    // 3. Finish Portal (Portal de Meta)
     this.renderFinishPortal(world, audioFreq);
+
+    // 4. Power-ups (Holographic celestial beacons pulsing to music)
     this.renderPowerUps(world.powerUps, audioFreq, world);
+
+    // 4.5 Easter Egg Left Tunnel — Code Fragments (invisible left tunnel, x < 0)
     this.renderCodeFragments(world.codeFragments, audioFreq, world);
+
+    // 5. Obstacles & Laser Gates (Dynamic ejector blocks, sonic spikes, resonance mines, laser curtains)
     this.renderObstacles(world.obstacles, world.laserGates, audioFreq, world);
+
+    // 6. Vector Neon Terrain (Ceiling and Floor)
     this.renderTerrain(world, audioFreq, dt);
 
+    // 6.5 Prehistoric creatures (OASIS Easter Egg) — right side of tunnel, watching player
     if (oasisMode && this.creaturesLoaded && this.creatureFrames) {
       if (this.creatureInstances.length === 0) {
         try {
@@ -397,33 +397,28 @@ export class GameRenderer {
       try {
         const { updateCreatures, renderCreatures } = await import('../easterEgg/creatureSprites');
         updateCreatures(this.creatureInstances, dt);
-        renderCreatures(offCtx, this.creatureInstances, this.cameraX, this.cameraY, zoom, w, h);
+        renderCreatures(ctx, this.creatureInstances, this.cameraX, this.cameraY, zoom, w, h);
       } catch (e) { console.warn('[OASIS] creature render failed', e); }
     }
 
+    // 7. Particles & Shockwaves (frozen while paused)
     this.renderParticlesAndShockwaves(isPaused ? 0 : dt);
+
+    // 7.5. DeLorean High-Speed Fiery Temporal Trail (smoothly dissipating wake)
     this.renderTemporalTrails();
+
+    // 7.8. Chrono Dilation Temporal Motion Echoes (bullet-time after-images)
     if (world.ship.chronoDilationTimer > 0) {
       this.renderChronoEchoes(world, isPaused);
     } else {
       this.chronoEchoes = [];
     }
 
-    offCtx.restore();
-
-    // Composite offscreen world onto main canvas with OASIS filter applied ONCE
-    ctx.save();
-    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    if (oasisMode) {
-      ctx.filter = 'hue-rotate(120deg) saturate(1.35) contrast(1.03)';
-    }
-    ctx.drawImage(off, 0, 0, w, h);
-    ctx.filter = 'none';
+    // Restore removes OASIS filter — ship drawn next is clean
     ctx.restore();
 
-    // --- SHIP LAYER: drawn directly on main canvas, NEVER filtered ---
+    // --- SHIP LAYER: drawn WITHOUT OASIS hue filter ---
     ctx.save();
-    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.scale(zoom, zoom);
     ctx.translate(-this.cameraX + shakeX / zoom, -this.cameraY + shakeY / zoom);
     ctx.filter = 'none';
@@ -1823,12 +1818,12 @@ export class GameRenderer {
     ctx.restore();
   }
 
-  private renderShip(world: PhysicsWorld, isPaused: boolean, _audioFreq?: AudioFrequencyData): void {
+  private renderShip(world: PhysicsWorld, _isPaused: boolean, _audioFreq?: AudioFrequencyData): void {
     const ctx = this.ctx;
     const ship = world.ship;
-
+    // Debug removed
     // Emit jet particles when thrusters are active (frozen while paused)
-    if (!isPaused) {
+    if (!_isPaused) {
       this.emitThrusterParticles(ship);
     }
 
@@ -1971,8 +1966,9 @@ export class GameRenderer {
 
     // Easter Egg Left Tunnel — DeLorean Skin (v1.39.0):
     // When unlocked, the ship becomes the flying DeLorean from Back to the Future.
+    console.log('[DEBUG] renderShip: deloreanSkin =', ship.deloreanSkin, 'ship.isDestroyed =', ship.isDestroyed);
     if (ship.deloreanSkin) {
-      this.renderDelorean(ship, isPaused, _audioFreq);
+      this.renderDelorean(ship, _isPaused, _audioFreq);
       ctx.restore();
       return;
     }
@@ -2040,7 +2036,7 @@ export class GameRenderer {
     ctx.fillRect(rightPodX - 3, podY, 6, 5);
 
     // Dynamic Left Thruster Jet Flame
-    if (!isPaused && ship.leftThrusterPower > 0.05) {
+    if (!_isPaused && ship.leftThrusterPower > 0.05) {
       const p = ship.leftThrusterPower;
       const flameLen = (18 + Math.random() * 14) * p;
       ctx.save();
@@ -2066,7 +2062,7 @@ export class GameRenderer {
     }
 
     // Dynamic Right Thruster Jet Flame
-    if (!isPaused && ship.rightThrusterPower > 0.05) {
+    if (!_isPaused && ship.rightThrusterPower > 0.05) {
       const p = ship.rightThrusterPower;
       const flameLen = (18 + Math.random() * 14) * p;
       ctx.save();
@@ -2505,8 +2501,15 @@ export class GameRenderer {
    * gull-wing doors, flux capacitor glow at the rear, and twin rocket thrusters.
    * Replaces the default ship when deloreanSkin is unlocked.
    */
-  private renderDelorean(ship: PhysicsWorld['ship'], _isPaused: boolean, _audioFreq?: AudioFrequencyData): void {
+  private renderDelorean(worldShip: PhysicsWorld['ship'], _isPaused: boolean, _audioFreq?: AudioFrequencyData): void {
     const ctx = this.ctx;
+    const ship = worldShip;
+    console.log('[DEBUG-RENDER] renderDelorean called:', {
+      deloreanSkin: ship.deloreanSkin,
+      deloreanImgLoaded: !!this.deloreanImg,
+      shipVisible: !ship.isDestroyed
+    });
+    // Debug removed
 
     // --- Sprite path: pixel-art DeLorean loaded from /assets/skins/delorean.png ---
     if (this.deloreanImg) {
