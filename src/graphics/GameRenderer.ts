@@ -64,6 +64,7 @@ export class GameRenderer {
 
   // Quality setting: 'high' (full effects) or 'low' (reduced particles, lower blur)
   public quality: 'high' | 'low' = 'high';
+  private dpr: number = 1;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -81,6 +82,9 @@ export class GameRenderer {
   // Prehistoric creatures (OASIS Easter Egg, v1.39.0 addendum)
   private creatureFrames: Record<'trex' | 'kong', any> | null = null;
   private creatureInstances: any[] = []
+  // Offscreen canvas for OASIS world rendering — keeps ship/DeLorean unfiltered
+  private offscreenCanvas: HTMLCanvasElement | null = null;
+  private offscreenCtx: CanvasRenderingContext2D | null = null;
   private creaturesLoaded = false
 
   private async loadCreatureFrames(): Promise<void> {
@@ -148,6 +152,14 @@ export class GameRenderer {
     this.canvas.width = Math.floor(this.width * effectiveDpr);
     this.canvas.height = Math.floor(this.height * effectiveDpr);
     this.ctx.setTransform(effectiveDpr, 0, 0, effectiveDpr, 0, 0);
+    this.dpr = effectiveDpr;
+
+    if (!this.offscreenCanvas) {
+      this.offscreenCanvas = document.createElement('canvas');
+      this.offscreenCtx = this.offscreenCanvas.getContext('2d', { alpha: false })!;
+    }
+    this.offscreenCanvas.width = this.canvas.width;
+    this.offscreenCanvas.height = this.canvas.height;
 
     const isTouch = 'ontouchstart' in window || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0);
     const isSmall = Math.min(this.width, this.height) < 680;
@@ -353,81 +365,70 @@ export class GameRenderer {
     this.currentSpeedRatio += (targetSpeedRatio - this.currentSpeedRatio) * (isPaused ? 0 : 0.22);
     this.updateTemporalTrail(world, isPaused ? 0 : dt);
 
-    // Save for world translation with dynamic camera zoom
-    ctx.save();
-    ctx.scale(zoom, zoom);
-    ctx.translate(-this.cameraX + shakeX / zoom, -this.cameraY + shakeY / zoom);
+    // --- WORLD rendered into offscreen canvas (OASIS filter applied only here) ---
+    const off = this.offscreenCanvas!;
+    const offCtx = this.offscreenCtx!;
 
-    // OASIS: apply hue-rotate to world-space rendering (terrain, obstacles, background, creatures)
-    // Ship/DeLorean will be rendered after ctx.restore() without this filter
-    if (oasisMode) {
-      ctx.filter = 'hue-rotate(120deg) saturate(1.35) contrast(1.03)';
-    }
+    offCtx.save();
+    offCtx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    offCtx.scale(zoom, zoom);
+    offCtx.translate(-this.cameraX + shakeX / zoom, -this.cameraY + shakeY / zoom);
+    offCtx.filter = 'none';
+    offCtx.fillStyle = '#06070c';
+    offCtx.fillRect(0, 0, w, h);
 
-    // 1. Cyber Grid & Parallax Starfield
+    // Draw entire world into offscreen
     this.renderBackgroundGrid(world, audioFreq);
-
-    // 2. Launchpad (Plataforma de Descolagem)
     this.renderLaunchpad(world);
-
-    // 3. Finish Portal (Portal de Meta)
     this.renderFinishPortal(world, audioFreq);
-
-    // 4. Power-ups (Holographic celestial beacons pulsing to music)
     this.renderPowerUps(world.powerUps, audioFreq, world);
-
-    // 4.5 Easter Egg Left Tunnel — Code Fragments (invisible left tunnel, x < 0)
     this.renderCodeFragments(world.codeFragments, audioFreq, world);
-
-    // 5. Obstacles & Laser Gates (Dynamic ejector blocks, sonic spikes, resonance mines, laser curtains)
     this.renderObstacles(world.obstacles, world.laserGates, audioFreq, world);
-
-    // 6. Vector Neon Terrain (Ceiling and Floor)
     this.renderTerrain(world, audioFreq, dt);
 
-    // 6.5. Prehistoric creatures (OASIS Easter Egg) — right side of tunnel, watching player
     if (oasisMode && this.creaturesLoaded && this.creatureFrames) {
-      // Lazy-create instances on first OASIS render
       if (this.creatureInstances.length === 0) {
-        const { createCreatureInstances } = await import('../easterEgg/creatureSprites');
-        this.creatureInstances = createCreatureInstances(this.creatureFrames, world);
+        try {
+          const { createCreatureInstances } = await import('../easterEgg/creatureSprites');
+          this.creatureInstances = createCreatureInstances(this.creatureFrames, world);
+        } catch (e) { console.warn('[OASIS] creature create failed', e); }
       }
-      // Update animations
-      const { updateCreatures } = await import('../easterEgg/creatureSprites');
-      updateCreatures(this.creatureInstances, dt);
-      // Render creatures (they're in world space, drawn with camera transform)
-      const { renderCreatures } = await import('../easterEgg/creatureSprites');
-      renderCreatures(
-        ctx,
-        this.creatureInstances,
-        this.cameraX,
-        this.cameraY,
-        zoom,
-        w,
-        h
-      );
+      try {
+        const { updateCreatures, renderCreatures } = await import('../easterEgg/creatureSprites');
+        updateCreatures(this.creatureInstances, dt);
+        renderCreatures(offCtx, this.creatureInstances, this.cameraX, this.cameraY, zoom, w, h);
+      } catch (e) { console.warn('[OASIS] creature render failed', e); }
     }
 
-    // 7. Particles & Shockwaves (frozen while paused)
     this.renderParticlesAndShockwaves(isPaused ? 0 : dt);
-
-    // 7.5. DeLorean High-Speed Fiery Temporal Trail (smoothly dissipating wake)
     this.renderTemporalTrails();
-
-    // 7.8. Chrono Dilation Temporal Motion Echoes (bullet-time after-images)
     if (world.ship.chronoDilationTimer > 0) {
       this.renderChronoEchoes(world, isPaused);
     } else {
       this.chronoEchoes = [];
     }
 
-    // 8. Player Ship & Jet Exhausts — render WITHOUT OASIS hue filter
-    // 8. Player Ship & Jet Exhausts — render WITHIN camera transform, WITHOUT OASIS hue filter
+    offCtx.restore();
+
+    // Composite offscreen world onto main canvas with OASIS filter applied ONCE
+    ctx.save();
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    if (oasisMode) {
+      ctx.filter = 'hue-rotate(120deg) saturate(1.35) contrast(1.03)';
+    }
+    ctx.drawImage(off, 0, 0);
+    ctx.filter = 'none';
+    ctx.restore();
+
+    // --- SHIP LAYER: drawn directly on main canvas, NEVER filtered ---
+    ctx.save();
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    ctx.scale(zoom, zoom);
+    ctx.translate(-this.cameraX + shakeX / zoom, -this.cameraY + shakeY / zoom);
+    ctx.filter = 'none';
     if (!world.ship.isDestroyed) {
-      ctx.filter = 'none';
       this.renderShip(world, isPaused, audioFreq);
     }
-
     ctx.restore();
 
     // 9. Audio Waveform Spectrum Radar (Mini overlay in bottom left corner)
@@ -1824,6 +1825,14 @@ export class GameRenderer {
   private renderShip(world: PhysicsWorld, isPaused: boolean, _audioFreq?: AudioFrequencyData): void {
     const ctx = this.ctx;
     const ship = world.ship;
+    (window as any).__shipRenderCalls = ((window as any).__shipRenderCalls || 0) + 1;
+    (window as any).__shipDeloreanSkin = ship.deloreanSkin;
+    (window as any).__shipDestroyed = ship.isDestroyed;
+    (window as any).__shipX = ship.x;
+    (window as any).__shipY = ship.y;
+
+    // ENSURE no OASIS hue filter leaks into the ship render
+    ctx.filter = 'none';
 
     // Emit jet particles when thrusters are active (frozen while paused)
     if (!isPaused) {
