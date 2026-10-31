@@ -82,10 +82,11 @@ export class GameRenderer {
   // Prehistoric creatures (OASIS Easter Egg, v1.39.0 addendum)
   private creatureFrames: Record<'trex' | 'kong', any> | null = null;
   private creatureInstances: any[] = []
+  private creaturesLoaded = false
+
   // Offscreen canvas for OASIS world rendering — keeps ship/DeLorean unfiltered
   private offscreenCanvas: HTMLCanvasElement | null = null;
   private offscreenCtx: CanvasRenderingContext2D | null = null;
-  private creaturesLoaded = false
 
   private async loadCreatureFrames(): Promise<void> {
     if (typeof window === 'undefined') return;
@@ -365,7 +366,7 @@ export class GameRenderer {
     this.currentSpeedRatio += (targetSpeedRatio - this.currentSpeedRatio) * (isPaused ? 0 : 0.22);
     this.updateTemporalTrail(world, isPaused ? 0 : dt);
 
-    // --- WORLD rendered into offscreen canvas (OASIS filter applied only here) ---
+    // --- WORLD rendered into offscreen canvas (with OASIS hue filter) ---
     const off = this.offscreenCanvas!;
     const offCtx = this.offscreenCtx!;
 
@@ -416,7 +417,7 @@ export class GameRenderer {
     if (oasisMode) {
       ctx.filter = 'hue-rotate(120deg) saturate(1.35) contrast(1.03)';
     }
-    ctx.drawImage(off, 0, 0);
+    ctx.drawImage(off, 0, 0, w, h);
     ctx.filter = 'none';
     ctx.restore();
 
@@ -1825,14 +1826,6 @@ export class GameRenderer {
   private renderShip(world: PhysicsWorld, isPaused: boolean, _audioFreq?: AudioFrequencyData): void {
     const ctx = this.ctx;
     const ship = world.ship;
-    (window as any).__shipRenderCalls = ((window as any).__shipRenderCalls || 0) + 1;
-    (window as any).__shipDeloreanSkin = ship.deloreanSkin;
-    (window as any).__shipDestroyed = ship.isDestroyed;
-    (window as any).__shipX = ship.x;
-    (window as any).__shipY = ship.y;
-
-    // ENSURE no OASIS hue filter leaks into the ship render
-    ctx.filter = 'none';
 
     // Emit jet particles when thrusters are active (frozen while paused)
     if (!isPaused) {
