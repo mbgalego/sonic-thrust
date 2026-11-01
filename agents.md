@@ -111,6 +111,12 @@
   3. *Code fragments disappear after unlock*: `spawnCodeFragments()` returns early when `codeFragmentsCollected >= 3` — cubes never reappear once OASIS is discovered.
   4. *Harder fragment positions*: cubes now spawn at 60%, 80%, 95% of `totalTrackLength` (based on music duration) on the negative X side, instead of fixed -600/-1200/-1800.
   5. *Verified*: lint ✅ build ✅ (v1.39.3)
+- **v1.39.5 (T-Rex Spritesheet Extraction & Alignment Correction)**:
+  1. *Spritesheet Extraction*: Extracted 12 distinct animation frames from the user-provided spritesheet (`public/assets/skins/1793549139235.jpg`, 3168×1344, 4 columns × 3 rows).
+  2. *Chroma Key & Boundary Detection*: Analyzed pixel coordinates of each cell to find the exact top, bottom, left, and right bounds (`min_x`, `max_x`, `min_y`, `max_y`), accounting for non-uniform spacing between frames and character movements (mouth roars, saliva droplets, stress marks). Background green removed with clean transparency (alpha channel).
+  3. *Ground & Foot Anchoring*: Frames horizontally flipped to face LEFT (watching the player approach), aligned to a standard canvas of 840×400 with the bottom of the feet anchored at `y = 394` and foot center at `x = 480`. Prevents jumping, foot-sliding, and accordion stretching during animation.
+  4. *Engine Config & Collision*: Updated `CREATURE_CONFIG.trex` in `creatureSprites.ts` and `PhysicsWorld.ts` from distorted 1464×235 to native 840×400 (at scale 0.4: 336×160). Centered collision check on creature body center.
+  5. *Verified*: lint ✅ build ✅ (v1.39.5)
 - **v1.39.4 (OASIS track auto-switch + per-run fragment reset + OASIS as menu switch)**:
   1. *OASIS track auto-switch on toggle*: `useEffect` in App.tsx now always switches audio when OASIS mode toggles (removed `selectedTrack.id !== oasisTrack.id` gate that prevented switching). Works without page reload.
   2. *Per-run fragment counter*: added `fragmentsCollectedThisRun` to `ShipState`, resets to 0 each game. Partial progress (1-2 fragments) no longer persists — must collect all 3 in a single run to unlock OASIS + DeLorean. `codeFragmentsCollected` in save only set to 3 on full unlock.

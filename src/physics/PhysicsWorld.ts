@@ -676,7 +676,7 @@ export class PhysicsWorld {
 
     // Sprite dimensions at scale 0.4 (see creatureSprites.ts CREATURE_CONFIG)
     const spriteDims: Record<'trex' | 'kong', { width: number; height: number }> = {
-      trex: { width: Math.round(1464 * 0.4), height: Math.round(235 * 0.4) },
+      trex: { width: Math.round(840 * 0.4), height: Math.round(400 * 0.4) },
       kong: { width: Math.round(281 * 0.4), height: Math.round(471 * 0.4) },
     };
 
@@ -1309,9 +1309,11 @@ export class PhysicsWorld {
     // 3.5 Easter Egg OASIS creatures — physical obstacles inside the tunnel
     for (const c of this.creatureObstacles) {
       if (!c.active) continue;
-      if (Math.abs(c.x - this.ship.x) > 120) continue;
-      const dx = this.ship.x - c.x;
-      const dy = this.ship.y - c.y;
+      const centerX = c.x + c.width * 0.5;
+      const centerY = c.y + c.height * 0.5;
+      if (Math.abs(centerX - this.ship.x) > c.width * 0.5 + 40) continue;
+      const dx = this.ship.x - centerX;
+      const dy = this.ship.y - centerY;
       const dist = Math.hypot(dx, dy);
       if (dist < shipRadius + c.radius) {
         c.active = false; // creature destroyed / moved aside

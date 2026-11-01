@@ -687,9 +687,12 @@ export default function App() {
           }
         }
         
+        // Normal runs show the victory modal promptly (1000ms).
+        // OASIS mode stays in the tunnel for 6000ms so the player can view the Copper Key announcement and portal.
+        const victoryDelay = easterSave.oasisMode ? 6000 : 1000;
         setTimeout(() => {
           setGameState('VICTORY');
-        }, 6000);
+        }, victoryDelay);
       };
 
       worldRef.current = newWorld;
