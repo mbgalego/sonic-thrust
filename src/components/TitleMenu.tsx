@@ -546,11 +546,11 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
           {/* OASIS Mode Switch — only visible after Easter Egg unlocked */}
           {easterSave.codeFragmentsCollected >= 3 && (
             <div
-              className={`relative rounded-2xl p-[2px] overflow-hidden transition-all duration-300 select-none ${
+              className={`p-3 rounded-xl bg-slate-900/70 border ${
                 easterSave.oasisMode
-                  ? 'shadow-[0_0_35px_rgba(168,85,247,0.7)]'
-                  : 'menu-gradient-card group cursor-pointer hover:shadow-[0_0_35px_rgba(168,85,247,0.7)]'
-              }`}
+                  ? 'border-purple-500/50 shadow-md shadow-purple-500/20'
+                  : 'border-white/10'
+              } flex items-center justify-between gap-2.5 cursor-pointer select-none transition-colors hover:border-white/30`}
               onClick={() => {
                 const next = !easterSave.oasisMode;
                 const save = { ...easterSave, oasisMode: next };
@@ -559,31 +559,27 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                 onEasterSaveChange?.(save);
               }}
             >
-              <div
-                className={`relative flex items-center justify-center gap-3 py-1.5 sm:py-4 px-4 sm:px-6 rounded-xl transition-all ${
-                  easterSave.oasisMode
-                    ? 'bg-gradient-to-r from-[#a855f7] via-[#ec4899] to-[#06b6d4] shadow-[0_0_30px_rgba(168,85,247,0.8)]'
-                    : 'bg-gradient-to-r from-[#7c3aed] via-[#ec4899] to-[#06b6d4] shadow-[0_0_25px_rgba(236,72,153,0.5)] group-hover:shadow-[0_0_35px_rgba(168,85,247,0.7)] group-hover:scale-[1.01] active:scale-[0.99]'
-                }`}
-              >
-                <div className="flex items-center text-black">
-                  <Monitor className="w-6 h-6 sm:w-8 sm:h-8 fill-black stroke-black" />
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-5 h-5 rounded-full bg-purple-500/20 flex items-center justify-center shrink-0">
+                  <Monitor className="w-3 h-3 text-purple-400 shrink-0" />
                 </div>
-                <div className="flex flex-col items-center">
-                  <span className={`font-orbitron font-black text-lg sm:text-xl text-black tracking-widest leading-none uppercase ${easterSave.oasisMode ? 'text-purple-900' : ''}`}>
-                    MODO OASIS
-                  </span>
-                  <span className={`font-rajdhani font-bold text-xs sm:text-sm text-black/90 tracking-wider uppercase mt-0.5 ${easterSave.oasisMode ? 'text-purple-700' : ''}`}>
+                <div>
+                  <div className={`font-orbitron font-bold text-sm ${easterSave.oasisMode ? 'text-purple-300' : 'text-gray-400'}`}>
+                    Modo OASIS (Retrô 80s)
+                  </div>
+                  <div className={`text-xs sm:text-sm ${easterSave.oasisMode ? 'text-purple-200' : 'text-gray-500'}`}>
                     {easterSave.oasisMode ? 'LIGADO — Retrô 80s' : 'DESLIGADO'}
-                  </span>
+                  </div>
                 </div>
-                <div className={`flex items-center justify-center w-8 h-8 rounded-full transition-all ${
-                  easterSave.oasisMode
-                    ? 'bg-purple-500 shadow-md shadow-purple-500/40'
-                    : 'bg-white/10 border border-white/20'
-                }`}>
-                  {easterSave.oasisMode && <CheckCircle2 className="w-4 h-4 fill-black stroke-black" />}
-                </div>
+              </div>
+              <div className={`w-10 h-5 rounded-full px-1 transition-colors ${
+                easterSave.oasisMode
+                  ? 'bg-purple-500 shadow-sm'
+                  : 'bg-white/10'
+              }`}>
+                <div className={`w-4 h-4 rounded-full bg-white ${
+                  easterSave.oasisMode ? 'translate-x-5' : 'translate-x-1'
+                } transition-transform duration-200`} />
               </div>
             </div>
           )}

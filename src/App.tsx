@@ -308,50 +308,22 @@ export default function App() {
   }, [tracks, easterSave.oasisMode]);
 
   // Force selectedTrack to the OASIS track when OASIS mode activates; revert to a
-  // normal track when OASIS deactivates. Also starts/stops preview audio so the
-  // music actually changes instead of just the UI state.
-  // Depends only on easterSave.oasisMode + filteredTracks (not selectedTrack) to
-  // avoid re-running when setSelectedTrack() updates the UI state.
-  // Always switches audio when OASIS toggles — no gate on selectedTrack.id,
-  // because the user may have had a different track chosen before activating OASIS.
+  // normal track when OASIS deactivates. Only sets selectedTrack (does NOT play
+  // audio) — the user picks when to start the mission. Depends only on
+  // easterSave.oasisMode + filteredTracks to avoid re-running loops.
   useEffect(() => {
-    const switchPreview = async (next: TrackMetadata | null) => {
-      if (!next) return;
-      audio.pauseMenuMusic();
-      audio.stopTrack();
-      setPreviewingTrackId(null);
-      setLoadingTrackId(next.id);
-      try {
-        await audio.init();
-        const buffer = await audio.loadTrack(next);
-        audio.pauseMenuMusic(); // double ensure menu music is silent
-        audio.playTrack(buffer, 0);
-        setPreviewingTrackId(next.id);
-        setLoadingTrackId(null);
-      } catch {
-        audio.stopTrack();
-        setPreviewingTrackId(null);
-        setLoadingTrackId(null);
-        if (!audio.isMenuMusicMuted()) {
-          audio.resumeMenuMusic();
-        }
-      }
-    };
-
     if (easterSave.oasisMode) {
       const oasisTrack = filteredTracks.find((t) => t.oasisOnly);
-      if (oasisTrack) {
+      if (oasisTrack && selectedTrack?.id !== oasisTrack.id) {
         setSelectedTrack(oasisTrack);
-        void switchPreview(oasisTrack);
       }
     } else if (selectedTrack?.oasisOnly) {
       const next = filteredTracks[0] ?? null;
-      if (next) {
+      if (next && selectedTrack?.id !== next.id) {
         setSelectedTrack(next);
-        void switchPreview(next);
       }
     }
-  }, [easterSave.oasisMode, filteredTracks]);
+  }, [easterSave.oasisMode, filteredTracks, selectedTrack]);
 
   const touchesHeld = useRef<{ left: boolean; right: boolean }>({ left: false, right: false });
   const touchMapRef = useRef<Map<number, 'left' | 'right'>>(new Map());
