@@ -676,7 +676,7 @@ export class PhysicsWorld {
 
     // Sprite dimensions at scale 0.4 (see creatureSprites.ts CREATURE_CONFIG)
     const spriteDims: Record<'trex' | 'kong', { width: number; height: number }> = {
-      trex: { width: Math.round(585 * 0.4), height: Math.round(704 * 0.4) },
+      trex: { width: Math.round(1464 * 0.4), height: Math.round(235 * 0.4) },
       kong: { width: Math.round(281 * 0.4), height: Math.round(471 * 0.4) },
     };
 

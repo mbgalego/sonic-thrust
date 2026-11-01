@@ -25,8 +25,8 @@ export interface CreatureInstance {
 
 const CREATURE_CONFIG = {
   trex: {
-    frameWidth: 585,
-    frameHeight: 704,
+    frameWidth: 1464,
+    frameHeight: 235,
     frameCount: 10,
     fps: 8,
     baseX: 1200,
