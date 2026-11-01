@@ -419,8 +419,11 @@ export class GameRenderer {
     const visibleW = this.width / this.cameraZoom;
     const visibleH = this.height / this.cameraZoom;
 
+    // OASIS mode: retro synthwave colors — purple stars, magenta/cyan grid
+    const isOasis = world.ship.oasisMode;
+
     // Parallax stars
-    ctx.fillStyle = '#64748b';
+    ctx.fillStyle = isOasis ? '#7c3aed' : '#64748b';
     for (const star of this.backgroundStars) {
       const screenX = (star.x - this.cameraX * star.speed) % (visibleW * 2);
       const drawX = screenX < 0 ? screenX + visibleW * 2 : screenX;
@@ -437,7 +440,9 @@ export class GameRenderer {
     const startGridX = Math.floor(this.cameraX / gridSpacing) * gridSpacing;
     const endGridX = startGridX + visibleW + gridSpacing * 2;
 
-    ctx.strokeStyle = `rgba(14, 165, 233, ${0.06 + audioFreq.bass * 0.1})`;
+    ctx.strokeStyle = isOasis
+      ? `rgba(236, 72, 153, ${0.08 + audioFreq.bass * 0.12})` // magenta grid
+      : `rgba(14, 165, 233, ${0.06 + audioFreq.bass * 0.1})`;
     ctx.lineWidth = 1;
     ctx.beginPath();
     for (let gx = startGridX; gx <= endGridX; gx += gridSpacing) {
@@ -458,13 +463,20 @@ export class GameRenderer {
     const centerY = world.worldHeight / 2;
     const floorY = centerY + 180;
 
+    // OASIS mode: magenta/cyan/amber launchpad
+    const isOasis = world.ship.oasisMode;
+    const padBase = isOasis ? 'rgba(236, 72, 153, 0.10)' : 'rgba(6, 182, 212, 0.08)';
+    const padStripe = isOasis ? 'rgba(251, 191, 36, 0.55)' : 'rgba(234, 179, 8, 0.5)';
+    const padGuide = isOasis ? '#f472b6' : '#38bdf8';
+    const padSign = isOasis ? '#f472b6' : '#06b6d4';
+
     // Landing strip base
     ctx.save();
-    ctx.fillStyle = 'rgba(6, 182, 212, 0.08)';
+    ctx.fillStyle = padBase;
     ctx.fillRect(padStartX, floorY - 12, padEndX - padStartX, 24);
 
     // Hazard warning stripes
-    ctx.strokeStyle = 'rgba(234, 179, 8, 0.5)';
+    ctx.strokeStyle = padStripe;
     ctx.lineWidth = 3;
     for (let x = padStartX + 10; x < padEndX - 20; x += 32) {
       ctx.beginPath();
@@ -477,8 +489,8 @@ export class GameRenderer {
     const time = Date.now() * 0.005;
     for (let x = padStartX; x <= padEndX; x += 55) {
       const active = (Math.floor(time + x * 0.05) % 4) === 0;
-      ctx.fillStyle = active ? '#38bdf8' : 'rgba(56, 189, 248, 0.2)';
-      ctx.shadowColor = '#38bdf8';
+      ctx.fillStyle = active ? padGuide : `rgba(${isOasis ? '244, 114, 182' : '56, 189, 248'}, 0.2)`;
+      ctx.shadowColor = padGuide;
       ctx.shadowBlur = active ? 12 : 0;
       ctx.beginPath();
       ctx.arc(x, floorY - 14, 3, 0, Math.PI * 2);
@@ -488,8 +500,8 @@ export class GameRenderer {
 
     // Holographic Launch Sign
     ctx.font = 'bold 13px Orbitron';
-    ctx.fillStyle = '#06b6d4';
-    ctx.shadowColor = '#06b6d4';
+    ctx.fillStyle = padSign;
+    ctx.shadowColor = padSign;
     ctx.shadowBlur = 8;
     ctx.fillText('▼ PLATAFORMA DE DESCOLAGEM / LIFTOFF ZONE', padStartX + 20, floorY - 32);
     ctx.restore();
@@ -505,50 +517,131 @@ export class GameRenderer {
     ctx.save();
     ctx.translate(px, py);
 
-    // Dynamic audio-pulsed portal radius
+    // OASIS mode: Copper Key portal instead of the standard cyber portal
+    const isOasis = world.ship.oasisMode;
     const portalH = (terrain.floorY - terrain.ceilY) * 0.85;
     const pulse = 1.0 + audioFreq.bass * 0.35;
 
-    // Glowing vertical aura column
-    const grad = ctx.createRadialGradient(0, 0, 10, 0, 0, portalH * 0.5 * pulse);
-    grad.addColorStop(0, 'rgba(236, 72, 153, 0.45)');
-    grad.addColorStop(0.5, 'rgba(6, 182, 212, 0.25)');
-    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 120 * pulse, portalH * 0.5 * pulse, 0, 0, Math.PI * 2);
-    ctx.fill();
+    if (isOasis) {
+      // Copper color palette
+      const copper = '#b87333';
+      const copperLight = '#e8a45c';
 
-    // Concentric swirling cyber rings
-    const ringCount = 4;
-    for (let i = 0; i < ringCount; i++) {
-      const rot = (time * (i % 2 === 0 ? 1 : -1) * (1.2 + i * 0.5));
-      const ringRx = (24 + i * 22) * pulse;
-      const ringRy = (portalH * 0.2 + i * 35) * pulse;
-
-      ctx.save();
-      ctx.rotate(rot);
-      ctx.strokeStyle = i % 2 === 0 ? '#ec4899' : '#06b6d4';
-      ctx.shadowColor = ctx.strokeStyle;
-      ctx.shadowBlur = 15;
-      ctx.lineWidth = 2.5;
-
+      // Glowing aura behind the key
+      const grad = ctx.createRadialGradient(0, 0, 10, 0, 0, portalH * 0.5 * pulse);
+      grad.addColorStop(0, 'rgba(184, 115, 51, 0.5)');
+      grad.addColorStop(0.5, 'rgba(232, 164, 92, 0.25)');
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.ellipse(0, 0, ringRx, ringRy, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, 120 * pulse, portalH * 0.5 * pulse, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Key bow (head of the key) - circular top part
+      const bowR = 34 * pulse;
+      ctx.save();
+      ctx.translate(0, -portalH * 0.15);
+      ctx.beginPath();
+      ctx.arc(0, 0, bowR, 0, Math.PI * 2);
+      ctx.fillStyle = copper;
+      ctx.shadowColor = copperLight;
+      ctx.shadowBlur = 12;
+      ctx.fill();
+      ctx.strokeStyle = copperLight;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      // Inner ring of the bow
+      ctx.beginPath();
+      ctx.arc(0, 0, bowR * 0.55, 0, Math.PI * 2);
+      ctx.strokeStyle = copperLight;
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 0;
       ctx.stroke();
       ctx.restore();
-    }
 
-    // Portal Meta text lockup
-    ctx.shadowBlur = 10;
-    ctx.shadowColor = '#ec4899';
-    ctx.font = 'bold 15px Orbitron';
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'center';
-    ctx.fillText('PORTAL DE META', 0, -portalH * 0.45);
-    ctx.font = '11px Rajdhani';
-    ctx.fillStyle = '#38bdf8';
-    ctx.fillText('FINAL DA MÚSICA', 0, -portalH * 0.45 + 18);
+      // Key shaft (stem) - vertical line down from bow
+      ctx.save();
+      ctx.translate(0, portalH * 0.15);
+      ctx.beginPath();
+      ctx.moveTo(0, -bowR);
+      ctx.lineTo(0, portalH * 0.35);
+      ctx.strokeStyle = copper;
+      ctx.lineWidth = 6;
+      ctx.shadowColor = copperLight;
+      ctx.shadowBlur = 8;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Key bit (teeth) - rectangular protrusions at the bottom of the shaft
+      const bitY = portalH * 0.35;
+      const bitW = 22 * pulse;
+      const bitH = 14 * pulse;
+      ctx.fillStyle = copper;
+      ctx.shadowColor = copperLight;
+      ctx.shadowBlur = 10;
+      // Main bit rectangle
+      ctx.fillRect(-bitW / 2, bitY - bitH / 2, bitW, bitH);
+      // Secondary smaller bit
+      ctx.fillRect(-bitW * 0.5, bitY - bitH * 0.5, bitW * 0.55, bitH * 0.5);
+      ctx.shadowBlur = 0;
+      ctx.restore();
+
+      // Key text
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = copper;
+      ctx.font = 'bold 15px Orbitron';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText('CHAVE DE COBRE', 0, -portalH * 0.55);
+      ctx.font = '11px Rajdhani';
+      ctx.fillStyle = '#e8a45c';
+      ctx.fillText('CHAVE DO OASIS', 0, -portalH * 0.55 + 18);
+    } else {
+      // Standard cyber portal (original)
+      // Dynamic audio-pulsed portal radius
+      const pulseStd = 1.0 + audioFreq.bass * 0.35;
+
+      // Glowing vertical aura column
+      const grad = ctx.createRadialGradient(0, 0, 10, 0, 0, portalH * 0.5 * pulseStd);
+      grad.addColorStop(0, 'rgba(236, 72, 153, 0.45)');
+      grad.addColorStop(0.5, 'rgba(6, 182, 212, 0.25)');
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 120 * pulseStd, portalH * 0.5 * pulseStd, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Concentric swirling cyber rings
+      const ringCount = 4;
+      for (let i = 0; i < ringCount; i++) {
+        const rot = (time * (i % 2 === 0 ? 1 : -1) * (1.2 + i * 0.5));
+        const ringRx = (24 + i * 22) * pulseStd;
+        const ringRy = (portalH * 0.2 + i * 35) * pulseStd;
+
+        ctx.save();
+        ctx.rotate(rot);
+        ctx.strokeStyle = i % 2 === 0 ? '#ec4899' : '#06b6d4';
+        ctx.shadowColor = ctx.strokeStyle;
+        ctx.shadowBlur = 15;
+        ctx.lineWidth = 2.5;
+
+        ctx.beginPath();
+        ctx.ellipse(0, 0, ringRx, ringRy, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Portal Meta text lockup
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = '#ec4899';
+      ctx.font = 'bold 15px Orbitron';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText('PORTAL DE META', 0, -portalH * 0.45);
+      ctx.font = '11px Rajdhani';
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText('FINAL DA MÚSICA', 0, -portalH * 0.45 + 18);
+    }
 
     ctx.restore();
   }
@@ -557,6 +650,8 @@ export class GameRenderer {
     const ctx = this.ctx;
     const points = world.terrainPoints;
     if (points.length < 2) return;
+
+    const isOasis = world.ship.oasisMode;
 
     // Render visible segments with lookahead padding (scaled by dynamic camera zoom)
     const visibleW = this.width / this.cameraZoom;
@@ -577,9 +672,12 @@ export class GameRenderer {
     // Multi-pass neon vector glow
     // Pass 1: Semi-transparent solid fill above ceiling & below floor for physical boundary sense
     ctx.save();
-    
+
+    const ceilFill = isOasis ? 'rgba(139, 92, 246, 0.85)' : 'rgba(15, 23, 42, 0.85)'; // violet/magenta dark
+    const floorFill = isOasis ? 'rgba(6, 182, 212, 0.85)' : 'rgba(15, 23, 42, 0.85)';   // cyan dark
+
     // Ceiling fill
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    ctx.fillStyle = ceilFill;
     ctx.beginPath();
     ctx.moveTo(points[firstVisibleIdx].x, 0);
     for (let i = firstVisibleIdx; i <= lastVisibleIdx; i++) {
@@ -590,6 +688,7 @@ export class GameRenderer {
     ctx.fill();
 
     // Floor fill
+    ctx.fillStyle = floorFill;
     ctx.beginPath();
     ctx.moveTo(points[firstVisibleIdx].x, world.worldHeight);
     for (let i = firstVisibleIdx; i <= lastVisibleIdx; i++) {
@@ -600,8 +699,8 @@ export class GameRenderer {
     ctx.fill();
 
     // Pass 2: Ceiling Neon Vector Line
-    const beatColor = audioFreq.isBeat ? '#ffffff' : '#06b6d4';
-    ctx.shadowColor = audioFreq.isBeat ? '#ffffff' : '#06b6d4';
+    const beatColor = audioFreq.isBeat ? '#ffffff' : isOasis ? '#f472b6' : '#06b6d4';
+    ctx.shadowColor = audioFreq.isBeat ? '#ffffff' : isOasis ? '#f472b6' : '#06b6d4';
     const rawGlowCeil = (audioFreq.isBeat ? 20 : 6) + (audioFreq.macroEnergy ?? audioFreq.energy) * 12 + audioFreq.bass * 8 + this.dropFlash * 18;
     ctx.shadowBlur = Math.min(16, rawGlowCeil * 0.45);
     ctx.strokeStyle = beatColor;
@@ -619,8 +718,8 @@ export class GameRenderer {
     ctx.stroke();
 
     // Pass 3: Floor Neon Vector Line
-    const floorColor = audioFreq.isBeat ? '#ffffff' : '#a855f7';
-    ctx.shadowColor = audioFreq.isBeat ? '#ffffff' : '#a855f7';
+    const floorColor = audioFreq.isBeat ? '#ffffff' : isOasis ? '#22d3ee' : '#a855f7';
+    ctx.shadowColor = audioFreq.isBeat ? '#ffffff' : isOasis ? '#22d3ee' : '#a855f7';
     const rawGlowFloor = (audioFreq.isBeat ? 20 : 6) + (audioFreq.macroEnergy ?? audioFreq.energy) * 12 + audioFreq.bass * 8 + this.dropFlash * 18;
     ctx.shadowBlur = Math.min(16, rawGlowFloor * 0.45);
     ctx.strokeStyle = floorColor;
@@ -657,12 +756,17 @@ export class GameRenderer {
     // 1. All 5 bands have distinct baseline spacing into bedrock so they NEVER collapse into one line.
     // 2. Each band's wave amplitude, line thickness, and glow jump dynamically with that band's exact energy.
     // 3. Independent of audible volume/mute: the pre-fader tap ensures the waves always dance at 100% full fidelity!
+    const oasisCeil = '#f472b6';   // magenta pink
+    const oasisFloor = '#22d3ee';  // cyan
+    const oasisCeil2 = '#c084fc';  // violet
+    const oasisFloor2 = '#06b6d4'; // cyan darker
+
     const eqBands = [
       {
         name: 'SUB_BASS',
         energy: 0, // computed from raw FFT bins
-        ceilColor: '#00f0ff',
-        floorColor: '#ef4444',
+        ceilColor: isOasis ? oasisCeil2 : '#00f0ff',
+        floorColor: isOasis ? oasisFloor : '#ef4444',
         spatialFreq: 0.0032,
         speedMult: 0.85,
         baseDist: 14,
@@ -674,8 +778,8 @@ export class GameRenderer {
       {
         name: 'BASS',
         energy: 0,
-        ceilColor: '#38bdf8',
-        floorColor: '#f97316',
+        ceilColor: isOasis ? oasisCeil : '#38bdf8',
+        floorColor: isOasis ? oasisFloor2 : '#f97316',
         spatialFreq: 0.0062,
         speedMult: 1.05,
         baseDist: 28,
@@ -686,8 +790,8 @@ export class GameRenderer {
       {
         name: 'LOW_MIDS',
         energy: 0,
-        ceilColor: '#818cf8',
-        floorColor: '#eab308',
+        ceilColor: isOasis ? oasisCeil2 : '#818cf8',
+        floorColor: isOasis ? oasisFloor : '#eab308',
         spatialFreq: 0.0105,
         speedMult: 1.25,
         baseDist: 42,
@@ -698,8 +802,8 @@ export class GameRenderer {
       {
         name: 'HIGH_MIDS',
         energy: 0,
-        ceilColor: '#c084fc',
-        floorColor: '#10b981',
+        ceilColor: isOasis ? oasisCeil : '#c084fc',
+        floorColor: isOasis ? oasisFloor2 : '#10b981',
         spatialFreq: 0.0175,
         speedMult: 1.50,
         baseDist: 56,
@@ -710,8 +814,8 @@ export class GameRenderer {
       {
         name: 'TREBLE',
         energy: 0,
-        ceilColor: '#f43f5e',
-        floorColor: '#06b6d4',
+        ceilColor: isOasis ? oasisCeil2 : '#f43f5e',
+        floorColor: isOasis ? oasisFloor : '#06b6d4',
         spatialFreq: 0.0280,
         speedMult: 1.85,
         baseDist: 70,

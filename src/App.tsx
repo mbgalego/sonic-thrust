@@ -618,6 +618,25 @@ export default function App() {
         audio.setLoopTrack(false);
         audio.playVictorySfx();
         
+        // OASIS victory message — Copper Key Easter Egg
+        if (easterSave.oasisMode) {
+          if (announcementTimerRef.current) {
+            clearTimeout(announcementTimerRef.current);
+          }
+          setActiveAnnouncement({
+            title: 'Nice Race padwan, you were the first to finish!',
+            subtitle: 'Chave de Copper do OASIS obtida',
+            type: 'SHIELD',
+            color: 'text-amber-400',
+            borderColor: 'border-amber-500',
+            glowColor: 'rgba(184, 115, 51, 0.95)',
+            id: Date.now()
+          });
+          announcementTimerRef.current = setTimeout(() => {
+            setActiveAnnouncement(null);
+          }, 5000);
+        }
+
         // Check for track unlocks based on difficulty completed (only PRO and EXTREME unlock tracks)
         if (difficulty === 'PRO' || difficulty === 'EXTREME') {
           const newlyUnlocked = checkAndUnlockTracks(difficulty, tracks);
