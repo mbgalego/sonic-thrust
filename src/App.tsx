@@ -624,7 +624,7 @@ export default function App() {
             clearTimeout(announcementTimerRef.current);
           }
           setActiveAnnouncement({
-            title: 'Nice Race padwan, you were the first to finish!',
+            title: 'Nice racing padwan, you were the first to finish!',
             subtitle: 'Chave de Copper do OASIS obtida',
             type: 'SHIELD',
             color: 'text-amber-400',
