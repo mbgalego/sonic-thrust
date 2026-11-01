@@ -308,15 +308,44 @@ export default function App() {
   }, [tracks, easterSave.oasisMode]);
 
   // Force selectedTrack to the OASIS track when OASIS mode activates; revert to a
-  // normal track when OASIS deactivates.
+  // normal track when OASIS deactivates. Also starts/stops preview audio so the
+  // music actually changes instead of just the UI state.
   useEffect(() => {
+    const switchPreview = async (next: TrackMetadata | null) => {
+      if (!next) return;
+      audio.pauseMenuMusic();
+      audio.stopTrack();
+      setPreviewingTrackId(null);
+      setLoadingTrackId(next.id);
+      try {
+        await audio.init();
+        const buffer = await audio.loadTrack(next);
+        audio.pauseMenuMusic(); // double ensure menu music is silent
+        audio.playTrack(buffer, 0);
+        setPreviewingTrackId(next.id);
+        setLoadingTrackId(null);
+      } catch {
+        audio.stopTrack();
+        setPreviewingTrackId(null);
+        setLoadingTrackId(null);
+        if (!audio.isMenuMusicMuted()) {
+          audio.resumeMenuMusic();
+        }
+      }
+    };
+
     if (easterSave.oasisMode) {
       const oasisTrack = filteredTracks.find((t) => t.oasisOnly);
       if (oasisTrack && selectedTrack?.id !== oasisTrack.id) {
         setSelectedTrack(oasisTrack);
+        void switchPreview(oasisTrack);
       }
     } else if (selectedTrack?.oasisOnly) {
-      setSelectedTrack(filteredTracks[0] ?? null);
+      const next = filteredTracks[0] ?? null;
+      if (next) {
+        setSelectedTrack(next);
+        void switchPreview(next);
+      }
     }
   }, [easterSave.oasisMode, filteredTracks, selectedTrack]);
 
