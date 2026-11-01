@@ -27,7 +27,7 @@ const CREATURE_CONFIG = {
   trex: {
     frameWidth: 1464,
     frameHeight: 235,
-    frameCount: 10,
+    frameCount: 12,
     fps: 8,
     baseX: 1200,
     baseY: 0,
