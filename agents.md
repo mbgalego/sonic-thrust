@@ -111,6 +111,11 @@
   3. *Code fragments disappear after unlock*: `spawnCodeFragments()` returns early when `codeFragmentsCollected >= 3` — cubes never reappear once OASIS is discovered.
   4. *Harder fragment positions*: cubes now spawn at 60%, 80%, 95% of `totalTrackLength` (based on music duration) on the negative X side, instead of fixed -600/-1200/-1800.
   5. *Verified*: lint ✅ build ✅ (v1.39.3)
+- **v1.39.4 (OASIS track auto-switch + per-run fragment reset + OASIS as menu switch)**:
+  1. *OASIS track auto-switch on toggle*: `useEffect` in App.tsx now always switches audio when OASIS mode toggles (removed `selectedTrack.id !== oasisTrack.id` gate that prevented switching). Works without page reload.
+  2. *Per-run fragment counter*: added `fragmentsCollectedThisRun` to `ShipState`, resets to 0 each game. Partial progress (1-2 fragments) no longer persists — must collect all 3 in a single run to unlock OASIS + DeLorean. `codeFragmentsCollected` in save only set to 3 on full unlock.
+  3. *OASIS as menu switch*: moved OASIS toggle from settings panel to main menu (prominent card after INICIAR), visible only after Easter egg unlocked (`codeFragmentsCollected >= 3`). DeLorean skin toggle stays in settings. Fragment counter "3/3" removed from settings.
+  4. *Verified*: lint ✅ build ✅ (v1.39.4)
 - **v1.38.0 (Info panel: power-up names no longer overflow)**:
   1. *Bug*: `INVULNERABILIDADE` transbordava 44px para além da caixa do card e `SINGULARIDADE` 5px — reproduzido objetivamente em 640–900px (playwright).
   2. *Fix*: renomeado para `INVULNERÁVEL` (idêntico ao mostrado em jogo na HUD: `INVULNERÁVEL: 3.5s`); todos os 8 nomes dos power-ups ganharam guardas `min-w-0 break-words` para nunca rebentar a caixa do card, mesmo em colunas estreitas do menu; gráficos dos power-ups ajustados 48→40px.

@@ -115,6 +115,7 @@ export interface ShipState {
   timePenaltyNotifyTimer: number; // brief notification after taking damage (-20s)
   // Easter Egg "Left Tunnel" (v1.39.0)
   codeFragmentsCollected: number;   // 0..3 collected code fragments in the left tunnel
+  fragmentsCollectedThisRun: number; // 0..3 collected in THIS run only (resets each game)
   oasisMode: boolean;               // retro 80s OASIS visual mode (scanlines, magenta/cyan)
   deloreanSkin: boolean;            // DeLorean flying car skin
 }
@@ -243,6 +244,7 @@ export class PhysicsWorld {
       timePenaltyNotifyTimer: 0,
       // Easter Egg Left Tunnel (v1.39.0)
       codeFragmentsCollected: 0,
+      fragmentsCollectedThisRun: 0,
       oasisMode: false,
       deloreanSkin: false
     };
@@ -264,9 +266,11 @@ export class PhysicsWorld {
     this.spawnEntities();
 
     // Easter Egg Left Tunnel (v1.39.0): spawn 3 code fragments in the hidden left tunnel (x < 0)
-    // and restore any previously collected progress from localStorage.
+    // The persisted save only matters for the "already unlocked" check (>= 3). Per-run
+    // progress always starts at 0 — you must collect all 3 in a single attempt.
     const saved = getEasterEggSave();
-    this.ship.codeFragmentsCollected = saved.codeFragmentsCollected;
+    this.ship.codeFragmentsCollected = 0;
+    this.ship.fragmentsCollectedThisRun = 0;
     this.ship.oasisMode = saved.oasisMode;
     this.ship.deloreanSkin = saved.deloreanSkin;
     this.spawnCodeFragments();
@@ -810,6 +814,8 @@ export class PhysicsWorld {
     // Fragments live at x < 0 (invisible left tunnel). Proximity collects them.
     // Idempotent: a fragment only registers once (its id is banked in the save),
     // so a completed egg never re-fires announcements or re-forces rewards.
+    // Per-run counter: partial progress does NOT carry over between games — you
+    // must collect all 3 in a single run to unlock OASIS + DeLorean.
     const shipRadius = 16;
     for (const frag of this.codeFragments) {
       if (frag.collected) continue;
@@ -817,30 +823,31 @@ export class PhysicsWorld {
       const dy = this.ship.y - frag.y;
       if (Math.hypot(dx, dy) < shipRadius + frag.radius) {
         frag.collected = true;
+        this.ship.fragmentsCollectedThisRun = Math.min(3, this.ship.fragmentsCollectedThisRun + 1);
+        const totalThisRun = this.ship.fragmentsCollectedThisRun;
 
-        // Bank the new id and recompute the total (never regresses, never mocks legacy counter)
-        const saved = getEasterEggSave();
-        const collectedIds = [...new Set([...saved.collectedIds, frag.id])];
-        const newTotal = Math.min(3, Math.max(saved.codeFragmentsCollected, collectedIds.length));
-        this.ship.codeFragmentsCollected = newTotal;
+        // Only persist to localStorage when all 3 are collected in one run (unlock).
+        // Partial progress is intentionally NOT saved — next game starts at 0.
+        if (totalThisRun >= 3) {
+          const saved = getEasterEggSave();
+          const allIds = this.codeFragments.map(f => f.id);
+          const collectedIdsRun = [...new Set([...saved.collectedIds, ...allIds])];
 
-        // Persist progress immediately, preserving the player's current toggles
-        setEasterEggSave({
-          codeFragmentsCollected: newTotal,
-          collectedIds,
-          oasisMode: this.ship.oasisMode,
-          deloreanSkin: this.ship.deloreanSkin
-        });
+          setEasterEggSave({
+            codeFragmentsCollected: 3,
+            collectedIds: collectedIdsRun,
+            oasisMode: this.ship.oasisMode,
+            deloreanSkin: this.ship.deloreanSkin
+          });
 
-        // If all 3 collected -> unlock both Easter Egg rewards
-        if (newTotal >= 3) {
-          const rewards = unlockEasterEggRewards(newTotal, collectedIds);
+          // Unlock both Easter Egg rewards
+          const rewards = unlockEasterEggRewards(3, collectedIdsRun);
           this.ship.oasisMode = rewards.oasisMode;
           this.ship.deloreanSkin = rewards.deloreanSkin;
         }
 
         if (this.onCodeFragmentCollected) {
-          this.onCodeFragmentCollected(frag.id, newTotal);
+          this.onCodeFragmentCollected(frag.id, totalThisRun);
         }
       }
     }

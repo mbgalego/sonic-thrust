@@ -543,6 +543,51 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
             </div>
           </div>
 
+          {/* OASIS Mode Switch — only visible after Easter Egg unlocked */}
+          {easterSave.codeFragmentsCollected >= 3 && (
+            <div
+              className={`relative rounded-2xl p-[2px] overflow-hidden transition-all duration-300 select-none ${
+                easterSave.oasisMode
+                  ? 'shadow-[0_0_35px_rgba(168,85,247,0.7)]'
+                  : 'menu-gradient-card group cursor-pointer hover:shadow-[0_0_35px_rgba(168,85,247,0.7)]'
+              }`}
+              onClick={() => {
+                const next = !easterSave.oasisMode;
+                const save = { ...easterSave, oasisMode: next };
+                setEasterSave(save);
+                setEasterEggSave(save);
+                onEasterSaveChange?.(save);
+              }}
+            >
+              <div
+                className={`relative flex items-center justify-center gap-3 py-1.5 sm:py-4 px-4 sm:px-6 rounded-xl transition-all ${
+                  easterSave.oasisMode
+                    ? 'bg-gradient-to-r from-[#a855f7] via-[#ec4899] to-[#06b6d4] shadow-[0_0_30px_rgba(168,85,247,0.8)]'
+                    : 'bg-gradient-to-r from-[#7c3aed] via-[#ec4899] to-[#06b6d4] shadow-[0_0_25px_rgba(236,72,153,0.5)] group-hover:shadow-[0_0_35px_rgba(168,85,247,0.7)] group-hover:scale-[1.01] active:scale-[0.99]'
+                }`}
+              >
+                <div className="flex items-center text-black">
+                  <Monitor className="w-6 h-6 sm:w-8 sm:h-8 fill-black stroke-black" />
+                </div>
+                <div className="flex flex-col items-center">
+                  <span className={`font-orbitron font-black text-lg sm:text-xl text-black tracking-widest leading-none uppercase ${easterSave.oasisMode ? 'text-purple-900' : ''}`}>
+                    MODO OASIS
+                  </span>
+                  <span className={`font-rajdhani font-bold text-xs sm:text-sm text-black/90 tracking-wider uppercase mt-0.5 ${easterSave.oasisMode ? 'text-purple-700' : ''}`}>
+                    {easterSave.oasisMode ? 'LIGADO — Retrô 80s' : 'DESLIGADO'}
+                  </span>
+                </div>
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full transition-all ${
+                  easterSave.oasisMode
+                    ? 'bg-purple-500 shadow-md shadow-purple-500/40'
+                    : 'bg-white/10 border border-white/20'
+                }`}>
+                  {easterSave.oasisMode && <CheckCircle2 className="w-4 h-4 fill-black stroke-black" />}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Section 2: SELECIONAR FAIXA with Inline Scrollable Dropdown */}
           <div className="flex flex-col gap-1">
             <div>
@@ -1039,60 +1084,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                         no counters. The left tunnel must be discovered by the player. */}
                     {easterSave.codeFragmentsCollected >= 3 && (
                       <>
-                        <div className="p-3 rounded-xl bg-slate-900/70 border border-amber-500/30 flex items-center justify-between gap-2.5">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
-                              <CheckCircle2 className="w-3 h-3 text-amber-400 shrink-0" />
-                            </div>
-                            <div>
-                              <div className="font-orbitron font-bold text-amber-300 text-sm">
-                                Fragmentos de Código — COMPLETO
-                              </div>
-                              <div className="text-xs sm:text-sm text-amber-200 leading-snug mt-0.5">
-                                OASIS + DeLorean desbloqueados
-                              </div>
-                            </div>
-                          </div>
-                          <div className="font-mono font-bold text-amber-400 text-sm tabular-nums">
-                            3/3
-                          </div>
-                        </div>
-
-                        {/* OASIS Mode Toggle */}
-                        <div className="p-3 rounded-xl bg-slate-900/70 border border-purple-500/30 flex items-center justify-between gap-2.5">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-5 h-5 rounded-full bg-purple-500/20 flex items-center justify-center shrink-0">
-                              <Monitor className="w-3 h-3 text-purple-400 shrink-0" />
-                            </div>
-                            <div>
-                              <div className="font-orbitron font-bold text-purple-300 text-sm">
-                                Modo OASIS (Retrô 80s)
-                              </div>
-                              <div className="text-xs sm:text-sm text-purple-200 leading-snug mt-0.5">
-                                Scanlines + paleta magenta/ciano no ecrã
-                              </div>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const next = !easterSave.oasisMode;
-                              const save = { ...easterSave, oasisMode: next };
-                              setEasterSave(save);
-                              setEasterEggSave(save);
-                              onEasterSaveChange?.(save);
-                            }}
-                            className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-mono font-bold transition cursor-pointer shrink-0 ${
-                              easterSave.oasisMode
-                                ? 'bg-purple-500 text-white shadow-md shadow-purple-500/30'
-                                : 'bg-white/10 text-gray-300 hover:bg-white/20'
-                            }`}
-                          >
-                            {easterSave.oasisMode ? 'LIGADO' : 'DESLIGADO'}
-                          </button>
-                        </div>
-
-                        {/* DeLorean Skin Toggle */}
+                        {/* DeLorean Skin Toggle (stays in settings) */}
                         <div className="p-3 rounded-xl bg-slate-900/70 border border-amber-500/30 flex items-center justify-between gap-2.5">
                           <div className="flex items-center gap-3 min-w-0">
                             <div className="w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
@@ -1440,7 +1432,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
       {/* Footer: Version and Last Update Date on left, Author on right */}
       <footer className="relative z-10 flex items-center justify-between text-xs sm:text-sm font-mono text-cyan-400/90 pt-1.5 pb-1 sm:pt-3 sm:pb-2 border-t border-white/10 max-w-6xl w-full mx-auto px-2">
-        <span className="tracking-wide">v1.39.3 · 01/11/2026</span>
+        <span className="tracking-wide">v1.39.4 · 01/11/2026</span>
         <span className="tracking-wide font-semibold text-gray-200">Por Miguel Galego</span>
       </footer>
 

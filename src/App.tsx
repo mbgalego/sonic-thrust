@@ -312,6 +312,8 @@ export default function App() {
   // music actually changes instead of just the UI state.
   // Depends only on easterSave.oasisMode + filteredTracks (not selectedTrack) to
   // avoid re-running when setSelectedTrack() updates the UI state.
+  // Always switches audio when OASIS toggles — no gate on selectedTrack.id,
+  // because the user may have had a different track chosen before activating OASIS.
   useEffect(() => {
     const switchPreview = async (next: TrackMetadata | null) => {
       if (!next) return;
@@ -338,7 +340,7 @@ export default function App() {
 
     if (easterSave.oasisMode) {
       const oasisTrack = filteredTracks.find((t) => t.oasisOnly);
-      if (oasisTrack && selectedTrack?.id !== oasisTrack.id) {
+      if (oasisTrack) {
         setSelectedTrack(oasisTrack);
         void switchPreview(oasisTrack);
       }
