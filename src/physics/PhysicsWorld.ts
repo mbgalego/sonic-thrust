@@ -617,18 +617,26 @@ export class PhysicsWorld {
    */
   private spawnCodeFragments(): void {
     this.codeFragments = [];
+
+    // If OASIS is already unlocked (all 3 fragments collected), code fragments
+    // never reappear — the Easter Egg has been discovered.
+    const saved = getEasterEggSave();
+    if (saved.codeFragmentsCollected >= 3) return;
+
     const fragmentYs = [
       this.worldHeight / 2 - 120, // upper lane
       this.worldHeight / 2,       // center lane
       this.worldHeight / 2 + 120  // lower lane
     ];
-    const fragmentXs = [-600, -1200, -1800]; // increasingly far left
+    // Positions based on track length (music duration), not fixed pixels:
+    // 60%, 80%, 95% into the track — far enough to be a real challenge.
+    const fragmentXs = [
+      -this.totalTrackLength * 0.60,
+      -this.totalTrackLength * 0.80,
+      -this.totalTrackLength * 0.95
+    ];
     const fragmentIds = ['fragment-a', 'fragment-b', 'fragment-c'];
 
-    // Persisted fragment progress is the single source of truth for what is
-    // already banked: fully unlocked ⇒ everything collected; otherwise each
-    // fragment ids recorded in the save stays collected across missions.
-    const saved = getEasterEggSave();
     const fullyBanked = saved.codeFragmentsCollected >= 3;
 
     for (let i = 0; i < 3; i++) {

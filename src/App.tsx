@@ -3,7 +3,7 @@
  * Main Application & Game Loop Orchestrator
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { audio } from './audio/AudioEngine';
 import { LocalTrackLoader, LocalUploadResult } from './audio/LocalTrackLoader';
 import { PhysicsWorld } from './physics/PhysicsWorld';
@@ -164,6 +164,18 @@ const DEFAULT_TRACKS: TrackMetadata[] = [
     "duration": 84,
     "description": "Ondas subsónicas profundas com fortes oscilações no teto e chão.",
     "isProcedural": true
+  },
+  {
+    "id": "welcome-to-oasis",
+    "title": "Welcome to the OASIS",
+    "artist": "Sonic Thrust Labs",
+    "filename": "Welcome to the OASIS.mp3",
+    "estimatedBpm": 128,
+    "duration": 240,
+    "description": "Faixa exclusiva do Modo OASIS — synthwave retro com batida constante e atmosfera de túnel oculto. Só disponível quando o Modo OASIS está ativo.",
+    "isProcedural": false,
+    "secret": true,
+    "oasisOnly": true
   }
 ];
 
@@ -284,6 +296,29 @@ export default function App() {
   // chrome across menu, HUD and PhysicsWorld. Updated by menu toggles and by
   // the in-game unlock callback so the UI is never a stale mount snapshot.
   const [easterSave, setEasterSaveState] = useState<EasterEggSave>(getEasterEggSave);
+
+  // OASIS-only track filter: when OASIS mode is active, only "Welcome to the OASIS"
+  // is available (all other tracks are grayed out/disabled). When OASIS is off,
+  // the OASIS track disappears from the catalog entirely.
+  const filteredTracks = useMemo(() => {
+    if (easterSave.oasisMode) {
+      return tracks.filter((t) => t.oasisOnly);
+    }
+    return tracks.filter((t) => !t.oasisOnly);
+  }, [tracks, easterSave.oasisMode]);
+
+  // Force selectedTrack to the OASIS track when OASIS mode activates; revert to a
+  // normal track when OASIS deactivates.
+  useEffect(() => {
+    if (easterSave.oasisMode) {
+      const oasisTrack = filteredTracks.find((t) => t.oasisOnly);
+      if (oasisTrack && selectedTrack?.id !== oasisTrack.id) {
+        setSelectedTrack(oasisTrack);
+      }
+    } else if (selectedTrack?.oasisOnly) {
+      setSelectedTrack(filteredTracks[0] ?? null);
+    }
+  }, [easterSave.oasisMode, filteredTracks, selectedTrack]);
 
   const touchesHeld = useRef<{ left: boolean; right: boolean }>({ left: false, right: false });
   const touchMapRef = useRef<Map<number, 'left' | 'right'>>(new Map());
@@ -993,7 +1028,7 @@ export default function App() {
       {/* Title & Setup Menu */}
       {gameState === 'MENU' && (
         <TitleMenu
-          tracks={tracks}
+          tracks={filteredTracks}
           selectedTrack={selectedTrack}
           onSelectTrack={(t) => setSelectedTrack(t)}
           difficulty={difficulty}

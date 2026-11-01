@@ -36,6 +36,7 @@ export interface TrackMetadata {
     description: string;
   };
   secret?: boolean; // Hidden from list until unlocked
+  oasisOnly?: boolean; // Only available in OASIS mode — replaces the whole catalog
 }
 
 export type PowerUpType = 

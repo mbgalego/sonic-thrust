@@ -105,6 +105,12 @@
   3. *Frase de vitória estendida*: "Nice racing padwan, you were the first to finish!" fica visível 6 segundos antes de ir para o menu de fim de jogo.
   4. *EndGameModal*: quando OASIS está ativo e o jogador vence, mostra a Chave de Cobre em vez da taça.
   5. *Verified*: lint ✅ build ✅ (v1.39.2)
+- **v1.39.3 (OASIS exclusive track + harder code fragments)**:
+  1. *Exclusive OASIS track*: "Welcome to the OASIS" MP3 added to DEFAULT_TRACKS with `oasisOnly: true` and `secret: true`. When OASIS mode is active, the track catalog shows ONLY this track (all others grayed out/disabled). When OASIS is off, the track disappears from the catalog entirely. Forced track switch when toggling OASIS on/off.
+  2. *DeLorean skin independent*: can be used with any track, not affected by OASIS track lock.
+  3. *Code fragments disappear after unlock*: `spawnCodeFragments()` returns early when `codeFragmentsCollected >= 3` — cubes never reappear once OASIS is discovered.
+  4. *Harder fragment positions*: cubes now spawn at 60%, 80%, 95% of `totalTrackLength` (based on music duration) on the negative X side, instead of fixed -600/-1200/-1800.
+  5. *Verified*: lint ✅ build ✅ (v1.39.3)
 - **v1.38.0 (Info panel: power-up names no longer overflow)**:
   1. *Bug*: `INVULNERABILIDADE` transbordava 44px para além da caixa do card e `SINGULARIDADE` 5px — reproduzido objetivamente em 640–900px (playwright).
   2. *Fix*: renomeado para `INVULNERÁVEL` (idêntico ao mostrado em jogo na HUD: `INVULNERÁVEL: 3.5s`); todos os 8 nomes dos power-ups ganharam guardas `min-w-0 break-words` para nunca rebentar a caixa do card, mesmo em colunas estreitas do menu; gráficos dos power-ups ajustados 48→40px.
