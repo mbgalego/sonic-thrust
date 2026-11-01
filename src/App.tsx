@@ -310,6 +310,8 @@ export default function App() {
   // Force selectedTrack to the OASIS track when OASIS mode activates; revert to a
   // normal track when OASIS deactivates. Also starts/stops preview audio so the
   // music actually changes instead of just the UI state.
+  // Depends only on easterSave.oasisMode + filteredTracks (not selectedTrack) to
+  // avoid re-running when setSelectedTrack() updates the UI state.
   useEffect(() => {
     const switchPreview = async (next: TrackMetadata | null) => {
       if (!next) return;
@@ -347,7 +349,7 @@ export default function App() {
         void switchPreview(next);
       }
     }
-  }, [easterSave.oasisMode, filteredTracks, selectedTrack]);
+  }, [easterSave.oasisMode, filteredTracks]);
 
   const touchesHeld = useRef<{ left: boolean; right: boolean }>({ left: false, right: false });
   const touchMapRef = useRef<Map<number, 'left' | 'right'>>(new Map());
