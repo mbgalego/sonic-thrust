@@ -153,5 +153,17 @@
       "description": "Completa qualquer faixa no modo PRO para desbloquear"
     },
     "secret": true
+  },
+  {
+    "id": "welcome-to-oasis",
+    "title": "Welcome to the OASIS",
+    "artist": "Sonic Thrust Labs",
+    "filename": "Welcome to the OASIS.mp3",
+    "estimatedBpm": 128,
+    "duration": 240,
+    "description": "Faixa exclusiva do Modo OASIS — synthwave retro com batida constante e atmosfera de túnel oculto. Só disponível quando o Modo OASIS está ativo.",
+    "isProcedural": false,
+    "secret": true,
+    "oasisOnly": true
   }
 ]
