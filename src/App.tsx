@@ -280,9 +280,10 @@ export default function App() {
   const previewRequestRef = useRef(0);
   const [outOfTime, setOutOfTime] = useState(false);
   const [isStartingMission, setIsStartingMission] = useState(false);
-  // Easter Egg persistent save — read once at mount; single source of truth
-  // for OASIS / DeLorean toggles across menu, HUD and PhysicsWorld.
-  const [easterSave] = useState<EasterEggSave>(getEasterEggSave);
+  // Easter Egg persistent save — single source of truth for OASIS / DeLorean
+  // chrome across menu, HUD and PhysicsWorld. Updated by menu toggles and by
+  // the in-game unlock callback so the UI is never a stale mount snapshot.
+  const [easterSave, setEasterSaveState] = useState<EasterEggSave>(getEasterEggSave);
 
   const touchesHeld = useRef<{ left: boolean; right: boolean }>({ left: false, right: false });
   const touchMapRef = useRef<Map<number, 'left' | 'right'>>(new Map());
@@ -486,11 +487,8 @@ export default function App() {
         options.driftCompensation
       );
       newWorld.stats.currentBpm = trackBpm;
-      // Easter Egg (v1.39.0): the persisted easter-egg save is the single source
-      // of truth for OASIS / DeLorean toggles (menu toggles also write to it)
-      const easterSave = getEasterEggSave();
-      newWorld.ship.oasisMode = easterSave.oasisMode;
-      newWorld.ship.deloreanSkin = easterSave.deloreanSkin;
+      // Easter Egg (v1.39.0): PhysicsWorld's constructor restores the persisted
+      // easter-egg save (oasisMode / deloreanSkin / fragments) — no duplicate read here.
       countTickLastSecRef.current = -1; // reset countdown tick state for the new mission
       timeUpRef.current = false;
       missionElapsedRef.current = 0;
@@ -590,6 +588,8 @@ export default function App() {
 
       // Easter Egg Left Tunnel (v1.39.0): code fragment collected
       newWorld.onCodeFragmentCollected = (_fragmentId, totalCollected) => {
+        // Refresh App-level save so the HUD chrome follows an unlock made mid-flight
+        setEasterSaveState(getEasterEggSave());
         audio.playPowerUpSfx('SHIELD'); // fragment collection chime
         if (announcementTimerRef.current) {
           clearTimeout(announcementTimerRef.current);
@@ -849,7 +849,7 @@ export default function App() {
   useEffect(() => {
     let active = true;
 
-    const loop = async (timestamp: number) => {
+    const loop = (timestamp: number) => {
       if (!active) return;
 
       const rawDt = (timestamp - lastTimeRef.current) / 1000;
@@ -923,7 +923,7 @@ export default function App() {
 
         // Render Frame
         const renderFreq = audio.getFrequencyData(0.24, clampedDt);
-        await renderer.render(world, renderFreq, clampedDt, gameState === 'PAUSED');
+        renderer.render(world, renderFreq, clampedDt, gameState === 'PAUSED');
       }
 
       animationFrameIdRef.current = requestAnimationFrame(loop);
@@ -994,6 +994,7 @@ export default function App() {
           onAddLocalTracks={handleAddLocalTracks}
           onDeleteLocalTrack={handleDeleteLocalTrack}
           oasisMode={easterSave.oasisMode}
+          onEasterSaveChange={setEasterSaveState}
         />
       )}
 

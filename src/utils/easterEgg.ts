@@ -5,14 +5,18 @@
  */
 export interface EasterEggSave {
   codeFragmentsCollected: number; // 0..3
+  collectedIds: string[];         // fragment ids already banked (idempotent re-spawn protection)
   oasisMode: boolean;
   deloreanSkin: boolean;
 }
 
 const STORAGE_KEY = 'sonic_thrust_easter_egg';
 
+const VALID_FRAGMENT_IDS = ['fragment-a', 'fragment-b', 'fragment-c'];
+
 const DEFAULTS: EasterEggSave = {
   codeFragmentsCollected: 0,
+  collectedIds: [],
   oasisMode: false,
   deloreanSkin: false,
 };
@@ -21,16 +25,22 @@ const DEFAULTS: EasterEggSave = {
 export function getEasterEggSave(): EasterEggSave {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULTS };
+    if (!raw) return { ...DEFAULTS, collectedIds: [] };
     const parsed = JSON.parse(raw);
-    if (typeof parsed !== 'object' || parsed === null) return { ...DEFAULTS };
+    if (typeof parsed !== 'object' || parsed === null) return { ...DEFAULTS, collectedIds: [] };
+    // Normalize persisted fragment ids: dedupe + drop unknown entries
+    const ids = Array.isArray(parsed.collectedIds)
+      ? [...new Set(parsed.collectedIds.filter((v: unknown): v is string =>
+          typeof v === 'string' && VALID_FRAGMENT_IDS.includes(v)))] as string[]
+      : [];
     return {
       codeFragmentsCollected: Math.max(0, Math.min(3, Number(parsed.codeFragmentsCollected) || 0)),
+      collectedIds: ids,
       oasisMode: Boolean(parsed.oasisMode),
       deloreanSkin: Boolean(parsed.deloreanSkin),
     };
   } catch {
-    return { ...DEFAULTS };
+    return { ...DEFAULTS, collectedIds: [] };
   }
 }
 
@@ -43,21 +53,11 @@ export function setEasterEggSave(save: EasterEggSave): void {
   }
 }
 
-/** Record a newly collected fragment (idempotent). Returns the new total. */
-export function collectCodeFragment(current: number): number {
-  const next = Math.min(3, current + 1);
-  setEasterEggSave({
-    codeFragmentsCollected: next,
-    oasisMode: false, // unlocks only apply once all 3 are collected
-    deloreanSkin: false,
-  });
-  return next;
-}
-
 /** Unlock both Easter Egg rewards (called once all 3 fragments are collected) */
-export function unlockEasterEggRewards(currentFragments: number): EasterEggSave {
+export function unlockEasterEggRewards(currentFragments: number, collectedIds: string[] = []): EasterEggSave {
   const save = getEasterEggSave();
   save.codeFragmentsCollected = Math.min(3, currentFragments);
+  save.collectedIds = collectedIds;
   save.oasisMode = true;
   save.deloreanSkin = true;
   setEasterEggSave(save);

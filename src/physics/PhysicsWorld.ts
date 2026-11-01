@@ -13,7 +13,8 @@ import {
   LaserGate,
   AudioFrequencyData,
   GameStats,
-  CodeFragmentItem
+  CodeFragmentItem,
+  CreatureObstacle
 } from '../types/game';
 import { getEasterEggSave, setEasterEggSave, unlockEasterEggRewards } from '../utils/easterEgg';
 
@@ -165,6 +166,10 @@ export class PhysicsWorld {
   // Easter Egg Left Tunnel code fragments (v1.39.0) — 3 fragments spawned at x < 0
   public codeFragments: CodeFragmentItem[] = [];
 
+  // Easter Egg OASIS creatures (v1.39.1): prehistoric creatures as physical obstacles
+  // inside the dynamic tunnel. Only spawned when OASIS mode is unlocked.
+  public creatureObstacles: CreatureObstacle[] = [];
+
   // Persistent continuous terrain phase accumulator (monotonic, eliminates audio jitter)
   public terrainPhase: number = 0;
 
@@ -264,8 +269,15 @@ export class PhysicsWorld {
     this.ship.codeFragmentsCollected = saved.codeFragmentsCollected;
     this.ship.oasisMode = saved.oasisMode;
     this.ship.deloreanSkin = saved.deloreanSkin;
-    console.log('[DEBUG] PhysicsWorld constructor: easterSave =', JSON.stringify(saved), 'ship.deloreanSkin =', this.ship.deloreanSkin);
     this.spawnCodeFragments();
+
+    // Easter Egg OASIS creatures (v1.39.1): spawn prehistoric creatures as tunnel
+    // obstacles only when OASIS mode is unlocked. They live on the right side of the
+    // tunnel (x > 0) at fixed relative heights (70% and 90%) and follow the terrain
+    // deformation every frame so they stay embedded in the tunnel wall.
+    if (this.ship.oasisMode) {
+      this.spawnCreatureObstacles();
+    }
   }
 
   /**
@@ -613,10 +625,14 @@ export class PhysicsWorld {
     const fragmentXs = [-600, -1200, -1800]; // increasingly far left
     const fragmentIds = ['fragment-a', 'fragment-b', 'fragment-c'];
 
+    // Persisted fragment progress is the single source of truth for what is
+    // already banked: fully unlocked ⇒ everything collected; otherwise each
+    // fragment ids recorded in the save stays collected across missions.
+    const saved = getEasterEggSave();
+    const fullyBanked = saved.codeFragmentsCollected >= 3;
+
     for (let i = 0; i < 3; i++) {
-      const alreadyCollected = this.codeFragments.some(
-        (f) => f.id === fragmentIds[i] && f.collected
-      );
+      const alreadyCollected = fullyBanked || saved.collectedIds.includes(fragmentIds[i]);
       this.codeFragments.push({
         id: fragmentIds[i],
         x: fragmentXs[i],
@@ -629,6 +645,67 @@ export class PhysicsWorld {
         orbitAngle: 0,
         rhythmBounce: 1.0
       });
+    }
+  }
+
+  /**
+   * Easter Egg OASIS (v1.39.1):
+   * Spawns two prehistoric creatures as physical obstacles inside the dynamic tunnel.
+   * T-Rex at x=1200 (70% of tunnel height), King Kong at x=1800 (90% of tunnel height).
+   * Their Y follows the terrain deformation every frame so they stay embedded in the wall.
+   */
+  private spawnCreatureObstacles(): void {
+    this.creatureObstacles = [];
+
+    const creatures: Array<{ id: string; type: 'trex' | 'kong'; percentOfTrack: number }> = [
+      { id: 'creature-trex', type: 'trex', percentOfTrack: 0.70 },
+      { id: 'creature-kong', type: 'kong', percentOfTrack: 0.90 },
+    ];
+
+    // Sprite dimensions at scale 0.4 (see creatureSprites.ts CREATURE_CONFIG)
+    const spriteDims: Record<'trex' | 'kong', { width: number; height: number }> = {
+      trex: { width: Math.round(305 * 0.4), height: Math.round(476 * 0.4) },
+      kong: { width: Math.round(281 * 0.4), height: Math.round(471 * 0.4) },
+    };
+
+    for (const c of creatures) {
+      const dims = spriteDims[c.type];
+      // X position based on track duration/music time (70% and 90% of the song),
+      // NOT fixed pixels — so it works with any player-provided track length.
+      const x = this.totalTrackLength * c.percentOfTrack;
+      const terrain = this.getTerrainAt(x);
+      // Feet on the floor of the tunnel (floorY), not centered in the corridor.
+      const y = terrain.floorY - dims.height;
+
+      this.creatureObstacles.push({
+        id: c.id,
+        type: c.type,
+        x: x,
+        y: y,
+        baseY: y,
+        width: dims.width,
+        height: dims.height,
+        radius: 35, // smaller than sprite for forgiving collision
+        active: true,
+        percentOfTrack: c.percentOfTrack,
+      });
+    }
+  }
+
+  /**
+   * Easter Egg OASIS (v1.39.1):
+   * Updates creature Y every frame to track the dynamic tunnel (ceilY / floorY).
+   * Called once per physics step — cheap: only 2 creatures, simple terrain lookup.
+   */
+  private updateCreatureObstacles(): void {
+    for (const c of this.creatureObstacles) {
+      if (!c.active) continue;
+      const terrain = this.getTerrainAt(c.x);
+      // Feet on the floor of the tunnel (floorY), so the creature stands on the ground
+      const targetY = terrain.floorY - c.height;
+      // Smooth follow so creatures don't snap when terrain deforms fast
+      c.y += (targetY - c.y) * 0.15;
+      c.baseY = c.y;
     }
   }
 
@@ -712,6 +789,9 @@ export class PhysicsWorld {
     // 3. Update Obstacles & Laser Gates
     this.updateObstacles(audioFreq, safeDt * timeScale);
 
+    // 3.5 Easter Egg OASIS creatures: follow dynamic tunnel deformation
+    this.updateCreatureObstacles();
+
     // 4. Update Power-up items & Collisions
     this.updatePowerUps(safeDt, audioFreq);
 
@@ -720,6 +800,8 @@ export class PhysicsWorld {
 
     // 5.5 Easter Egg Left Tunnel — Code Fragment collection (v1.39.0)
     // Fragments live at x < 0 (invisible left tunnel). Proximity collects them.
+    // Idempotent: a fragment only registers once (its id is banked in the save),
+    // so a completed egg never re-fires announcements or re-forces rewards.
     const shipRadius = 16;
     for (const frag of this.codeFragments) {
       if (frag.collected) continue;
@@ -727,20 +809,28 @@ export class PhysicsWorld {
       const dy = this.ship.y - frag.y;
       if (Math.hypot(dx, dy) < shipRadius + frag.radius) {
         frag.collected = true;
-        this.ship.codeFragmentsCollected = Math.min(3, this.ship.codeFragmentsCollected + 1);
-        const newTotal = this.ship.codeFragmentsCollected;
-        // Persist progress immediately
+
+        // Bank the new id and recompute the total (never regresses, never mocks legacy counter)
+        const saved = getEasterEggSave();
+        const collectedIds = [...new Set([...saved.collectedIds, frag.id])];
+        const newTotal = Math.min(3, Math.max(saved.codeFragmentsCollected, collectedIds.length));
+        this.ship.codeFragmentsCollected = newTotal;
+
+        // Persist progress immediately, preserving the player's current toggles
         setEasterEggSave({
           codeFragmentsCollected: newTotal,
+          collectedIds,
           oasisMode: this.ship.oasisMode,
           deloreanSkin: this.ship.deloreanSkin
         });
+
         // If all 3 collected -> unlock both Easter Egg rewards
         if (newTotal >= 3) {
-          const rewards = unlockEasterEggRewards(newTotal);
+          const rewards = unlockEasterEggRewards(newTotal, collectedIds);
           this.ship.oasisMode = rewards.oasisMode;
           this.ship.deloreanSkin = rewards.deloreanSkin;
         }
+
         if (this.onCodeFragmentCollected) {
           this.onCodeFragmentCollected(frag.id, newTotal);
         }
@@ -761,7 +851,7 @@ export class PhysicsWorld {
     // 7. Update Stats (accumulated time includes collision time penalty)
     this.stats.timeElapsed = currentTime + this.stats.timePenalty;
     this.stats.distanceTravelled = Math.max(0, this.ship.x);
-    this.stats.percentCompleted = Math.min(100, (this.ship.x / this.totalTrackLength) * 100);
+    this.stats.percentCompleted = Math.max(0, Math.min(100, (this.ship.x / this.totalTrackLength) * 100));
     const speed = Math.sqrt(this.ship.vx * this.ship.vx + this.ship.vy * this.ship.vy);
     this.stats.maxSpeed = Math.max(this.stats.maxSpeed, Math.round(speed));
   }
@@ -1198,6 +1288,20 @@ export class PhysicsWorld {
           this.handleCollision('OBSTACLE', dx / (dist || 1), dy / (dist || 1));
           return;
         }
+      }
+    }
+
+    // 3.5 Easter Egg OASIS creatures — physical obstacles inside the tunnel
+    for (const c of this.creatureObstacles) {
+      if (!c.active) continue;
+      if (Math.abs(c.x - this.ship.x) > 120) continue;
+      const dx = this.ship.x - c.x;
+      const dy = this.ship.y - c.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < shipRadius + c.radius) {
+        c.active = false; // creature destroyed / moved aside
+        this.handleCollision('OBSTACLE', dx / (dist || 1), dy / (dist || 1));
+        return;
       }
     }
 

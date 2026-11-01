@@ -166,6 +166,7 @@ interface TitleMenuProps {
   onAddLocalTracks?: (files: File[]) => Promise<LocalUploadResult>;
   onDeleteLocalTrack?: (id: string) => void;
   oasisMode?: boolean; // OASIS retro 80s skin — shifts option card accents to magenta/pink
+  onEasterSaveChange?: (save: EasterEggSave) => void; // keeps App/HUD chrome in sync
 }
 
 export const TitleMenu: React.FC<TitleMenuProps> = ({
@@ -183,7 +184,8 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
   isStartingMission = false,
   onAddLocalTracks,
   onDeleteLocalTrack,
-  oasisMode = false
+  oasisMode = false,
+  onEasterSaveChange
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isDifficultyOpen, setIsDifficultyOpen] = useState(false);
@@ -1078,6 +1080,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                               const save = { ...easterSave, oasisMode: next };
                               setEasterSave(save);
                               setEasterEggSave(save);
+                              onEasterSaveChange?.(save);
                             }}
                             className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-mono font-bold transition cursor-pointer shrink-0 ${
                               easterSave.oasisMode
@@ -1111,6 +1114,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                               const save = { ...easterSave, deloreanSkin: next };
                               setEasterSave(save);
                               setEasterEggSave(save);
+                              onEasterSaveChange?.(save);
                             }}
                             className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-mono font-bold transition cursor-pointer shrink-0 ${
                               easterSave.deloreanSkin
@@ -1436,7 +1440,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
       {/* Footer: Version and Last Update Date on left, Author on right */}
       <footer className="relative z-10 flex items-center justify-between text-xs sm:text-sm font-mono text-cyan-400/90 pt-1.5 pb-1 sm:pt-3 sm:pb-2 border-t border-white/10 max-w-6xl w-full mx-auto px-2">
-        <span className="tracking-wide">v1.39.0 · 30/10/2026</span>
+        <span className="tracking-wide">v1.39.1 · 31/10/2026</span>
         <span className="tracking-wide font-semibold text-gray-200">Por Miguel Galego</span>
       </footer>
 

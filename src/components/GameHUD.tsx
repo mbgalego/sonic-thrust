@@ -105,9 +105,7 @@ export const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({
   // OASIS retro 80s chrome: shift cyan accents to magenta/pink.
   // Semantic colors (rose hearts, amber generator) stay untouched.
   const isOasis = oasisMode === true;
-  const A = isOasis ? 'fuchsia-400' : 'cyan-400';      // accent 400
-  const A3 = isOasis ? 'fuchsia-300' : 'cyan-300';     // accent 300
-  const AG = isOasis ? 'rgba(232,121,249,0.9)' : 'rgba(6,182,212,0.9)'; // glow
+  const A = isOasis ? 'fuchsia-400' : 'cyan-400';      // accent 400 (literal class also present below for Tailwind)
 
   useImperativeHandle(ref, () => ({
     update: (stats: GameStats, ship: ShipState, launchGraceTimer: number = 0) => {
@@ -150,10 +148,15 @@ export const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({
             countdownLabelRef.current.className =
               'text-[9px] sm:text-[10px] font-mono tracking-[0.25em] sm:tracking-[0.3em] uppercase transition-colors duration-300 text-amber-400/80';
           } else {
+            // Tailwind JIT needs full class literals — no runtime string assembly
+            const textCls = isOasis
+              ? 'text-fuchsia-300 drop-shadow-[0_0_20px_rgba(232,121,249,0.9)]'
+              : 'text-cyan-300 drop-shadow-[0_0_20px_rgba(6,182,212,0.9)]';
+            const labelCls = isOasis ? 'text-fuchsia-400/70' : 'text-cyan-400/70';
             countdownTextRef.current.className =
-              'text-3xl sm:text-5xl md:text-6xl font-black font-orbitron tracking-tighter whitespace-nowrap leading-none transition-colors duration-300 text-' + A3 + ' drop-shadow-[0_0_20px_' + AG + ']';
+              'text-3xl sm:text-5xl md:text-6xl font-black font-orbitron tracking-tighter whitespace-nowrap leading-none transition-colors duration-300 ' + textCls;
             countdownLabelRef.current.className =
-              'text-[9px] sm:text-[10px] font-mono tracking-[0.25em] sm:tracking-[0.3em] uppercase transition-colors duration-300 text-' + A + '/70';
+              'text-[9px] sm:text-[10px] font-mono tracking-[0.25em] sm:tracking-[0.3em] uppercase transition-colors duration-300 ' + labelCls;
           }
         }
       }
@@ -430,7 +433,7 @@ export const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({
             <div className="flex items-center gap-1.5 sm:gap-2 pointer-events-auto">
               <button
                 onClick={toggleFullscreen}
-                className={`bg-black/60 hover:bg-slate-900 border border-white/20 hover:border-${A} text-white p-1.5 sm:p-2 rounded-lg transition cursor-pointer flex items-center gap-1 active:scale-95 shadow-sm`}
+                className={`bg-black/60 hover:bg-slate-900 border border-white/20 ${isOasis ? 'hover:border-fuchsia-400' : 'hover:border-cyan-400'} text-white p-1.5 sm:p-2 rounded-lg transition cursor-pointer flex items-center gap-1 active:scale-95 shadow-sm`}
                 title={isFullscreen ? 'Sair de Ecrã Inteiro (F11)' : 'Ecrã Inteiro (F11)'}
               >
                 {isFullscreen ? (
@@ -442,7 +445,7 @@ export const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({
 
               <button
                 onClick={onPause}
-                className={`bg-black/60 hover:bg-slate-900 border border-white/20 hover:border-${A} text-white p-1.5 sm:p-2 rounded-lg transition cursor-pointer flex items-center gap-1 active:scale-95 shadow-sm`}
+                className={`bg-black/60 hover:bg-slate-900 border border-white/20 ${isOasis ? 'hover:border-fuchsia-400' : 'hover:border-cyan-400'} text-white p-1.5 sm:p-2 rounded-lg transition cursor-pointer flex items-center gap-1 active:scale-95 shadow-sm`}
                 title="Pausar jogo (ESC)"
               >
                 <Pause className={`w-3.5 sm:w-4 h-3.5 sm:h-4 ${isOasis ? 'text-fuchsia-400' : 'text-cyan-400'}`} />

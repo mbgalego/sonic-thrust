@@ -5,8 +5,9 @@
  */
 
 import { PhysicsWorld } from '../physics/PhysicsWorld';
-import { AudioFrequencyData, PowerUpItem, ObstaclePlatform, LaserGate, CodeFragmentItem } from '../types/game';
+import { AudioFrequencyData, PowerUpItem, ObstaclePlatform, LaserGate, CodeFragmentItem, CreatureObstacle } from '../types/game';
 import { ParticleSystem } from './ParticleSystem';
+import { loadCreatureFrames, type CreatureSpriteFrames } from '../easterEgg/creatureSprites';
 
 export interface TemporalTrailSegment {
   lx: number;
@@ -78,20 +79,15 @@ export class GameRenderer {
     this.loadCreatureFrames();
   }
 
-  // Prehistoric creatures (OASIS Easter Egg, v1.39.0 addendum)
-  private creatureFrames: Record<'trex' | 'kong', any> | null = null;
-  private creatureInstances: any[] = []
-  private creaturesLoaded = false
-
+  // Prehistoric creatures (OASIS Easter Egg, v1.39.1 addendum)
+  private creatureFrames: Record<'trex' | 'kong', CreatureSpriteFrames> | null = null;
+  private creaturesLoaded = false;
 
   private async loadCreatureFrames(): Promise<void> {
     if (typeof window === 'undefined') return;
     try {
-      const { loadCreatureFrames } = await import('../easterEgg/creatureSprites');
       this.creatureFrames = await loadCreatureFrames();
-      // Instances will be created when first needed in render (need world reference)
       this.creaturesLoaded = true;
-      console.log('[OASIS] Prehistoric creature frames loaded');
     } catch (e) {
       console.warn('[OASIS] Failed to load creature frames:', e);
     }
@@ -219,18 +215,16 @@ export class GameRenderer {
   /**
    * Main Render Frame
    */
-  public async render(
+  public render(
     world: PhysicsWorld,
     audioFreq: AudioFrequencyData,
     dt: number,
     isPaused: boolean
-  ): Promise<void> {
+  ): void {
     const ctx = this.ctx;
     const w = this.width;
     const h = this.height;
 
-    // OASIS mode: synthwave palette shift applied to world-space rendering only
-    // (terrain, background, obstacles, creatures). Ship/DeLorean keeps original colors.
     const oasisMode = !!world.ship.oasisMode;
 
     // Decay shake
@@ -242,53 +236,40 @@ export class GameRenderer {
       this.screenShake *= 0.88;
     }
 
-    // Dynamic Mobile Screen Detection & Play Area Framing
     const isTouch = 'ontouchstart' in window || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0);
     const isSmallScreen = Math.min(w, h) < 680;
     const isMobile = this.isMobileViewport || isTouch || isSmallScreen || (typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
     const isPortrait = w < h;
 
-    // Active corridor geometry at ship's current location
     const currentTerrain = world.getTerrainAt(world.ship.x);
     const corridorCenterY = (currentTerrain.ceilY + currentTerrain.floorY) * 0.5;
     const corridorH = Math.max(220, currentTerrain.floorY - currentTerrain.ceilY);
 
-    // Target dynamic zoom & framing
     let targetZoom = 1.0;
     let shipScreenFracX = 0.28;
     let corridorScreenFracY = 0.50;
 
     if (isMobile || isSmallScreen) {
       if (isPortrait) {
-        // Mobile Portrait: screen is narrow & tall (e.g. 390x844).
-        // The tunnel flight path is horizontal, so we dynamically zoom out to frame ~640px
-        // of world runway ahead, and anchor the ship at 18% of screen width so over 80%
-        // is clear reaction lookahead for upcoming bends, obstacles, and gates.
         const zoomW = w / 640;
         const zoomH = h / 960;
         targetZoom = Math.max(0.55, Math.min(0.82, Math.min(zoomW, zoomH)));
         shipScreenFracX = 0.18;
         corridorScreenFracY = 0.50;
       } else {
-        // Mobile Landscape: screen is wide & short (e.g. 844x390).
-        // Vertical headroom is the most constrained axis. We zoom out so the full play arena
-        // (~460-500px: 300px corridor + 150px bedrock equalizer ribbons) fits comfortably
-        // between the top HUD controls and bottom thruster telemetry.
         const desiredPlayHeight = Math.max(460, corridorH + 150);
         const zoomH = h / desiredPlayHeight;
         const zoomW = w / 840;
         targetZoom = Math.max(0.58, Math.min(0.92, Math.min(zoomH, zoomW)));
         shipScreenFracX = 0.22;
-        corridorScreenFracY = 0.53; // slight downward bias for top HUD clearance
+        corridorScreenFracY = 0.53;
       }
     } else {
-      // Desktop / High-res widescreen display: crisp 1:1 scale
       targetZoom = 1.0;
       shipScreenFracX = 0.28;
       corridorScreenFracY = 0.50;
     }
 
-    // Smooth exponential zoom interpolation (prevents jarring snaps on resize or orientation change)
     const zoomDt = isPaused ? 0 : dt;
     this.cameraZoom += (targetZoom - this.cameraZoom) * Math.min(1.0, zoomDt * 8.0 + 0.08);
     const zoom = Math.max(0.4, this.cameraZoom);
@@ -296,18 +277,13 @@ export class GameRenderer {
     const visibleWorldW = w / zoom;
     const visibleWorldH = h / zoom;
 
-    // Horizontal camera follow: anchors ship at shipScreenFracX of screen width
     const targetCamX = world.ship.x - shipScreenFracX * visibleWorldW;
-
-    // Vertical camera follow: leads the corridor center (70%) and ship (30%)
-    // so the camera smoothly anticipates roller-coaster climbs and dips while tracking the craft
     const focusY = corridorCenterY * 0.70 + world.ship.y * 0.30;
     const targetCamY = focusY - corridorScreenFracY * visibleWorldH;
 
     this.cameraX += (targetCamX - this.cameraX) * 0.14;
     this.cameraY += (targetCamY - this.cameraY) * 0.12;
 
-    // Clamp cameraY so world boundaries don't wrap or get lost
     const minCamY = -60;
     const maxCamY = world.worldHeight - visibleWorldH + 60;
     if (maxCamY > minCamY) {
@@ -318,16 +294,12 @@ export class GameRenderer {
     ctx.fillStyle = '#06070c';
     ctx.fillRect(0, 0, w, h);
 
-    // Advance gravitational ripple phase monotonically (strictly forward in time, synced to music tempo & beat impulses)
     const animDt = isPaused ? 0 : dt;
     const macroE = audioFreq.macroEnergy ?? audioFreq.energy;
-    // In quiet breakdowns: ripples drift in a calm, hypnotic glide (0.55 rad/s)
-    // In energetic sections & drops: accelerates smoothly up to 3.8 - 4.5 rad/s
     const speedBase = 0.55 + 1.9 * Math.pow(macroE, 1.3);
     const speedImpulse = (audioFreq.subBass || 0) * 1.8 + (audioFreq.beatPulse || 0) * 2.2;
     this.ripplePhase += (speedBase + speedImpulse) * animDt;
 
-    // Drop Flash detection & decay (rising-edge of energyContrast with cooldown to avoid strobing)
     if (!isPaused) {
       const contrast = audioFreq.energyContrast || 0;
       if (this.dropFlashCooldown > 0) this.dropFlashCooldown -= dt;
@@ -344,80 +316,51 @@ export class GameRenderer {
     }
     this.dropFlash *= Math.exp(-(isPaused ? 0 : dt) / 0.45);
 
-    // High-Speed Atmospheric & Temporal Trail Calculation:
-    // Velocity is displayed in HUD as: Math.round(shipSpeed * 0.7) km/h.
-    // Threshold increased by +100 km/h: from 350 km/h (500 px/s) to 450 km/h (643 px/s).
     const shipSpeed = Math.hypot(world.ship.vx, world.ship.vy);
-    const HIGH_SPEED_MIN = 643; // 450 km/h (added +100 km/h to former 350 km/h)
-    const HIGH_SPEED_MAX = 928; // ~650 km/h
+    const HIGH_SPEED_MIN = 643;
+    const HIGH_SPEED_MAX = 928;
     const targetSpeedRatio = Math.max(0, Math.min(1.0, (shipSpeed - HIGH_SPEED_MIN) / (HIGH_SPEED_MAX - HIGH_SPEED_MIN)));
     this.currentSpeedRatio += (targetSpeedRatio - this.currentSpeedRatio) * (isPaused ? 0 : 0.22);
     this.updateTemporalTrail(world, isPaused ? 0 : dt);
 
-    // --- WORLD + SHIP single pass ---
+    // WORLD RENDER
     ctx.save();
     ctx.scale(zoom, zoom);
     ctx.translate(-this.cameraX + shakeX / zoom, -this.cameraY + shakeY / zoom);
 
-    // OASIS: apply hue-rotate to world ONLY (terrain, obstacles, background, creatures).
-    // Ship/DeLorean drawn after ctx.restore() without this filter.
-    if (oasisMode) {
-      ctx.filter = 'hue-rotate(120deg) saturate(1.35) contrast(1.03)';
-    }
+    // OASIS mode: creature obstacles + HUD chrome (magenta/cyan) provide the retro
+    // 80s look. We deliberately do NOT apply a CSS hue-rotate filter to the canvas
+    // here because ctx.filter forces a full-pixel re-render every frame and tanks
+    // the frame rate, especially on mobile/low-end devices.
 
-    // 1. Cyber Grid & Parallax Starfield
     this.renderBackgroundGrid(world, audioFreq);
-
-    // 2. Launchpad (Plataforma de Descolagem)
     this.renderLaunchpad(world);
-
-    // 3. Finish Portal (Portal de Meta)
     this.renderFinishPortal(world, audioFreq);
-
-    // 4. Power-ups (Holographic celestial beacons pulsing to music)
     this.renderPowerUps(world.powerUps, audioFreq, world);
-
-    // 4.5 Easter Egg Left Tunnel — Code Fragments (invisible left tunnel, x < 0)
     this.renderCodeFragments(world.codeFragments, audioFreq, world);
-
-    // 5. Obstacles & Laser Gates (Dynamic ejector blocks, sonic spikes, resonance mines, laser curtains)
     this.renderObstacles(world.obstacles, world.laserGates, audioFreq, world);
 
-    // 6. Vector Neon Terrain (Ceiling and Floor)
-    this.renderTerrain(world, audioFreq, dt);
-
-    // 6.5 Prehistoric creatures (OASIS Easter Egg) — right side of tunnel, watching player
-    if (oasisMode && this.creaturesLoaded && this.creatureFrames) {
-      if (this.creatureInstances.length === 0) {
-        try {
-          const { createCreatureInstances } = await import('../easterEgg/creatureSprites');
-          this.creatureInstances = createCreatureInstances(this.creatureFrames, world);
-        } catch (e) { console.warn('[OASIS] creature create failed', e); }
-      }
-      try {
-        const { updateCreatures, renderCreatures } = await import('../easterEgg/creatureSprites');
-        updateCreatures(this.creatureInstances, dt);
-        renderCreatures(ctx, this.creatureInstances, this.cameraX, this.cameraY, zoom, w, h);
-      } catch (e) { console.warn('[OASIS] creature render failed', e); }
+    // Easter Egg OASIS creatures (v1.39.1): prehistoric creatures as physical obstacles
+    // inside the tunnel. Drawn as sprites at their world positions — they appear embedded
+    // in the tunnel wall because the terrain fill (renderTerrain) covers above/below them.
+    if (oasisMode && this.creaturesLoaded && this.creatureFrames && world.creatureObstacles) {
+      this.renderCreatureObstacles(world.creatureObstacles);
     }
 
-    // 7. Particles & Shockwaves (frozen while paused)
-    this.renderParticlesAndShockwaves(isPaused ? 0 : dt);
+    this.renderTerrain(world, audioFreq, dt);
 
-    // 7.5. DeLorean High-Speed Fiery Temporal Trail (smoothly dissipating wake)
+    this.renderParticlesAndShockwaves(isPaused ? 0 : dt);
     this.renderTemporalTrails();
 
-    // 7.8. Chrono Dilation Temporal Motion Echoes (bullet-time after-images)
     if (world.ship.chronoDilationTimer > 0) {
       this.renderChronoEchoes(world, isPaused);
     } else {
       this.chronoEchoes = [];
     }
 
-    // Restore removes OASIS filter — ship drawn next is clean
     ctx.restore();
 
-    // --- SHIP LAYER: drawn WITHOUT OASIS hue filter ---
+    // SHIP LAYER - drawn WITHOUT OASIS filter
     ctx.save();
     ctx.scale(zoom, zoom);
     ctx.translate(-this.cameraX + shakeX / zoom, -this.cameraY + shakeY / zoom);
@@ -427,10 +370,10 @@ export class GameRenderer {
     }
     ctx.restore();
 
-    // 9. Audio Waveform Spectrum Radar (Mini overlay in bottom left corner)
+    // 9. Audio Waveform Spectrum Radar
     this.renderAudioSpectrumMini(audioFreq);
 
-    // 10. Drop Flash overlay (last: blooms the whole arena)
+    // 10. Drop Flash overlay
     if (this.dropFlash > 0.015) {
       this.renderDropFlashOverlay();
     }
@@ -439,19 +382,8 @@ export class GameRenderer {
     if (world.ship.chronoDilationTimer > 0) {
       this.renderChronoDilationScreenOverlay(world);
     }
-
-    // 12. Easter Egg — OASIS Mode overlay (v1.39.0):
-    // Retro 80s look: magenta/cyan scanlines + subtle CRT grid.
-    // Applied when oasisMode is unlocked via the Left Tunnel code fragments.
-    if (world.ship.oasisMode) {
-      this.renderOasisOverlay(w, h, audioFreq);
-    }
   }
 
-  /**
-   * Drop Flash full-arena bloom: additive light burst that engulfs the screen
-   * when the music detonates above its macro baseline (the "drop hits" moment).
-   */
   private renderDropFlashOverlay(): void {
     const ctx = this.ctx;
     const w = this.width;
@@ -482,79 +414,6 @@ export class GameRenderer {
    * a rolling CRT glow band, corner brackets, vignette, and a magenta/cyan tint.
    * Drawn on top of everything when oasisMode is unlocked.
    */
-  private renderOasisOverlay(w: number, h: number, audioFreq: AudioFrequencyData): void {
-    const ctx = this.ctx;
-    const time = Date.now() * 0.001;
-    const isBeat = audioFreq.isBeat ?? false;
-    const bass = audioFreq.bass ?? 0;
-
-    ctx.save();
-
-    // --- CRT vignette (darker corners, focused center) ---
-    const vignette = ctx.createRadialGradient(w * 0.5, h * 0.35, 0, w * 0.5, h * 0.35, Math.max(w, h) * 0.85);
-    vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    vignette.addColorStop(0.55, 'rgba(0, 0, 0, 0.12)');
-    vignette.addColorStop(1, 'rgba(0, 0, 0, 0.45)');
-    ctx.fillStyle = vignette;
-    ctx.fillRect(0, 0, w, h);
-
-    // --- Scanlines with beat pulse ---
-    const lineHeight = 4;
-    const lineGap = 2;
-    const beatBoost = isBeat ? 0.10 : 0;
-    const lineAlpha = 0.18 + beatBoost + 0.05 * Math.sin(time * 12);
-    ctx.fillStyle = `rgba(10, 0, 25, ${Math.min(0.45, lineAlpha)})`;
-    const offset = (time * 70) % (lineHeight + lineGap);
-    for (let y = -lineHeight + offset; y < h; y += lineHeight + lineGap) {
-      ctx.fillRect(0, y, w, lineHeight);
-    }
-
-    // --- Rolling CRT glow band (travels top -> bottom) ---
-    const rollY = (time * 40) % (h + 120) - 60;
-    const rollGrad = ctx.createLinearGradient(0, rollY - 40, 0, rollY + 40);
-    rollGrad.addColorStop(0, 'rgba(232, 121, 249, 0)');
-    rollGrad.addColorStop(0.5, `rgba(232, 121, 249, ${0.10 + bass * 0.10 + (isBeat ? 0.12 : 0)})`);
-    rollGrad.addColorStop(1, 'rgba(232, 121, 249, 0)');
-    ctx.fillStyle = rollGrad;
-    ctx.fillRect(0, rollY - 40, w, 80);
-
-    // --- Magenta/Cyan corner CRT brackets ---
-    ctx.strokeStyle = '#fbcfe8'; // magenta soft
-    ctx.shadowColor = '#e879f9';
-    ctx.shadowBlur = 8 + (isBeat ? 6 : 0);
-    ctx.lineWidth = 2;
-    const bracket = 60;
-    ctx.beginPath();
-    // Top-left
-    ctx.moveTo(15, 15 + bracket);
-    ctx.lineTo(15, 15);
-    ctx.lineTo(15 + bracket, 15);
-    // Top-right
-    ctx.moveTo(w - 15, 15);
-    ctx.lineTo(w - 15 - bracket, 15);
-    ctx.lineTo(w - 15 - bracket, 15 + bracket);
-    // Bottom-left
-    ctx.moveTo(15, h - 15 - bracket);
-    ctx.lineTo(15, h - 15);
-    ctx.lineTo(15 + bracket, h - 15);
-    // Bottom-right
-    ctx.moveTo(w - 15, h - 15);
-    ctx.lineTo(w - 15 - bracket, h - 15);
-    ctx.lineTo(w - 15 - bracket, h - 15 - bracket);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    // --- Magenta/Cyan tint overlay ---
-    const tintGrad = ctx.createLinearGradient(0, 0, w, h);
-    tintGrad.addColorStop(0, 'rgba(232, 121, 249, 0.08)');
-    tintGrad.addColorStop(0.5, 'rgba(6, 182, 212, 0.05)');
-    tintGrad.addColorStop(1, 'rgba(232, 121, 249, 0.08)');
-    ctx.fillStyle = tintGrad;
-    ctx.fillRect(0, 0, w, h);
-
-    ctx.restore();
-  }
-
   private renderBackgroundGrid(world: PhysicsWorld, audioFreq: AudioFrequencyData): void {
     const ctx = this.ctx;
     const visibleW = this.width / this.cameraZoom;
@@ -1354,6 +1213,42 @@ export class GameRenderer {
    * left tunnel — no terrain is drawn there, so only the fragments betray that
    * something exists beyond the spawn runway.
    */
+  /**
+   * Easter Egg OASIS (v1.39.1):
+   * Renders prehistoric creatures as physical obstacles inside the tunnel.
+   * Drawn at world coordinates — the tunnel terrain fill (renderTerrain) covers
+   * above/below them so they appear embedded in the wall, not in front of it.
+   * Cheap: only 2 creatures, pre-loaded sprites, no async imports in the hot path.
+   */
+  private renderCreatureObstacles(creatures: CreatureObstacle[]): void {
+    const ctx = this.ctx;
+    const now = Date.now() * 0.008; // 8 FPS animation
+
+    // Culling: skip creatures outside the visible world rect (avoids drawing them
+    // in the menu or when far off-screen, keeping frame rate stable)
+    const visibleW = this.width / this.cameraZoom;
+    const visibleH = this.height / this.cameraZoom;
+    const minX = this.cameraX - 200;
+    const maxX = this.cameraX + visibleW + 200;
+    const minY = this.cameraY - 200;
+    const maxY = this.cameraY + visibleH + 200;
+
+    for (const c of creatures) {
+      if (!c.active) continue;
+      if (c.x + c.width < minX || c.x > maxX || c.y + c.height < minY || c.y > maxY) continue;
+
+      const frames = c.type === 'trex' ? this.creatureFrames?.trex : this.creatureFrames?.kong;
+      if (!frames?.frames?.length) continue;
+
+      const frameIndex = Math.floor(now) % frames.frames.length;
+      const frame = frames.frames[frameIndex];
+      if (!frame || !frame.complete) continue;
+
+      // Draw at world position (transform already applied by caller)
+      ctx.drawImage(frame, c.x, c.y, c.width, c.height);
+    }
+  }
+
   private renderCodeFragments(
     fragments: CodeFragmentItem[],
     audioFreq: AudioFrequencyData,
@@ -1821,7 +1716,6 @@ export class GameRenderer {
   private renderShip(world: PhysicsWorld, _isPaused: boolean, _audioFreq?: AudioFrequencyData): void {
     const ctx = this.ctx;
     const ship = world.ship;
-    // Debug removed
     // Emit jet particles when thrusters are active (frozen while paused)
     if (!_isPaused) {
       this.emitThrusterParticles(ship);
@@ -1966,7 +1860,6 @@ export class GameRenderer {
 
     // Easter Egg Left Tunnel — DeLorean Skin (v1.39.0):
     // When unlocked, the ship becomes the flying DeLorean from Back to the Future.
-    console.log('[DEBUG] renderShip: deloreanSkin =', ship.deloreanSkin, 'ship.isDestroyed =', ship.isDestroyed);
     if (ship.deloreanSkin) {
       this.renderDelorean(ship, _isPaused, _audioFreq);
       ctx.restore();
@@ -2504,12 +2397,6 @@ export class GameRenderer {
   private renderDelorean(worldShip: PhysicsWorld['ship'], _isPaused: boolean, _audioFreq?: AudioFrequencyData): void {
     const ctx = this.ctx;
     const ship = worldShip;
-    console.log('[DEBUG-RENDER] renderDelorean called:', {
-      deloreanSkin: ship.deloreanSkin,
-      deloreanImgLoaded: !!this.deloreanImg,
-      shipVisible: !ship.isDestroyed
-    });
-    // Debug removed
 
     // --- Sprite path: pixel-art DeLorean loaded from /assets/skins/delorean.png ---
     if (this.deloreanImg) {

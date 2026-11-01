@@ -31,7 +31,7 @@ const CREATURE_CONFIG = {
     fps: 8,
     baseX: 1200,
     baseY: 0,
-    scale: 1.0,
+    scale: 0.4, // 40% do tamanho original — proporcional como obstáculo no túnel
   },
   kong: {
     frameWidth: 281,
@@ -40,7 +40,7 @@ const CREATURE_CONFIG = {
     fps: 8,
     baseX: 1800,
     baseY: 0,
-    scale: 1.0,
+    scale: 0.4, // 40% do tamanho original — proporcional como obstáculo no túnel
   },
 } as const
 
@@ -95,7 +95,7 @@ export function createCreatureInstances(
   instances.push({
     type: 'trex',
     x: CREATURE_CONFIG.trex.baseX,
-    y: trexGround.floorY - CREATURE_CONFIG.trex.frameHeight * CREATURE_CONFIG.trex.scale,
+    y: trexGround.floorY - CREATURE_CONFIG.trex.frameHeight * CREATURE_CONFIG.trex.scale + 35, // um pouco mais abaixo
     frames: frames.trex,
     currentFrame: 0,
     frameTimer: 0,
@@ -108,7 +108,7 @@ export function createCreatureInstances(
   instances.push({
     type: 'kong',
     x: CREATURE_CONFIG.kong.baseX,
-    y: kongGround.floorY - CREATURE_CONFIG.kong.frameHeight * CREATURE_CONFIG.kong.scale,
+    y: kongGround.floorY - CREATURE_CONFIG.kong.frameHeight * CREATURE_CONFIG.kong.scale + 35, // um pouco mais abaixo
     frames: frames.kong,
     currentFrame: 0,
     frameTimer: 0,
@@ -140,43 +140,34 @@ export function updateCreatures(
 
 /**
  * Renders all active creatures
- * They face LEFT (toward player), drawn after terrain but before particles
+ * They face LEFT (toward player), drawn after terrain but before particles.
+ *
+ * IMPORTANT: this runs INSIDE the world transform (ctx.scale(zoom) +
+ * translate(-cameraX, -cameraY)) already applied by GameRenderer.render(), so
+ * positions and culling are done in WORLD coordinates — no manual camera/zoom
+ * math here (double-transforming produces wrong placement/screen culling).
  */
 export function renderCreatures(
   ctx: CanvasRenderingContext2D,
   creatures: CreatureInstance[],
   cameraX: number,
   cameraY: number,
-  zoom: number,
-  screenW: number,
-  screenH: number
+  worldW: number,
+  worldH: number
 ): void {
   for (const c of creatures) {
     if (!c.active) continue
 
-    // Screen position (creatures are at fixed world positions)
-    const screenX = (c.x - cameraX) * zoom
-    const screenY = (c.y - cameraY) * zoom
+    const dw = c.frames.frameWidth * c.scale
+    const dh = c.frames.frameHeight * c.scale
 
-    // Skip if off-screen
-    const dw = c.frames.frameWidth * c.scale * zoom
-    const dh = c.frames.frameHeight * c.scale * zoom
-    if (screenX + dw < 0 || screenX > screenW || screenY + dh < 0 || screenY > screenH) continue
+    // Skip if outside the visible world rect
+    if (c.x + dw < cameraX || c.x > cameraX + worldW || c.y + dh < cameraY || c.y > cameraY + worldH) continue
 
     const frame = c.frames.frames[c.currentFrame]
     if (!frame.complete) continue
 
-    ctx.save()
-
-    // Draw facing LEFT (toward player) - frames are already facing left
-    ctx.drawImage(
-      frame,
-      screenX,
-      screenY,
-      dw,
-      dh
-    )
-
-    ctx.restore()
+    // Draw at world position (frames are already facing left, toward the player)
+    ctx.drawImage(frame, c.x, c.y, dw, dh)
   }
 }

@@ -65,6 +65,24 @@ export interface CodeFragmentItem {
   rhythmBounce: number; // beat-sync bounce factor
 }
 
+/**
+ * Prehistoric creature acting as a physical obstacle inside the OASIS tunnel.
+ * Its Y follows the dynamic tunnel (ceilY / floorY) so it stays embedded in the
+ * tunnel wall even as the music deforms the terrain.
+ */
+export interface CreatureObstacle {
+  id: string;           // 'creature-trex' | 'creature-kong'
+  type: 'trex' | 'kong';
+  x: number;            // fixed world X (right side of tunnel)
+  y: number;            // world Y, updated every frame to follow the tunnel
+  baseY: number;        // last known Y for interpolation
+  width: number;        // sprite width (world px)
+  height: number;       // sprite height (world px)
+  radius: number;       // collision radius
+  active: boolean;      // false once hit by the ship
+  percentOfTrack: number; // 0..1 relative position along the track (0.70 or 0.90)
+}
+
 export interface PowerUpAnnouncement {
   title: string;
   subtitle: string;
