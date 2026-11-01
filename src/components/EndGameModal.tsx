@@ -107,6 +107,7 @@ interface EndGameModalProps {
   stats: GameStats;
   difficulty: DifficultyLevel;
   trackTitle: string;
+  oasisMode?: boolean;
   onRestart: () => void;
   onExitToMenu: () => void;
 }
@@ -117,6 +118,7 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
   stats,
   difficulty,
   trackTitle,
+  oasisMode = false,
   onRestart,
   onExitToMenu
 }) => {
@@ -618,67 +620,139 @@ export const EndGameModal: React.FC<EndGameModalProps> = ({
               <div className="absolute -top-1 right-1/3 w-1.5 h-1.5 rounded-full bg-fuchsia-300 shadow-[0_0_6px_#ec4899]" />
             </div>
 
-            {/* Glowing Core with Neon Trophy */}
+            {/* Glowing Core with Neon Trophy / Copper Key */}
             <div className="relative z-10 w-20 h-20 sm:w-28 sm:h-28 rounded-full bg-[#0a0522]/90 border border-cyan-400/60 flex items-center justify-center shadow-[0_0_25px_rgba(0,240,255,0.45)]">
-              <svg
-                className="w-11 h-11 sm:w-16 sm:h-16 drop-shadow-[0_0_12px_#00f0ff] drop-shadow-[0_0_8px_#ff007f]"
-                viewBox="0 0 64 64"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                {/* Trophy Cup Bowl */}
-                <path
-                  d="M20 12 H44 V26 C44 33.5 38.6 39.5 32 39.5 C25.4 39.5 20 33.5 20 26 Z"
-                  stroke="#00f0ff"
-                  strokeWidth="2.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                {/* Trophy Inner Rim Accent */}
-                <path
-                  d="M23 15 H41"
-                  stroke="#ff007f"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                />
-                {/* Left Handle */}
-                <path
-                  d="M20 16 H14 C10.5 16 8 18.5 8 22 C8 27.5 12.5 31.5 20 32"
-                  stroke="#00f0ff"
-                  strokeWidth="2.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                {/* Right Handle */}
-                <path
-                  d="M44 16 H50 C53.5 16 56 18.5 56 22 C56 27.5 51.5 31.5 44 32"
-                  stroke="#00f0ff"
-                  strokeWidth="2.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                {/* Stem / Neck */}
-                <path
-                  d="M32 39.5 V46"
-                  stroke="#00f0ff"
-                  strokeWidth="2.8"
-                  strokeLinecap="round"
-                />
-                {/* Pedestal Tiered Base */}
-                <path
-                  d="M24 46 H40 L45 54 H19 Z"
-                  stroke="#00f0ff"
-                  strokeWidth="2.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M17 54 H47"
-                  stroke="#ff007f"
-                  strokeWidth="2.4"
-                  strokeLinecap="round"
-                />
-              </svg>
+              {oasisMode ? (
+                /* Copper Key SVG — OASIS Easter Egg */
+                <svg
+                  className="w-11 h-11 sm:w-16 sm:h-16 drop-shadow-[0_0_12px_#b87333] drop-shadow-[0_0_8px_#e8a45c]"
+                  viewBox="0 0 64 64"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  {/* Key bow (head) — outer ring */}
+                  <path
+                    d="M32 14 C26.5 14 22 18.5 22 24 C22 29.5 26.5 34 32 34 C37.5 34 42 29.5 42 24 C42 18.5 37.5 14 32 14 Z"
+                    stroke="#b87333"
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  {/* Key bow inner ring */}
+                  <path
+                    d="M32 17 C28.2 17 25 20.2 25 24 C25 27.8 28.2 31 32 31 C35.8 31 39 27.8 39 24 C39 20.2 35.8 17 32 17 Z"
+                    stroke="#e8a45c"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    opacity="0.9"
+                  />
+                  {/* Bow highlight */}
+                  <path
+                    d="M28 19 C26 19 24.5 20.5 24.5 22.5 C24.5 24.5 26 26 28 26"
+                    stroke="#f0c987"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    opacity="0.8"
+                  />
+                  {/* Key shaft */}
+                  <path
+                    d="M32 34 V50"
+                    stroke="#b87333"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                  />
+                  {/* Shaft highlight */}
+                  <path
+                    d="M31 36 V48"
+                    stroke="#e8a45c"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    opacity="0.7"
+                  />
+                  {/* Key bit (teeth) — main bit */}
+                  <path
+                    d="M24 50 H28 V56 H24 Z"
+                    fill="#b87333"
+                  />
+                  {/* Key bit — secondary notch */}
+                  <path
+                    d="M26 50 H30 V54 H26 Z"
+                    fill="#e8a45c"
+                    opacity="0.9"
+                  />
+                  {/* Bit tip detail */}
+                  <path
+                    d="M28 56 H30 V58 H28 Z"
+                    fill="#8b5a2b"
+                  />
+                  {/* Copper glow dots */}
+                  <circle cx="26" cy="20" r="1.5" fill="#f0c987" opacity="0.9" />
+                  <circle cx="38" cy="20" r="1.5" fill="#f0c987" opacity="0.9" />
+                  <circle cx="32" cy="46" r="1.5" fill="#f0c987" opacity="0.9" />
+                </svg>
+              ) : (
+                /* Neon Trophy SVG — Normal Mode */
+                <svg
+                  className="w-11 h-11 sm:w-16 sm:h-16 drop-shadow-[0_0_12px_#00f0ff] drop-shadow-[0_0_8px_#ff007f]"
+                  viewBox="0 0 64 64"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  {/* Trophy Cup Bowl */}
+                  <path
+                    d="M20 12 H44 V26 C44 33.5 38.6 39.5 32 39.5 C25.4 39.5 20 33.5 20 26 Z"
+                    stroke="#00f0ff"
+                    strokeWidth="2.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  {/* Trophy Inner Rim Accent */}
+                  <path
+                    d="M23 15 H41"
+                    stroke="#ff007f"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                  {/* Left Handle */}
+                  <path
+                    d="M20 16 H14 C10.5 16 8 18.5 8 22 C8 27.5 12.5 31.5 20 32"
+                    stroke="#00f0ff"
+                    strokeWidth="2.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  {/* Right Handle */}
+                  <path
+                    d="M44 16 H50 C53.5 16 56 18.5 56 22 C56 27.5 51.5 31.5 44 32"
+                    stroke="#00f0ff"
+                    strokeWidth="2.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  {/* Stem / Neck */}
+                  <path
+                    d="M32 39.5 V46"
+                    stroke="#00f0ff"
+                    strokeWidth="2.8"
+                    strokeLinecap="round"
+                  />
+                  {/* Pedestal Tiered Base */}
+                  <path
+                    d="M24 46 H40 L45 54 H19 Z"
+                    stroke="#00f0ff"
+                    strokeWidth="2.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M17 54 H47"
+                    stroke="#ff007f"
+                    strokeWidth="2.4"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              )}
             </div>
           </div>
         ) : (

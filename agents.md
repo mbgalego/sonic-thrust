@@ -99,6 +99,12 @@
   6. *Tailwind JIT*: removidas classes construídas em runtime em `GameHUD` (`hover:border-${A}`, `text-' + A + '/70'`) — agora ternários com literais completos, senão o JIT não gerava as classes e o hover/cor da HUD falhava em OASIS.
   7. *Limpeza*: `console.log` de debug removidos (per-frame em renderShip/renderDelorean e no constructor da PhysicsWorld); `collectCodeFragment()` dead code removido; `percentCompleted` clamped a ≥0 no túnel esquerdo; spritesheets PNG não usadas removidas do repo (só os frames individuais/delorean.png são carregados).
   8. *Verified*: lint ✅ build ✅ (v1.39.1)
+- **v1.39.2 (OASIS visual identity — Opções 1 e 6)**:
+  1. *Paleta OASIS no mundo*: estrelas roxas (#7c3aed), grid magenta (#ec4899), fill do teto em violeta escuro e chão em ciano escuro, linhas neon do terreno e equalizer waves em magenta/ciano/violeta — apenas no modo OASIS.
+  2. *Portal de Chave de Cobre*: em OASIS, o portal de finish deixa de ser o portal cyber anelado e passa a ser uma chave de cobre detalhada (bow com múltiplos anéis, shaft com ranhuras decorativas, bit de cobre com dentes, aura dourada, pontos brilhantes).
+  3. *Frase de vitória estendida*: "Nice racing padwan, you were the first to finish!" fica visível 6 segundos antes de ir para o menu de fim de jogo.
+  4. *EndGameModal*: quando OASIS está ativo e o jogador vence, mostra a Chave de Cobre em vez da taça.
+  5. *Verified*: lint ✅ build ✅ (v1.39.2)
 - **v1.38.0 (Info panel: power-up names no longer overflow)**:
   1. *Bug*: `INVULNERABILIDADE` transbordava 44px para além da caixa do card e `SINGULARIDADE` 5px — reproduzido objetivamente em 640–900px (playwright).
   2. *Fix*: renomeado para `INVULNERÁVEL` (idêntico ao mostrado em jogo na HUD: `INVULNERÁVEL: 3.5s`); todos os 8 nomes dos power-ups ganharam guardas `min-w-0 break-words` para nunca rebentar a caixa do card, mesmo em colunas estreitas do menu; gráficos dos power-ups ajustados 48→40px.

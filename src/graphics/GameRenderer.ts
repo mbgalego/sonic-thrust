@@ -520,82 +520,206 @@ export class GameRenderer {
     // OASIS mode: Copper Key portal instead of the standard cyber portal
     const isOasis = world.ship.oasisMode;
     const portalH = (terrain.floorY - terrain.ceilY) * 0.85;
-    const pulse = 1.0 + audioFreq.bass * 0.35;
 
     if (isOasis) {
-      // Copper color palette
       const copper = '#b87333';
       const copperLight = '#e8a45c';
+      const copperBright = '#f0c987';
+      const copperDark = '#8b5a2b';
 
-      // Glowing aura behind the key
-      const grad = ctx.createRadialGradient(0, 0, 10, 0, 0, portalH * 0.5 * pulse);
-      grad.addColorStop(0, 'rgba(184, 115, 51, 0.5)');
-      grad.addColorStop(0.5, 'rgba(232, 164, 92, 0.25)');
+      const pulseKey = 1.0 + Math.sin(Date.now() * 0.002) * 0.05;
+
+      // Glowing aura behind the key — layered copper glow
+      const grad = ctx.createRadialGradient(0, 0, 15, 0, 0, portalH * 0.55 * pulseKey);
+      grad.addColorStop(0, 'rgba(240, 201, 135, 0.55)');
+      grad.addColorStop(0.35, 'rgba(184, 115, 51, 0.35)');
+      grad.addColorStop(0.7, 'rgba(139, 90, 82, 0.15)');
       grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.ellipse(0, 0, 120 * pulse, portalH * 0.5 * pulse, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, 130 * pulseKey, portalH * 0.55 * pulseKey, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Key bow (head of the key) - circular top part
-      const bowR = 34 * pulse;
+      // Inner copper aura ring
+      const grad2 = ctx.createRadialGradient(0, 0, 8, 0, 0, portalH * 0.4 * pulseKey);
+      grad2.addColorStop(0, 'rgba(240, 201, 135, 0.25)');
+      grad2.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = grad2;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 100 * pulseKey, portalH * 0.4 * pulseKey, 0, 0, Math.PI * 2);
+      ctx.fill();
+
       ctx.save();
-      ctx.translate(0, -portalH * 0.15);
+      // Key bow (head) — positioned above center
+      ctx.translate(0, -portalH * 0.12);
+      const bowR = 36 * pulseKey;
+
+      // Bow outer filled circle
       ctx.beginPath();
       ctx.arc(0, 0, bowR, 0, Math.PI * 2);
       ctx.fillStyle = copper;
       ctx.shadowColor = copperLight;
-      ctx.shadowBlur = 12;
+      ctx.shadowBlur = 14;
       ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Bow outer ring stroke
+      ctx.beginPath();
+      ctx.arc(0, 0, bowR - 2, 0, Math.PI * 2);
       ctx.strokeStyle = copperLight;
       ctx.lineWidth = 3;
-      ctx.stroke();
-      // Inner ring of the bow
-      ctx.beginPath();
-      ctx.arc(0, 0, bowR * 0.55, 0, Math.PI * 2);
-      ctx.strokeStyle = copperLight;
-      ctx.lineWidth = 2;
-      ctx.shadowBlur = 0;
-      ctx.stroke();
-      ctx.restore();
-
-      // Key shaft (stem) - vertical line down from bow
-      ctx.save();
-      ctx.translate(0, portalH * 0.15);
-      ctx.beginPath();
-      ctx.moveTo(0, -bowR);
-      ctx.lineTo(0, portalH * 0.35);
-      ctx.strokeStyle = copper;
-      ctx.lineWidth = 6;
-      ctx.shadowColor = copperLight;
-      ctx.shadowBlur = 8;
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-
-      // Key bit (teeth) - rectangular protrusions at the bottom of the shaft
-      const bitY = portalH * 0.35;
-      const bitW = 22 * pulse;
-      const bitH = 14 * pulse;
-      ctx.fillStyle = copper;
       ctx.shadowColor = copperLight;
       ctx.shadowBlur = 10;
-      // Main bit rectangle
-      ctx.fillRect(-bitW / 2, bitY - bitH / 2, bitW, bitH);
-      // Secondary smaller bit
-      ctx.fillRect(-bitW * 0.5, bitY - bitH * 0.5, bitW * 0.55, bitH * 0.5);
+      ctx.stroke();
       ctx.shadowBlur = 0;
+
+      // Bow inner ring
+      ctx.beginPath();
+      ctx.arc(0, 0, bowR * 0.62, 0, Math.PI * 2);
+      ctx.strokeStyle = copperBright;
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // Bow innermost accent
+      ctx.beginPath();
+      ctx.arc(0, 0, bowR * 0.32, 0, Math.PI * 2);
+      ctx.strokeStyle = copperDark;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Bow decorative notch (top)
+      ctx.beginPath();
+      ctx.moveTo(0, -bowR);
+      ctx.lineTo(0, -bowR - 6);
+      ctx.strokeStyle = copperBright;
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // Bow side rivets
+      ctx.fillStyle = copperBright;
+      ctx.beginPath();
+      ctx.arc(-bowR * 0.78, 0, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(bowR * 0.78, 0, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+
+      // Key shaft (stem) — vertical from bow down to bit
+      ctx.save();
+      ctx.translate(0, portalH * 0.10);
+      const shaftTop = -bowR + 8;
+      const shaftBottom = portalH * 0.30;
+
+      // Shaft main body
+      ctx.beginPath();
+      ctx.moveTo(-2, shaftTop);
+      ctx.lineTo(-2, shaftBottom);
+      ctx.lineTo(2, shaftBottom);
+      ctx.lineTo(2, shaftTop);
+      ctx.closePath();
+      ctx.fillStyle = copper;
+      ctx.shadowColor = copperLight;
+      ctx.shadowBlur = 8;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Shaft center highlight line
+      ctx.beginPath();
+      ctx.moveTo(0, shaftTop);
+      ctx.lineTo(0, shaftBottom);
+      ctx.strokeStyle = copperBright;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Shaft decorative bands
+      ctx.strokeStyle = copperDark;
+      ctx.lineWidth = 1.5;
+      for (let i = 1; i <= 3; i++) {
+        const bandY = shaftTop + (shaftBottom - shaftTop) * (i / 4);
+        ctx.beginPath();
+        ctx.moveTo(-3, bandY);
+        ctx.lineTo(3, bandY);
+        ctx.stroke();
+      }
+
+      // Key bit (teeth) — rectangular protrusions at bottom of shaft
+      const bitY = shaftBottom;
+      const bitW = 26 * pulseKey;
+      const bitH = 16 * pulseKey;
+
+      // Main bit block
+      ctx.beginPath();
+      ctx.moveTo(-bitW / 2, bitY - bitH / 2);
+      ctx.lineTo(bitW / 2, bitY - bitH / 2);
+      ctx.lineTo(bitW / 2, bitY + bitH / 2);
+      ctx.lineTo(-bitW / 2, bitY + bitH / 2);
+      ctx.closePath();
+      ctx.fillStyle = copper;
+      ctx.shadowColor = copperLight;
+      ctx.shadowBlur = 12;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Bit top edge highlight
+      ctx.beginPath();
+      ctx.moveTo(-bitW / 2, bitY - bitH / 2);
+      ctx.lineTo(bitW / 2, bitY - bitH / 2);
+      ctx.strokeStyle = copperBright;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Secondary bit notch (inner)
+      const innerBitW = bitW * 0.55;
+      const innerBitH = bitH * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(-innerBitW / 2, bitY - innerBitH / 2);
+      ctx.lineTo(innerBitW / 2, bitY - innerBitH / 2);
+      ctx.lineTo(innerBitW / 2, bitY + innerBitH / 2);
+      ctx.lineTo(-innerBitW / 2, bitY + innerBitH / 2);
+      ctx.closePath();
+      ctx.fillStyle = copperLight;
+      ctx.fill();
+
+      // Bit bottom detail line
+      ctx.beginPath();
+      ctx.moveTo(-bitW / 2, bitY + bitH / 2);
+      ctx.lineTo(bitW / 2, bitY + bitH / 2);
+      ctx.strokeStyle = copperDark;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Bit tip accent
+      ctx.beginPath();
+      ctx.moveTo(-3, bitY + bitH / 2);
+      ctx.lineTo(-3, bitY + bitH / 2 + 4);
+      ctx.lineTo(3, bitY + bitH / 2 + 4);
+      ctx.lineTo(3, bitY + bitH / 2);
+      ctx.closePath();
+      ctx.fillStyle = copperDark;
+      ctx.fill();
+
+      // Copper glow dots around bit
+      ctx.fillStyle = copperBright;
+      for (const [dx, dy] of [[-bitW / 2 - 4, bitY], [bitW / 2 + 4, bitY], [0, bitY + bitH / 2 + 6]]) {
+        ctx.beginPath();
+        ctx.arc(dx, dy, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
       ctx.restore();
 
       // Key text
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = 12;
       ctx.shadowColor = copper;
       ctx.font = 'bold 15px Orbitron';
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
-      ctx.fillText('CHAVE DE COBRE', 0, -portalH * 0.55);
+      ctx.fillText('CHAVE DE COBRE', 0, -portalH * 0.62);
       ctx.font = '11px Rajdhani';
       ctx.fillStyle = '#e8a45c';
-      ctx.fillText('CHAVE DO OASIS', 0, -portalH * 0.55 + 18);
+      ctx.fillText('CHAVE DO OASIS', 0, -portalH * 0.62 + 20);
     } else {
       // Standard cyber portal (original)
       // Dynamic audio-pulsed portal radius

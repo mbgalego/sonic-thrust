@@ -634,7 +634,7 @@ export default function App() {
           });
           announcementTimerRef.current = setTimeout(() => {
             setActiveAnnouncement(null);
-          }, 5000);
+          }, 6000);
         }
 
         // Check for track unlocks based on difficulty completed (only PRO and EXTREME unlock tracks)
@@ -648,7 +648,7 @@ export default function App() {
         
         setTimeout(() => {
           setGameState('VICTORY');
-        }, 1000);
+        }, 6000);
       };
 
       worldRef.current = newWorld;
@@ -1041,6 +1041,7 @@ export default function App() {
           stats={hudStats}
           difficulty={difficulty}
           trackTitle={selectedTrack?.title || 'Faixa Musical'}
+          oasisMode={easterSave.oasisMode}
           onRestart={handleRestart}
           onExitToMenu={handleExitToMenu}
         />
