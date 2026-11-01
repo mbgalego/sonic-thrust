@@ -309,21 +309,22 @@ export default function App() {
 
   // Force selectedTrack to the OASIS track when OASIS mode activates; revert to a
   // normal track when OASIS deactivates. Only sets selectedTrack (does NOT play
-  // audio) — the user picks when to start the mission. Depends only on
-  // easterSave.oasisMode + filteredTracks to avoid re-running loops.
+  // audio) — the user picks when to start the mission.
+  // Depends only on easterSave.oasisMode + filteredTracks (not selectedTrack) so
+  // it always runs when the toggle changes, regardless of current selection.
   useEffect(() => {
     if (easterSave.oasisMode) {
       const oasisTrack = filteredTracks.find((t) => t.oasisOnly);
-      if (oasisTrack && selectedTrack?.id !== oasisTrack.id) {
+      if (oasisTrack) {
         setSelectedTrack(oasisTrack);
       }
     } else if (selectedTrack?.oasisOnly) {
       const next = filteredTracks[0] ?? null;
-      if (next && selectedTrack?.id !== next.id) {
+      if (next) {
         setSelectedTrack(next);
       }
     }
-  }, [easterSave.oasisMode, filteredTracks, selectedTrack]);
+  }, [easterSave.oasisMode, filteredTracks]);
 
   const touchesHeld = useRef<{ left: boolean; right: boolean }>({ left: false, right: false });
   const touchMapRef = useRef<Map<number, 'left' | 'right'>>(new Map());
