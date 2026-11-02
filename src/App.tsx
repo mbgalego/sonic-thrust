@@ -136,34 +136,19 @@ const DEFAULT_TRACKS: TrackMetadata[] = [
     "isProcedural": false
   },
   {
-    "id": "cyber-overdrive",
-    "title": "Cyber Overdrive (Procedural Synth)",
-    "artist": "Sonic Thrust Labs",
-    "filename": "cyber-overdrive.mp3",
-    "estimatedBpm": 132,
-    "duration": 96,
-    "description": "Synthwave frenético com graves pulsantes e arpeggios cortantes.",
-    "isProcedural": true
-  },
-  {
-    "id": "neon-velocity",
-    "title": "Neon Velocity (High BPM)",
-    "artist": "RetroPulse",
-    "filename": "neon-velocity.mp3",
-    "estimatedBpm": 145,
-    "duration": 112,
-    "description": "Darksynth acelerado com batidas secas e alta densidade de graves.",
-    "isProcedural": true
-  },
-  {
-    "id": "dark-matter-drift",
-    "title": "Dark Matter Drift (Deep Bass)",
-    "artist": "SubOrbit",
-    "filename": "dark-matter-drift.mp3",
-    "estimatedBpm": 115,
-    "duration": 84,
-    "description": "Ondas subsónicas profundas com fortes oscilações no teto e chão.",
-    "isProcedural": true
+    "id": "neo-dreams",
+    "title": "Neo Dreams",
+    "artist": "miguelius",
+    "filename": "Neon Dreams (Dev's Secret Sound).mp3",
+    "estimatedBpm": 122,
+    "duration": 228,
+    "description": "Faixa secreta desbloqueada ao completar qualquer faixa no modo PRO. Sintetizadores oníricos, graves suaves e melodia que flutua como memórias de neon.",
+    "isProcedural": false,
+    "unlockCondition": {
+      "mode": "PRO",
+      "description": "Completa qualquer faixa no modo PRO para desbloquear"
+    },
+    "secret": true
   },
   {
     "id": "welcome-to-oasis",
@@ -659,18 +644,18 @@ export default function App() {
         audio.setLoopTrack(false);
         audio.playVictorySfx();
         
-        // OASIS victory message — Copper Key Easter Egg
+        // OASIS victory message — OASIS Key Easter Egg
         if (easterSave.oasisMode) {
           if (announcementTimerRef.current) {
             clearTimeout(announcementTimerRef.current);
           }
           setActiveAnnouncement({
             title: 'Nice racing padwan, you were the first to finish!',
-            subtitle: 'Chave de Copper do OASIS obtida',
+            subtitle: 'Chave do OASIS obtida',
             type: 'SHIELD',
             color: 'text-amber-400',
             borderColor: 'border-amber-500',
-            glowColor: 'rgba(184, 115, 51, 0.95)',
+            glowColor: 'rgba(245, 158, 11, 0.95)',
             id: Date.now()
           });
           announcementTimerRef.current = setTimeout(() => {

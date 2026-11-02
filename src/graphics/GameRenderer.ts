@@ -517,7 +517,7 @@ export class GameRenderer {
     ctx.save();
     ctx.translate(px, py);
 
-    // OASIS mode: Copper Key portal instead of the standard cyber portal
+    // OASIS mode: OASIS Key portal with stellar radiance and music-reactive sparkles
     const isOasis = world.ship.oasisMode;
     const portalH = (terrain.floorY - terrain.ceilY) * 0.85;
 
@@ -526,40 +526,158 @@ export class GameRenderer {
       const copperLight = '#e8a45c';
       const copperBright = '#f0c987';
       const copperDark = '#8b5a2b';
+      const goldCore = '#fef08a';
+      const goldStellar = '#f59e0b';
 
-      const pulseKey = 1.0 + Math.sin(Date.now() * 0.002) * 0.05;
+      const nowSec = Date.now() * 0.001;
+      const bassKick = audioFreq.bass;
+      const midsEnergy = audioFreq.mids;
+      const trebleGlitter = audioFreq.treble;
+      const isBeat = audioFreq.isBeat;
 
-      // Glowing aura behind the key — layered copper glow
-      const grad = ctx.createRadialGradient(0, 0, 15, 0, 0, portalH * 0.55 * pulseKey);
-      grad.addColorStop(0, 'rgba(240, 201, 135, 0.55)');
-      grad.addColorStop(0.35, 'rgba(184, 115, 51, 0.35)');
-      grad.addColorStop(0.7, 'rgba(139, 90, 82, 0.15)');
+      // Music-synced breathing scale and energy
+      const pulseKey = 1.0 + Math.sin(nowSec * 2.2) * 0.04 + bassKick * 0.16 + (isBeat ? 0.09 : 0);
+      const stellarIntensity = 0.65 + bassKick * 0.45 + trebleGlitter * 0.4;
+
+      // 1. Stellar Outer Corona — multi-layered radiant aura
+      const grad = ctx.createRadialGradient(0, 0, 15, 0, 0, portalH * 0.58 * pulseKey);
+      grad.addColorStop(0, `rgba(254, 240, 138, ${0.65 * stellarIntensity})`);
+      grad.addColorStop(0.25, `rgba(245, 158, 11, ${0.45 * stellarIntensity})`);
+      grad.addColorStop(0.55, `rgba(184, 115, 51, ${0.28 * stellarIntensity})`);
+      grad.addColorStop(0.82, `rgba(139, 90, 43, ${0.12 * stellarIntensity})`);
       grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.ellipse(0, 0, 130 * pulseKey, portalH * 0.55 * pulseKey, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, 140 * pulseKey, portalH * 0.58 * pulseKey, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Inner copper aura ring
-      const grad2 = ctx.createRadialGradient(0, 0, 8, 0, 0, portalH * 0.4 * pulseKey);
-      grad2.addColorStop(0, 'rgba(240, 201, 135, 0.25)');
+      // Inner concentrated stellar core
+      const grad2 = ctx.createRadialGradient(0, 0, 6, 0, 0, portalH * 0.38 * pulseKey);
+      grad2.addColorStop(0, `rgba(255, 255, 255, ${0.60 * stellarIntensity})`);
+      grad2.addColorStop(0.4, `rgba(251, 191, 36, ${0.35 * stellarIntensity})`);
       grad2.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = grad2;
       ctx.beginPath();
-      ctx.ellipse(0, 0, 100 * pulseKey, portalH * 0.4 * pulseKey, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, 105 * pulseKey, portalH * 0.38 * pulseKey, 0, 0, Math.PI * 2);
       ctx.fill();
 
+      // 2. Stellar Rays / Diffraction Cross Flares ("Brilho Estrelar")
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const starRayCount = 8;
+      for (let r = 0; r < starRayCount; r++) {
+        const baseAngle = (r * Math.PI) / (starRayCount / 2);
+        // Alternating slow rotation for celestial depth
+        const rotAngle = baseAngle + nowSec * (r % 2 === 0 ? 0.18 : -0.14);
+        const rayLen = (r % 2 === 0 ? portalH * 0.60 : portalH * 0.36) * (1.0 + bassKick * 0.22);
+        const rayWidth = (r % 2 === 0 ? 8 : 4.5) * (1.0 + midsEnergy * 0.35);
+
+        ctx.save();
+        ctx.rotate(rotAngle);
+        const rayGrad = ctx.createLinearGradient(0, -rayLen, 0, rayLen);
+        rayGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+        rayGrad.addColorStop(0.35, 'rgba(251, 191, 36, 0.40)');
+        rayGrad.addColorStop(0.5, `rgba(255, 255, 255, ${0.80 * stellarIntensity})`);
+        rayGrad.addColorStop(0.65, 'rgba(251, 191, 36, 0.40)');
+        rayGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = rayGrad;
+        ctx.beginPath();
+        ctx.moveTo(-rayWidth, 0);
+        ctx.lineTo(0, -rayLen);
+        ctx.lineTo(rayWidth, 0);
+        ctx.lineTo(0, rayLen);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+      ctx.restore();
+
+      // 3. Music-Reactive Orbiting Star Sparkles ("Pequenos Brilhos ao Som da Música")
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const sparkleCount = 20;
+      for (let s = 0; s < sparkleCount; s++) {
+        const sPhase = s * 2.399; // golden angle distribution
+        const sOrbitR = 28 + (s * 19) % 115;
+        const sSpeed = 0.45 + (s % 5) * 0.22;
+        const sAngle = nowSec * sSpeed + sPhase;
+
+        const sx = Math.cos(sAngle) * (sOrbitR * (1.0 + (s % 3) * 0.2));
+        const sy = Math.sin(sAngle * 1.25) * (portalH * 0.42) + Math.cos(sPhase * 1.5) * 15;
+
+        // Music reactivity: individual sparkles react to audio spectrum bins
+        const freqBin = (s * 4) % Math.max(1, audioFreq.frequencyArray.length);
+        const binVal = (audioFreq.frequencyArray[freqBin] || 0) / 255;
+        const twinkle = 0.35 + 0.65 * Math.sin(nowSec * (4.5 + (s % 4) * 2.2) + sPhase);
+        const sparkAlpha = Math.min(1.0, (twinkle * 0.4 + binVal * 0.85 + (isBeat ? 0.45 : 0)) * stellarIntensity);
+
+        if (sparkAlpha > 0.08) {
+          const sparkSize = (2.2 + (s % 4) * 1.4) * (0.8 + binVal * 0.9);
+          const isGold = s % 3 !== 0;
+          ctx.fillStyle = isGold ? '#fef08a' : '#ffffff';
+          ctx.shadowColor = isGold ? '#f59e0b' : '#38bdf8';
+          ctx.shadowBlur = 9;
+
+          // 4-point diamond cross glint
+          ctx.beginPath();
+          ctx.moveTo(sx - sparkSize * 2.4, sy);
+          ctx.lineTo(sx, sy - sparkSize * 0.55);
+          ctx.lineTo(sx + sparkSize * 2.4, sy);
+          ctx.lineTo(sx, sy + sparkSize * 0.55);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.moveTo(sx, sy - sparkSize * 2.4);
+          ctx.lineTo(sx + sparkSize * 0.55, sy);
+          ctx.lineTo(sx, sy + sparkSize * 2.4);
+          ctx.lineTo(sx - sparkSize * 0.55, sy);
+          ctx.closePath();
+          ctx.fill();
+
+          // Center intense star core
+          ctx.beginPath();
+          ctx.arc(sx, sy, sparkSize * 0.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.shadowBlur = 0;
+      ctx.restore();
+
+      // 4. The OASIS Key Body
       ctx.save();
       // Key bow (head) — positioned above center
       ctx.translate(0, -portalH * 0.12);
       const bowR = 36 * pulseKey;
 
+      // Celestial Orbit Ring around Key Bow
+      ctx.save();
+      ctx.rotate(nowSec * 0.5);
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.45)';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([4, 6]);
+      ctx.beginPath();
+      ctx.arc(0, 0, bowR * 1.32, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // 4 Orbit nodes
+      ctx.fillStyle = '#fef08a';
+      ctx.shadowColor = '#f59e0b';
+      ctx.shadowBlur = 8;
+      for (let n = 0; n < 4; n++) {
+        const na = (n * Math.PI) / 2;
+        ctx.beginPath();
+        ctx.arc(Math.cos(na) * bowR * 1.32, Math.sin(na) * bowR * 1.32, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+
       // Bow outer filled circle
       ctx.beginPath();
       ctx.arc(0, 0, bowR, 0, Math.PI * 2);
       ctx.fillStyle = copper;
-      ctx.shadowColor = copperLight;
-      ctx.shadowBlur = 14;
+      ctx.shadowColor = goldStellar;
+      ctx.shadowBlur = 18;
       ctx.fill();
       ctx.shadowBlur = 0;
 
@@ -567,9 +685,9 @@ export class GameRenderer {
       ctx.beginPath();
       ctx.arc(0, 0, bowR - 2, 0, Math.PI * 2);
       ctx.strokeStyle = copperLight;
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 3.2;
       ctx.shadowColor = copperLight;
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = 12;
       ctx.stroke();
       ctx.shadowBlur = 0;
 
@@ -587,22 +705,36 @@ export class GameRenderer {
       ctx.lineWidth = 1.5;
       ctx.stroke();
 
+      // Bow center glowing OASIS gem/core (pulses with beat)
+      const gemPulse = 1.0 + (isBeat ? 0.35 : 0) + bassKick * 0.2;
+      const gemGrad = ctx.createRadialGradient(0, 0, 1, 0, 0, bowR * 0.22 * gemPulse);
+      gemGrad.addColorStop(0, '#ffffff');
+      gemGrad.addColorStop(0.5, '#fef08a');
+      gemGrad.addColorStop(1, 'rgba(245, 158, 11, 0)');
+      ctx.fillStyle = gemGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, bowR * 0.22 * gemPulse, 0, Math.PI * 2);
+      ctx.fill();
+
       // Bow decorative notch (top)
       ctx.beginPath();
       ctx.moveTo(0, -bowR);
-      ctx.lineTo(0, -bowR - 6);
+      ctx.lineTo(0, -bowR - 7);
       ctx.strokeStyle = copperBright;
       ctx.lineWidth = 2.5;
       ctx.stroke();
 
       // Bow side rivets
-      ctx.fillStyle = copperBright;
+      ctx.fillStyle = goldCore;
+      ctx.shadowColor = goldStellar;
+      ctx.shadowBlur = 6;
       ctx.beginPath();
-      ctx.arc(-bowR * 0.78, 0, 2.2, 0, Math.PI * 2);
+      ctx.arc(-bowR * 0.78, 0, 2.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.beginPath();
-      ctx.arc(bowR * 0.78, 0, 2.2, 0, Math.PI * 2);
+      ctx.arc(bowR * 0.78, 0, 2.5, 0, Math.PI * 2);
       ctx.fill();
+      ctx.shadowBlur = 0;
 
       ctx.restore();
 
@@ -614,14 +746,14 @@ export class GameRenderer {
 
       // Shaft main body
       ctx.beginPath();
-      ctx.moveTo(-2, shaftTop);
-      ctx.lineTo(-2, shaftBottom);
-      ctx.lineTo(2, shaftBottom);
-      ctx.lineTo(2, shaftTop);
+      ctx.moveTo(-2.5, shaftTop);
+      ctx.lineTo(-2.5, shaftBottom);
+      ctx.lineTo(2.5, shaftBottom);
+      ctx.lineTo(2.5, shaftTop);
       ctx.closePath();
       ctx.fillStyle = copper;
-      ctx.shadowColor = copperLight;
-      ctx.shadowBlur = 8;
+      ctx.shadowColor = goldStellar;
+      ctx.shadowBlur = 10;
       ctx.fill();
       ctx.shadowBlur = 0;
 
@@ -629,18 +761,18 @@ export class GameRenderer {
       ctx.beginPath();
       ctx.moveTo(0, shaftTop);
       ctx.lineTo(0, shaftBottom);
-      ctx.strokeStyle = copperBright;
-      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = goldCore;
+      ctx.lineWidth = 1.6;
       ctx.stroke();
 
       // Shaft decorative bands
       ctx.strokeStyle = copperDark;
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.6;
       for (let i = 1; i <= 3; i++) {
         const bandY = shaftTop + (shaftBottom - shaftTop) * (i / 4);
         ctx.beginPath();
-        ctx.moveTo(-3, bandY);
-        ctx.lineTo(3, bandY);
+        ctx.moveTo(-3.5, bandY);
+        ctx.lineTo(3.5, bandY);
         ctx.stroke();
       }
 
@@ -657,8 +789,8 @@ export class GameRenderer {
       ctx.lineTo(-bitW / 2, bitY + bitH / 2);
       ctx.closePath();
       ctx.fillStyle = copper;
-      ctx.shadowColor = copperLight;
-      ctx.shadowBlur = 12;
+      ctx.shadowColor = goldStellar;
+      ctx.shadowBlur = 14;
       ctx.fill();
       ctx.shadowBlur = 0;
 
@@ -700,26 +832,27 @@ export class GameRenderer {
       ctx.fillStyle = copperDark;
       ctx.fill();
 
-      // Copper glow dots around bit
-      ctx.fillStyle = copperBright;
+      // Radiant glow dots around bit
+      ctx.fillStyle = goldCore;
+      ctx.shadowColor = goldStellar;
+      ctx.shadowBlur = 8;
       for (const [dx, dy] of [[-bitW / 2 - 4, bitY], [bitW / 2 + 4, bitY], [0, bitY + bitH / 2 + 6]]) {
         ctx.beginPath();
-        ctx.arc(dx, dy, 1.8, 0, Math.PI * 2);
+        ctx.arc(dx, dy, 2.2, 0, Math.PI * 2);
         ctx.fill();
       }
+      ctx.shadowBlur = 0;
 
       ctx.restore();
 
-      // Key text
-      ctx.shadowBlur = 12;
-      ctx.shadowColor = copper;
-      ctx.font = 'bold 15px Orbitron';
+      // Key text — only "CHAVE DO OASIS" as requested
+      ctx.shadowBlur = 16;
+      ctx.shadowColor = goldStellar;
+      ctx.font = 'bold 16px Orbitron';
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
-      ctx.fillText('CHAVE DE COBRE', 0, -portalH * 0.62);
-      ctx.font = '11px Rajdhani';
-      ctx.fillStyle = '#e8a45c';
-      ctx.fillText('CHAVE DO OASIS', 0, -portalH * 0.62 + 20);
+      ctx.fillText('CHAVE DO OASIS', 0, -portalH * 0.60);
+      ctx.shadowBlur = 0;
     } else {
       // Standard cyber portal (original)
       // Dynamic audio-pulsed portal radius

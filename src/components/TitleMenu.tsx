@@ -52,13 +52,20 @@ import { getEasterEggSave, setEasterEggSave, type EasterEggSave } from '../utils
  * Pixel-accurate vector representation of each in-game power-up beacon
  */
 const NEWS_TICKER = [
-  "JOGO DO ANO — IGNORÂNCIA",
-  "MELHOR TRILHA SYNTHWAVE — PC GAMERRA",
-  "ESCOLHA DOS EDITORES — GAME SPÔT",
-  "IMPERDÍVEL — POLYGONO",
-  "PRÉMIO OURO — EUROGAMBER",
-  "LEITURA OBRIGATÓRIA — EDGE NÃO",
-  "5/5 — KOTAKU MEIO",
+  'Revista Beat & Thrust: "Dois propulsores, zero margem de erro e uma banda sonora que devia ser vendida em vinil duplo. Obra-prima."',
+  'Pixel Rítmico: "É metade simulador de voo de alta precisão, metade concerto de rock orbital. O melhor casamento entre física e sintetizadores."',
+  'Joystick Melódico: "Tentámos sincronizar o propulsor esquerdo com o baixo e o direito com a bateria. Resultado? O caos mais glorioso do ano."',
+  'IndieWave Mag: "A banda sonora bate tão forte que até esquecemos o desespero de alinhar os dois motores num túnel estreito. 10/10."',
+  'Respawn Sonoro: "Sonic Thrust prova que voar através da inércia ao ritmo de bangers originais é o verdadeiro pico dos videojogos."',
+  'Polygon Harmónico: "Um bailado sádico de gravidade e som. O controlo independente dos dois motores é puro génio."',
+  'Rolling Asteroid: "Quem diria que a melhor banda sonora do ano estaria num jogo indie de controlo duplo? As faixas não saem da cabeça."',
+  'Frequência Orbital: "O compositor deste jogo não criou apenas músicas; desenhou o batimento cardíaco da nossa nave. Fenomenal."',
+  'Sintetizador no Vácuo: "Uma viagem sensorial onde cada aceleradela parece a transição perfeita de uma faixa eletrónica."',
+  'Audiófilo Galáctico: "Recomendamos auscultadores com cancelamento de ruído: o som dos propulsores misturado com a OST é pura hipnose acústica."',
+  'O Arauto Rítmico: "Sonic Thrust: o único sítio onde despenhar a nave a alta velocidade tem ritmo de festival de verão."',
+  'Tribuna dos Decibéis: "A navegação exige foco cirúrgico, mas as músicas fazem-te querer carregar a fundo e esquecer a gravidade."',
+  'Café & Equalizador: "Comecei a jogar pela perícia dos motores duplos, fiquei a noite inteira a abanar o capacete com a banda sonora."',
+  'Gazeta da Inércia: "Coordenação motora levada ao extremo, embalada pela melhor banda sonora que um cockpit virtual já teve o prazer de ouvir."'
 ];
 
 const PowerUpGraphic: React.FC<{ type: PowerUpType; size?: number }> = ({ type, size = 44 }) => {
@@ -349,8 +356,11 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
       <div className="relative z-20 flex items-center justify-between w-full max-w-6xl mx-auto px-1 sm:px-4 pt-1 sm:pt-2 pb-2 shrink-0">
         <div className="flex items-center min-w-0 overflow-hidden flex-1 sm:flex-initial">
           <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#00f0ff] shrink-0 mr-2" />
-          <div className="news-ticker-mask overflow-hidden min-w-0 max-w-[185px] sm:max-w-[340px] lg:max-w-[520px]">
-            <div className="animate-news-marquee font-orbitron text-xs sm:text-sm tracking-wider text-cyan-400 font-bold uppercase">
+          <div
+            className="news-ticker-mask overflow-hidden min-w-0 max-w-[210px] sm:max-w-[420px] lg:max-w-[620px]"
+            title="Passa o cursor para pausar o ticker"
+          >
+            <div className="animate-news-marquee font-orbitron text-xs sm:text-sm tracking-wide text-cyan-300 font-semibold select-none cursor-default">
               {newsTickerText}
             </div>
           </div>
@@ -413,7 +423,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
           <span className="neon-text-magenta text-[#ff007f]">THRUST</span>
         </h1>
         <p className="text-[#38bdf8] text-sm sm:text-base md:text-lg lg:text-xl font-rajdhani font-semibold max-w-2xl mt-0.5 sm:mt-2 tracking-wide leading-snug px-4 drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]">
-          Navega por desfiladeiros de néon que vibram com as frequências sonoras e testa os teus reflexos.
+          Domina a inércia com o poder de dois propulsores independentes e rasga o espaço ao som de uma banda sonora original eletrizante.
         </p>
       </header>
 
@@ -1428,7 +1438,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
       {/* Footer: Version and Last Update Date on left, Author on right */}
       <footer className="relative z-10 flex items-center justify-between text-xs sm:text-sm font-mono text-cyan-400/90 pt-1.5 pb-1 sm:pt-3 sm:pb-2 border-t border-white/10 max-w-6xl w-full mx-auto px-2">
-        <span className="tracking-wide">v1.39.5 · 01/11/2026</span>
+        <span className="tracking-wide">v1.39.9 · 01/11/2026</span>
         <span className="tracking-wide font-semibold text-gray-200">Por Miguel Galego</span>
       </footer>
 

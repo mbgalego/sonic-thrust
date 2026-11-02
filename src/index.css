@@ -70,15 +70,20 @@
 }
 
 .animate-news-marquee {
-  animation: newsMarquee 28s linear infinite;
+  animation: newsMarquee 210s linear infinite;
   width: max-content;
   white-space: nowrap;
+  will-change: transform;
 }
 
 /* Soft horizontal fade at the edges of the news ticker */
 .news-ticker-mask {
-  -webkit-mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
-  mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, black 6%, black 94%, transparent);
+  mask-image: linear-gradient(90deg, transparent, black 6%, black 94%, transparent);
+}
+
+.news-ticker-mask:hover .animate-news-marquee {
+  animation-play-state: paused;
 }
 
 @keyframes laserSweep {
@@ -120,26 +125,5 @@
 
 .animate-slide-down {
   animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@keyframes newsMarquee {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
-}
-
-.animate-news-marquee {
-  animation: newsMarquee 28s linear infinite;
-  width: max-content;
-  white-space: nowrap;
-}
-
-/* Soft horizontal fade at the edges of the news ticker */
-.news-ticker-mask {
-  -webkit-mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
-  mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
 }
 

@@ -111,6 +111,21 @@
   3. *Code fragments disappear after unlock*: `spawnCodeFragments()` returns early when `codeFragmentsCollected >= 3` — cubes never reappear once OASIS is discovered.
   4. *Harder fragment positions*: cubes now spawn at 60%, 80%, 95% of `totalTrackLength` (based on music duration) on the negative X side, instead of fixed -600/-1200/-1800.
   5. *Verified*: lint ✅ build ✅ (v1.39.3)
+- **v1.39.9 (Removal of Procedural Synthesis Tracks)**:
+  1. *Catalog Cleanup*: Removed all 3 procedural synth tracks (Cyber Overdrive, Neon Velocity, Dark Matter Drift) from `tracks.json` and `App.tsx` DEFAULT_TRACKS so the game catalog only features authored and imported music.
+  2. *Verified*: lint ✅ build ✅ (v1.39.9)
+- **v1.39.8 (Main Menu Subtitle Update)**:
+  1. *Main Menu Subtitle* (`TitleMenu.tsx`): Updated hero tagline below the game title to "Domina a inércia com o poder de dois propulsores independentes e rasga o espaço ao som de uma banda sonora original eletrizante.", reinforcing the dual-thruster aerodynamic gameplay and original soundtrack focus.
+  2. *Verified*: lint ✅ build ✅ (v1.39.8)
+- **v1.39.7 (Curated Press & Music Review News Ticker + Hover-to-Pause)**:
+  1. *Curated Ticker Headlines* (`TitleMenu.tsx`): Replaced mock news headlines with 14 press & audio reviews highlighting dual-thruster mechanics, zero contact physics, and the original synthwave OST (Beat & Thrust, Pixel Rítmico, Joystick Melódico, IndieWave Mag, Respawn Sonoro, Polygon Harmónico, Rolling Asteroid, Frequência Orbital, Sintetizador no Vácuo, Audiófilo Galáctico, O Arauto Rítmico, Tribuna dos Decibéis, Café & Equalizador, Gazeta da Inércia).
+  2. *Animation & Readability* (`index.css` & `TitleMenu.tsx`): Adjusted marquee animation duration from 28s to 210s so long quotes glide by at a comfortable, readable pace (~55px/s) with seamless loop wrap; added `hover:pause` behavior on desktop (`news-ticker-mask:hover .animate-news-marquee`) so players can pause to read; removed uppercase forced styling to preserve natural quote punctuation and casing.
+  3. *Verified*: lint ✅ build ✅ (v1.39.7)
+- **v1.39.6 (OASIS Key Renaming, Stellar Portal Radiance & Ready Player One Victory Quotes)**:
+  1. *OASIS Key Renaming*: Removed all references to "Chave de Cobre" / "Copper Key". The portal and victory announcements now exclusively display "Chave do OASIS".
+  2. *Stellar Radiance & Cosmic Sparkles* (`GameRenderer.ts`): Rebuilt the finish portal for OASIS mode with rotating 8-point diffraction cross flares ("brilho estrelar"), a multi-tiered solar/amber corona, a celestial orbital rune ring around the key bow, an audio-pulsing gem core, and 20 orbiting star sparkles that twinkle and flare to high treble, mids, and music kicks ("pequenos brilhos ao som da música").
+  3. *Ready Player One Victory Quotes* (`EndGameModal.tsx`): When winning in OASIS mode, the modal subtitle dynamically cycles through iconic quotes from the movie *Ready Player One* (e.g. Parzival, Art3mis, James Halliday) using a non-repeating Fisher-Yates shuffle bag, accompanied by a glowing amber/gold subtitle aesthetic.
+  4. *Verified*: lint ✅ build ✅ (v1.39.6)
 - **v1.39.5 (T-Rex Spritesheet Extraction & Alignment Correction)**:
   1. *Spritesheet Extraction*: Extracted 12 distinct animation frames from the user-provided spritesheet (`public/assets/skins/1793549139235.jpg`, 3168×1344, 4 columns × 3 rows).
   2. *Chroma Key & Boundary Detection*: Analyzed pixel coordinates of each cell to find the exact top, bottom, left, and right bounds (`min_x`, `max_x`, `min_y`, `max_y`), accounting for non-uniform spacing between frames and character movements (mouth roars, saliva droplets, stress marks). Background green removed with clean transparency (alpha channel).
