@@ -111,6 +111,9 @@
   3. *Code fragments disappear after unlock*: `spawnCodeFragments()` returns early when `codeFragmentsCollected >= 3` — cubes never reappear once OASIS is discovered.
   4. *Harder fragment positions*: cubes now spawn at 60%, 80%, 95% of `totalTrackLength` (based on music duration) on the negative X side, instead of fixed -600/-1200/-1800.
   5. *Verified*: lint ✅ build ✅ (v1.39.3)
+- **v1.40.1 (Removed Kosmonova and Carl Poppa Audio Files)**:
+  1. *Disk Storage Cleanup*: Permanently deleted orphan audio files `public/tracks/Kosmonova_-_Take_Me_Away__Club_Mix__1997.mp3` (~15 MB) and `public/tracks/CARL POPPA — Lyric Video [Q9aM9Ch97U8].mp3` (~13 MB) from disk.
+  2. *Verified*: lint ✅ build ✅ (v1.40.1)
 - **v1.40.0 (OCD Dilacerado Extreme Unlock & Randomized Game Over Themes)**:
   1. *Secret Track "OCD Dilacerado"*: Added the dramatic post-rock/cello track by miguelius (143 BPM, 330s) to the track library with unlock condition tied strictly to winning on **EXTREME** difficulty (`mode: 'EXTREME'`). Remains locked and disabled in the catalog until an EXTREME victory is achieved.
   2. *Immediate Victory Unlock Banner*: Winning on PRO or EXTREME triggers an in-game banner ("NOVA FAIXA DESBLOQUEADA!") before modal display, followed by the slide-down toast in the title menu and persistent `localStorage` unlock. Completing EXTREME also fulfills PRO tier unlocks if not yet unlocked.
