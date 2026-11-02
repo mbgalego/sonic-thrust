@@ -47,6 +47,7 @@ import { MenuLyrics } from './MenuLyrics';
 import { audio } from '../audio/AudioEngine';
 import { isTrackUnlocked } from '../utils/trackUnlocks';
 import { getEasterEggSave, setEasterEggSave, type EasterEggSave } from '../utils/easterEgg';
+import { DeveloperStoryModal } from './DeveloperStoryModal';
 
 /**
  * Pixel-accurate vector representation of each in-game power-up beacon
@@ -254,6 +255,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
   // first user gesture, so the menu theme "waits" silently. Show a subtle one-line
   // hint while blocked; it vanishes the moment the context starts running.
   const [showAudioHint, setShowAudioHint] = useState(false);
+  const [isDevStoryOpen, setIsDevStoryOpen] = useState(false);
   useEffect(() => {
     let cancelled = false;
     const evaluate = async () => {
@@ -1438,9 +1440,23 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
       {/* Footer: Version and Last Update Date on left, Author on right */}
       <footer className="relative z-10 flex items-center justify-between text-xs sm:text-sm font-mono text-cyan-400/90 pt-1.5 pb-1 sm:pt-3 sm:pb-2 border-t border-white/10 max-w-6xl w-full mx-auto px-2">
-        <span className="tracking-wide">v1.40.2 · 02/11/2026</span>
-        <span className="tracking-wide font-semibold text-gray-200">Por Miguel Galego</span>
+        <span className="tracking-wide">v1.40.3 · 02/11/2026</span>
+        {/* Secret link: click / press the author's name to open the dev story modal */}
+        <button
+          type="button"
+          onClick={() => setIsDevStoryOpen(true)}
+          aria-label="Sobre o desenvolvedor (link secreto)"
+          className="tracking-wide font-semibold text-gray-200 hover:text-cyan-300 hover:drop-shadow-[0_0_8px_rgba(0,240,255,0.7)] transition-colors cursor-pointer select-none"
+        >
+          Por Miguel Galego
+        </button>
       </footer>
+
+      {/* Secret dev story popup (opens when the author's name is clicked) */}
+      <DeveloperStoryModal
+        isOpen={isDevStoryOpen}
+        onClose={() => setIsDevStoryOpen(false)}
+      />
 
     </div>
   );

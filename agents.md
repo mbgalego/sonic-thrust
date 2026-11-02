@@ -111,6 +111,11 @@
   3. *Code fragments disappear after unlock*: `spawnCodeFragments()` returns early when `codeFragmentsCollected >= 3` — cubes never reappear once OASIS is discovered.
   4. *Harder fragment positions*: cubes now spawn at 60%, 80%, 95% of `totalTrackLength` (based on music duration) on the negative X side, instead of fixed -600/-1200/-1800.
   5. *Verified*: lint ✅ build ✅ (v1.39.3)
+- **v1.40.3 (Secret Dev Link — Story Popup + Gravity Lander)**:
+  1. *Secret Link*: Clicking / tapping the author name ("Por Miguel Galego") in the TitleMenu footer now opens a secret modal. No other UI change — the name only reveals a subtle cyan hover glow.
+  2. *New Component* (`DeveloperStoryModal.tsx`): PauseModal-styled overlay sharing the game's origin story and crediting the original miguelius soundtrack. Closes via X button, backdrop click, or ESC.
+  3. *Previous Game Link*: Modal includes a highlighted link to the dev's previous title — Gravity Lander (https://gravity-lander.ai.studio/) — opening in a new tab.
+  4. *Verified*: lint ✅ build ✅ (v1.40.3)
 - **v1.40.2 (Repo History Purge of Non-Licensed Music + Jingle Fallback Removal)**:
   1. *History Rewrite*: `git-filter-repo` purged all non-licensed commercial music from every commit and branch (`Kosmonova — Take Me Away (Club Mix) 1997`, `Kosmonova — Ayla`, Walk Off The Earth covers of `Can't Feel My Face` and `I Knew You Were Trouble`, `Clean Bandit — Symphony`, and `CARL POPPA`), including orphan `public/assets/aistudio/` Kosmonova variants. 119 → 114 commits (5 commits pruned empty).
   2. *Typo Duplicates Purged*: Removed `Game Ove (alternative)r` and `Game Over]` misnamed jingle duplicates from history.
