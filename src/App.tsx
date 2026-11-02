@@ -151,6 +151,21 @@ const DEFAULT_TRACKS: TrackMetadata[] = [
     "secret": true
   },
   {
+    "id": "ocd-dilacerado",
+    "title": "OCD Dilacerado",
+    "artist": "miguelius",
+    "filename": "OCD Dilacerado.mp3",
+    "estimatedBpm": 143,
+    "duration": 330,
+    "description": "Faixa secreta desbloqueada ao vencer no modo EXTREME. Explosão dramática pós-rock com violoncelo dilacerante e grito operático contra o caos da desordem.",
+    "isProcedural": false,
+    "unlockCondition": {
+      "mode": "EXTREME",
+      "description": "Completa qualquer faixa no modo EXTREME para desbloquear"
+    },
+    "secret": true
+  },
+  {
     "id": "welcome-to-oasis",
     "title": "Welcome to the OASIS",
     "artist": "Sonic Thrust Labs",
@@ -322,6 +337,7 @@ export default function App() {
   useEffect(() => {
     let isMounted = true;
     audio.preloadMenuMusic().catch(() => {});
+    audio.preloadGameOverJingle().catch(() => {});
     const fetchManifest = async () => {
       // Remote manifest (bundled catalog), with bundled fallback
       let remote: TrackMetadata[] = DEFAULT_TRACKS;
@@ -664,17 +680,34 @@ export default function App() {
         }
 
         // Check for track unlocks based on difficulty completed (only PRO and EXTREME unlock tracks)
+        let hasUnlockedTrack = false;
         if (difficulty === 'PRO' || difficulty === 'EXTREME') {
           const newlyUnlocked = checkAndUnlockTracks(difficulty, tracks);
           if (newlyUnlocked.length > 0) {
+            hasUnlockedTrack = true;
             // Trigger unlock notification in TitleMenu via event
             window.dispatchEvent(new CustomEvent('tracks-unlocked', { detail: { trackIds: newlyUnlocked } }));
+            if (!easterSave.oasisMode) {
+              const unlockedTitles = tracks
+                .filter(t => newlyUnlocked.includes(t.id))
+                .map(t => t.title)
+                .join(', ');
+              setActiveAnnouncement({
+                title: 'NOVA FAIXA DESBLOQUEADA!',
+                subtitle: `${unlockedTitles || 'Nova faixa'} disponível no menu`,
+                type: 'SHIELD',
+                color: 'text-amber-300',
+                borderColor: 'border-amber-400',
+                glowColor: 'rgba(251, 191, 36, 0.95)',
+                id: Date.now()
+              });
+            }
           }
         }
         
-        // Normal runs show the victory modal promptly (1000ms).
-        // OASIS mode stays in the tunnel for 6000ms so the player can view the Copper Key announcement and portal.
-        const victoryDelay = easterSave.oasisMode ? 6000 : 1000;
+        // Normal runs show the victory modal promptly (1000ms), or 3500ms if a new track was unlocked.
+        // OASIS mode stays in the tunnel for 6000ms so the player can view the OASIS Key announcement and portal.
+        const victoryDelay = easterSave.oasisMode ? 6000 : (hasUnlockedTrack ? 3500 : 1000);
         setTimeout(() => {
           setGameState('VICTORY');
         }, victoryDelay);

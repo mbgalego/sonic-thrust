@@ -729,34 +729,60 @@ export class AudioEngine {
     this.pauseOffset = 0;
   }
 
-  // Dedicated Game Over jingle (NOT a playable track): decoded once in the
-  // background, then launched as a one-shot when the defeat screen appears.
-  private gameOverJingleBuffer: AudioBuffer | null = null;
+  // Dedicated Game Over jingles (NOT playable tracks): decoded in the
+  // background, one of which is chosen at random when the defeat screen appears.
+  private gameOverJingleBuffers: AudioBuffer[] = [];
   private gameOverJingleLoading: Promise<void> | null = null;
 
   /**
-   * Preloads "Sonic Thrust - Game Over.mp3". Never throws — on failure the
-   * jingle simply won't play.
+   * Safely fetches and decodes an audio buffer from a given URL.
+   */
+  private async fetchAndDecodeUrl(url: string): Promise<AudioBuffer | null> {
+    if (!this.ctx) return null;
+    try {
+      const response = await fetch(encodeURI(url));
+      if (!response.ok) return null;
+      const arrayBuffer = await response.arrayBuffer();
+      try {
+        return await this.ctx.decodeAudioData(arrayBuffer.slice(0));
+      } catch {
+        return await new Promise<AudioBuffer>((resolve, reject) => {
+          this.ctx!.decodeAudioData(arrayBuffer.slice(0), resolve, reject);
+        });
+      }
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Preloads all Game Over jingles ("Sonic Thrust - Game Over.mp3" and alternative).
+   * Never throws — on failure the jingles simply won't play.
    */
   public async preloadGameOverJingle(): Promise<void> {
-    if (this.gameOverJingleBuffer || this.gameOverJingleLoading) return;
+    if (this.gameOverJingleBuffers.length > 0 || this.gameOverJingleLoading) return;
     this.gameOverJingleLoading = (async () => {
       try {
         await this.init();
         if (!this.ctx) return;
-        const response = await fetch(encodeURI('/tracks/Sonic Thrust - Game Over.mp3'));
-        if (!response.ok) return;
-        const arrayBuffer = await response.arrayBuffer();
-        try {
-          this.gameOverJingleBuffer = await this.ctx.decodeAudioData(arrayBuffer.slice(0));
-        } catch {
-          // Legacy callback-style decode fallback
-          this.gameOverJingleBuffer = await new Promise<AudioBuffer>((resolve, reject) => {
-            this.ctx!.decodeAudioData(arrayBuffer.slice(0), resolve, reject);
-          });
+        const candidates = [
+          '/tracks/Sonic Thrust - Game Over.mp3',
+          '/tracks/Sonic Thrust - Game Over (alternative).mp3'
+        ];
+        const buffers: AudioBuffer[] = [];
+        for (const url of candidates) {
+          let buf = await this.fetchAndDecodeUrl(url);
+          if (!buf && url.includes('(alternative)')) {
+            // Also test original file naming in case of typo variant
+            buf = await this.fetchAndDecodeUrl('/tracks/Sonic Thrust - Game Ove (alternative)r.mp3');
+          }
+          if (buf) {
+            buffers.push(buf);
+          }
         }
+        this.gameOverJingleBuffers = buffers;
       } catch {
-        // Jingle stays unavailable; gameplay is unaffected
+        // Jingles stay unavailable; gameplay is unaffected
       } finally {
         this.gameOverJingleLoading = null;
       }
@@ -765,12 +791,22 @@ export class AudioEngine {
   }
 
   /**
-   * Plays the Game Over jingle once over the defeat screen. Safe to call even
+   * Plays a Game Over jingle chosen at random over the defeat screen. Safe to call even
    * if the preload failed (no-op). Routed through currentSource so that any
    * stopTrack() (menu exit, restart) cleanly kills the jingle.
    */
   public playGameOverJingle(): void {
-    if (!this.ctx || !this.musicGain || !this.gameOverJingleBuffer) return;
+    if (!this.ctx || !this.musicGain) return;
+    if (this.gameOverJingleBuffers.length === 0) {
+      if (this.gameOverJingleLoading) {
+        this.gameOverJingleLoading.then(() => {
+          if (this.gameOverJingleBuffers.length > 0 && !this.isPlaying) {
+            this.playGameOverJingle();
+          }
+        });
+      }
+      return;
+    }
     this.stopTrack();
     // Restore fader in case a defeat fade-out ramp is still scheduled
     try {
@@ -779,8 +815,12 @@ export class AudioEngine {
     } catch {
       // Ignore
     }
+    // Random selection among all available Game Over jingles
+    const randomIndex = Math.floor(Math.random() * this.gameOverJingleBuffers.length);
+    const chosenBuffer = this.gameOverJingleBuffers[randomIndex];
+
     this.currentSource = this.ctx.createBufferSource();
-    this.currentSource.buffer = this.gameOverJingleBuffer;
+    this.currentSource.buffer = chosenBuffer;
     if (this.musicPreGain) {
       this.currentSource.connect(this.musicPreGain);
     } else {

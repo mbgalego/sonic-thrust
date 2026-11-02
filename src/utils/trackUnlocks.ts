@@ -69,8 +69,10 @@ export function checkAndUnlockTracks(completedDifficulty: 'PRO' | 'EXTREME', all
   const newlyUnlocked: string[] = [];
   
   for (const track of allTracks) {
-    if (track.unlockCondition && track.unlockCondition.mode === completedDifficulty && track.secret) {
-      if (unlockTrack(track.id)) {
+    if (track.unlockCondition && track.secret) {
+      const qualifies = track.unlockCondition.mode === completedDifficulty ||
+        (completedDifficulty === 'EXTREME' && track.unlockCondition.mode === 'PRO');
+      if (qualifies && unlockTrack(track.id)) {
         newlyUnlocked.push(track.id);
       }
     }

@@ -125,6 +125,21 @@
     "secret": true
   },
   {
+    "id": "ocd-dilacerado",
+    "title": "OCD Dilacerado",
+    "artist": "miguelius",
+    "filename": "OCD Dilacerado.mp3",
+    "estimatedBpm": 143,
+    "duration": 330,
+    "description": "Faixa secreta desbloqueada ao vencer no modo EXTREME. Explosão dramática pós-rock com violoncelo dilacerante e grito operático contra o caos da desordem.",
+    "isProcedural": false,
+    "unlockCondition": {
+      "mode": "EXTREME",
+      "description": "Completa qualquer faixa no modo EXTREME para desbloquear"
+    },
+    "secret": true
+  },
+  {
     "id": "welcome-to-oasis",
     "title": "Welcome to the OASIS",
     "artist": "Sonic Thrust Labs",
