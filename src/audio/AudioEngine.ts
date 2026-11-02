@@ -771,11 +771,7 @@ export class AudioEngine {
         ];
         const buffers: AudioBuffer[] = [];
         for (const url of candidates) {
-          let buf = await this.fetchAndDecodeUrl(url);
-          if (!buf && url.includes('(alternative)')) {
-            // Also test original file naming in case of typo variant
-            buf = await this.fetchAndDecodeUrl('/tracks/Sonic Thrust - Game Ove (alternative)r.mp3');
-          }
+          const buf = await this.fetchAndDecodeUrl(url);
           if (buf) {
             buffers.push(buf);
           }

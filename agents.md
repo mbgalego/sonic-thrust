@@ -111,6 +111,11 @@
   3. *Code fragments disappear after unlock*: `spawnCodeFragments()` returns early when `codeFragmentsCollected >= 3` — cubes never reappear once OASIS is discovered.
   4. *Harder fragment positions*: cubes now spawn at 60%, 80%, 95% of `totalTrackLength` (based on music duration) on the negative X side, instead of fixed -600/-1200/-1800.
   5. *Verified*: lint ✅ build ✅ (v1.39.3)
+- **v1.40.2 (Repo History Purge of Non-Licensed Music + Jingle Fallback Removal)**:
+  1. *History Rewrite*: `git-filter-repo` purged all non-licensed commercial music from every commit and branch (`Kosmonova — Take Me Away (Club Mix) 1997`, `Kosmonova — Ayla`, Walk Off The Earth covers of `Can't Feel My Face` and `I Knew You Were Trouble`, `Clean Bandit — Symphony`, and `CARL POPPA`), including orphan `public/assets/aistudio/` Kosmonova variants. 119 → 114 commits (5 commits pruned empty).
+  2. *Typo Duplicates Purged*: Removed `Game Ove (alternative)r` and `Game Over]` misnamed jingle duplicates from history.
+  3. *Jingle Fallback Removed* (`AudioEngine.ts`): The dead fallback fetch for the typo'd `Game Ove (alternative)r.mp3` filename is gone. The Game Over jingle pool remains exactly **2** tracks — `Sonic Thrust - Game Over.mp3` (classic) and `Sonic Thrust - Game Over (alternative).mp3` — randomly chosen on defeat.
+  4. *Verified*: lint ✅ build ✅ (v1.40.2)
 - **v1.40.1 (Removed Kosmonova and Carl Poppa Audio Files)**:
   1. *Disk Storage Cleanup*: Permanently deleted orphan audio files `public/tracks/Kosmonova_-_Take_Me_Away__Club_Mix__1997.mp3` (~15 MB) and `public/tracks/CARL POPPA — Lyric Video [Q9aM9Ch97U8].mp3` (~13 MB) from disk.
   2. *Verified*: lint ✅ build ✅ (v1.40.1)
