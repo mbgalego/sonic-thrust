@@ -577,10 +577,10 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                 </div>
                 <div>
                   <div className={`font-orbitron font-bold text-sm ${easterSave.oasisMode ? 'text-purple-300' : 'text-gray-400'}`}>
-                    Modo OASIS (Retrô 80s)
+                    Modo OASIS
                   </div>
                   <div className={`text-xs sm:text-sm ${easterSave.oasisMode ? 'text-purple-200' : 'text-gray-500'}`}>
-                    {easterSave.oasisMode ? 'LIGADO — Retrô 80s' : 'DESLIGADO'}
+                    {easterSave.oasisMode ? 'LIGADO' : 'DESLIGADO'}
                   </div>
                 </div>
               </div>
