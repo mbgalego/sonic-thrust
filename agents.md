@@ -111,6 +111,14 @@
   3. *Code fragments disappear after unlock*: `spawnCodeFragments()` returns early when `codeFragmentsCollected >= 3` — cubes never reappear once OASIS is discovered.
   4. *Harder fragment positions*: cubes now spawn at 60%, 80%, 95% of `totalTrackLength` (based on music duration) on the negative X side, instead of fixed -600/-1200/-1800.
   5. *Verified*: lint ✅ build ✅ (v1.39.3)
+- **v1.40.6 (Dev Archive Redesign — IDE / Terminal Aesthetic)**:
+  1. *IDE Theme & Layout* (`DeveloperStoryModal.tsx`): Overhauled the secret developer archive modal into an authentic IDE / terminal code buffer interface, featuring window traffic light controls, file tab (`arquivo_do_dev.log`), terminal header (`=== ARQUIVO DO DEV ===`), access level badge (`Nível de acesso: Desenvolvedor`), and blinking terminal cursor.
+  2. *Single Monospace Box*: Consolidated all story content into a single unified monospace code container with syntax-highlighted brackets (`[🚀 ... ]`, `[🎬 ... ]`, `[⚡ ... ]`, `[🎮 ... ]`), culture pop references, and terminal run button `[ > JOGAR GRAVITY LANDER ]`.
+  3. *Verified*: lint ✅ build ✅ (v1.40.6)
+- **v1.40.5 (Music Licensing Copy & Repository Attribution Links)**:
+  1. *Licensing Copy Update* (`TitleMenu.tsx`): Updated the Informações > Licenciamento section with the revised copy specifying that all original music is created by artist `miguelius`, licensed to the author, and freely usable under Creative Commons BY 4.0.
+  2. *Hyperlinks*: Added direct links to the author's Suno profile (`https://suno.com/@miguelius`), the official license deed (`https://creativecommons.org/licenses/by/4.0/`), and the project GitHub repository (`https://github.com/mbgalego/sonic-thrust`).
+  3. *Verified*: lint ✅ build ✅ (v1.40.5)
 - **v1.40.4 (OASIS Mode Switch — Cleaner Labels)**:
   1. *UI Text*: Removed "(Retrô 80s)" from the OASIS Mode Switch label and state ("LIGADO" / "DESLIGADO"). The parenthetical was Brazilian Portuguese and redundant.
   2. *Verified*: lint ✅ build ✅ (v1.40.4)

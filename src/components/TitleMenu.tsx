@@ -1392,10 +1392,46 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
                         <span>LICENCIAMENTO DE MÚSICA</span>
                       </div>
                       <p className="font-rajdhani text-xs sm:text-sm text-gray-200 leading-snug">
-                        Toda a música original deste jogo (<span className="font-semibold text-emerald-300"><a href="https://suno.com/@miguelius" target="_blank" rel="noopener noreferrer" className="underline hover:text-white transition">miguelius</a></span>) foi criada pelo artista e é <span className="font-semibold text-white">licenciada ao autor</span>, podendo ser utilizada comercialmente.
+                        Toda a música deste jogo é original e foi criada pelo artista{' '}
+                        <a
+                          href="https://suno.com/@miguelius"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold text-emerald-300 underline hover:text-white transition"
+                        >
+                          miguelius
+                        </a>
+                        . A música é licenciada ao autor e pode ser usada livremente sobre a licença{' '}
+                        <a
+                          href="https://creativecommons.org/licenses/by/4.0/"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold text-white underline hover:text-emerald-300 transition"
+                        >
+                          Creative Commons BY 4.0
+                        </a>
+                        .
                       </p>
                       <p className="font-rajdhani text-xs sm:text-sm text-gray-300 leading-snug">
-                        Partilha permitida — se usares estas músicas noutros projetos, pede-se apenas <span className="font-semibold text-white">atribuição ao autor</span>: crédito «miguelius» com ligação ao repositório <span className="font-mono text-emerald-300">sonic-thrust</span>. A música está licenciada sob <span className="font-semibold text-white">Creative Commons BY 4.0</span>.
+                        Solicita-se apenas atribuição ao autor: crédito «
+                        <a
+                          href="https://suno.com/@miguelius"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold text-emerald-300 underline hover:text-white transition"
+                        >
+                          miguelius
+                        </a>
+                        » com ligação ao repositório{' '}
+                        <a
+                          href="https://github.com/mbgalego/sonic-thrust"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono text-emerald-300 underline hover:text-white transition"
+                        >
+                          sonic-thrust
+                        </a>
+                        .
                       </p>
                     </div>
 
@@ -1440,7 +1476,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
       {/* Footer: Version and Last Update Date on left, Author on right */}
       <footer className="relative z-10 flex items-center justify-between text-xs sm:text-sm font-mono text-cyan-400/90 pt-1.5 pb-1 sm:pt-3 sm:pb-2 border-t border-white/10 max-w-6xl w-full mx-auto px-2">
-        <span className="tracking-wide">v1.40.3 · 02/11/2026</span>
+        <span className="tracking-wide">v1.40.6 · 07/11/2026</span>
         {/* Secret link: click / press the author's name to open the dev story modal */}
         <button
           type="button"
