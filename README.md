@@ -1,7 +1,7 @@
 # 🚀 SONIC THRUST
 
 <p align="center">
-  <img src="public/assets/skins/delorean.png" alt="Sonic Thrust Banner" width="480" />
+  <img src="public/assets/logo.jpg" alt="SONIC THRUST Logo" width="540" />
 </p>
 
 <p align="center">
@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/mbgalego/sonic-thrust"><img src="https://img.shields.io/badge/Versão-v1.40.6-00f0ff?style=for-the-badge&logo=rocket" alt="Versão v1.40.6" /></a>
+  <a href="https://github.com/mbgalego/sonic-thrust"><img src="https://img.shields.io/badge/Versão-v1.40.7-00f0ff?style=for-the-badge&logo=rocket" alt="Versão v1.40.7" /></a>
   <a href="LICENSE.md"><img src="https://img.shields.io/badge/Código-MIT-ff007f?style=for-the-badge" alt="Licença MIT" /></a>
   <a href="public/tracks/LICENSE.md"><img src="https://img.shields.io/badge/Música-CC%20BY%204.0-10b981?style=for-the-badge" alt="CC BY 4.0" /></a>
   <a href="https://suno.com/@miguelius"><img src="https://img.shields.io/badge/OST-miguelius-8b5cf6?style=for-the-badge" alt="Banda Sonora Original" /></a>
@@ -82,8 +82,6 @@ Todas as faixas originais foram criadas e compostas por **[miguelius](https://su
   *Desbloqueio: Vencer qualquer corrida na dificuldade PRO.*
 * **OCD Dilacerado** — 143 BPM · 5:30  
   *Desbloqueio: Vencer qualquer corrida na dificuldade EXTREME.* Explosão dramática pós-rock com violoncelo dilacerante.
-* **Welcome to the OASIS** (Sonic Thrust Labs) — 128 BPM · 4:00  
-  *Exclusiva do Modo OASIS (Easter Egg).*
 
 ### Músicas de Derrota (Game Over)
 Ao perder uma corrida, o motor de áudio escolhe aleatoriamente entre o tema clássico (*Sonic Thrust - Game Over.mp3*) e a versão alternativa (*Sonic Thrust - Game Over (alternative).mp3*).
@@ -98,19 +96,6 @@ O jogo inclui suporte completo para ficheiros do jogador (`MP3`, `WAV`, `OGG`, `
 * **NORMAL**: 3 vidas, 1 escudo inicial, gravidade moderada (1.0x), densidade reduzida de obstáculos.
 * **PRO**: 3 vidas, 0 escudos iniciais, gravidade normal (1.0x), lasers densos sincronizados com agudos. Desbloqueia *Neo Dreams*.
 * **EXTREME**: 2 vidas, 0 escudos iniciais, gravidade agravada (1.30x), deformação extrema do túnel (0.70). Desbloqueia *OCD Dilacerado*.
-
----
-
-## 🥚 Segredos & Easter Eggs
-
-### 1. O Túnel Esquerdo & Modo OASIS
-* Ao descolar, voar no sentido inverso (**para a esquerda, $x < 0$**) conduz a um túnel escuro e aparentemente infinito.
-* Encontrar os **3 fragmentos de código** escondidos numa única corrida desbloqueia permanentemente:
-  * **Skin DeLorean**: Réplica pixel-art do lendário carro de *Regresso ao Futuro*, com propulsão a jato nos eixos das rodas.
-  * **Modo OASIS**: Paleta retrô anos 80 (magenta e violeta), criaturas pré-históricas animadas a assistir à passagem do jogador (**T-Rex** e **King Kong**), portal com a **Chave do OASIS** de brilho estelar sonorreativo e citações icónicas do filme *Ready Player One*.
-
-### 2. Arquivo do Dev (Terminal Secreto)
-* Clicar no nome do autor no rodapé do menu principal (*"Por Miguel Galego"*) abre uma janela de terminal estilizada de IDE com a história dos bastidores do jogo e ligação direta para a criação anterior: **Gravity Lander**.
 
 ---
 
