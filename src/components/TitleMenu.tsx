@@ -1476,7 +1476,7 @@ export const TitleMenu: React.FC<TitleMenuProps> = ({
 
       {/* Footer: Version and Last Update Date on left, Author on right */}
       <footer className="relative z-10 flex items-center justify-between text-xs sm:text-sm font-mono text-cyan-400/90 pt-1.5 pb-1 sm:pt-3 sm:pb-2 border-t border-white/10 max-w-6xl w-full mx-auto px-2">
-        <span className="tracking-wide">v1.40.6 · 07/11/2026</span>
+        <span className="tracking-wide">v1.40.7 · 07/11/2026</span>
         {/* Secret link: click / press the author's name to open the dev story modal */}
         <button
           type="button"

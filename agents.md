@@ -111,6 +111,9 @@
   3. *Code fragments disappear after unlock*: `spawnCodeFragments()` returns early when `codeFragmentsCollected >= 3` — cubes never reappear once OASIS is discovered.
   4. *Harder fragment positions*: cubes now spawn at 60%, 80%, 95% of `totalTrackLength` (based on music duration) on the negative X side, instead of fixed -600/-1200/-1800.
   5. *Verified*: lint ✅ build ✅ (v1.39.3)
+- **v1.40.7 (GitHub README.md Documentation)**:
+  1. *Repository Documentation* (`README.md`): Created a comprehensive, production-grade GitHub `README.md` complete with visual banners, status badges, game overview, dual-thruster aerodynamic mechanics, audio-reactive bedrock equalizers, power-up compendium, original soundtrack credits with CC BY 4.0 licensing, difficulty presets, secret unlocks (Neo Dreams, OCD Dilacerado, OASIS, DeLorean skin, Dev Archive), keyboard/touch controls matrix, and developer installation guide.
+  2. *Verified*: lint ✅ build ✅ (v1.40.7)
 - **v1.40.6 (Dev Archive Redesign — IDE / Terminal Aesthetic)**:
   1. *IDE Theme & Layout* (`DeveloperStoryModal.tsx`): Overhauled the secret developer archive modal into an authentic IDE / terminal code buffer interface, featuring window traffic light controls, file tab (`arquivo_do_dev.log`), terminal header (`=== ARQUIVO DO DEV ===`), access level badge (`Nível de acesso: Desenvolvedor`), and blinking terminal cursor.
   2. *Single Monospace Box*: Consolidated all story content into a single unified monospace code container with syntax-highlighted brackets (`[🚀 ... ]`, `[🎬 ... ]`, `[⚡ ... ]`, `[🎮 ... ]`), culture pop references, and terminal run button `[ > JOGAR GRAVITY LANDER ]`.
